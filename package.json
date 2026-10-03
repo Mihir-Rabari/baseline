@@ -32,6 +32,7 @@
     "db:generate": "pnpm --filter @packages/db db:generate",
     "db:migrate": "pnpm --filter @packages/db db:migrate",
     "db:seed": "pnpm --filter @packages/db db:seed",
+    "db:seed:activity": "pnpm --filter @app/api seed:activity",
     "db:studio": "pnpm --filter @packages/db db:studio",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
