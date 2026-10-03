@@ -175,6 +175,25 @@ describe.skipIf(!url)('CourtOS schema constraints (M-01)', () => {
     });
   });
 
+  describe('invoice_lines', () => {
+    it('stores a line position that defaults to 0 so invoices keep their line order (migration 0006)', async () => {
+      await inRollback(async (tx) => {
+        const [client] = await tx`INSERT INTO business_clients (company_name) VALUES ('Position Co') RETURNING id`;
+        const [invoice] = await tx`
+          INSERT INTO invoices (invoice_number, business_client_id, issue_date, due_date, subtotal_paise, tax_paise, total_paise)
+          VALUES ('T-POS-0001', ${client.id}, '2030-01-01', '2030-01-16', 300, 0, 300) RETURNING id`;
+        await tx`
+          INSERT INTO invoice_lines (invoice_id, description, qty, unit_price_paise, line_total_paise, position)
+          VALUES (${invoice.id}, 'second', 1, 100, 100, 1), (${invoice.id}, 'first', 1, 100, 100, 0)`;
+        await tx`
+          INSERT INTO invoice_lines (invoice_id, description, qty, unit_price_paise, line_total_paise)
+          VALUES (${invoice.id}, 'legacy', 1, 100, 100)`;
+        const rows = await tx`SELECT description, position FROM invoice_lines WHERE invoice_id = ${invoice.id} ORDER BY position, description`;
+        expect(rows.map((r) => [r.description, Number(r.position)])).toEqual([['first', 0], ['legacy', 0], ['second', 1]]);
+      });
+    });
+  });
+
   describe('bookings', () => {
     async function insertBooking(tx: Tx, courtId: string, memberId: string | null, startsAt: string, endsAt: string) {
       await tx`

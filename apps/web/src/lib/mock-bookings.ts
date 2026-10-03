@@ -69,7 +69,8 @@ function seedHistory() {
   const court = standard.courts[0];
   const me = mockMyMember();
   const make = (hoursFromNow: number, status: Booking['status'], paid: Booking['paymentStatus']): Booking => {
-    const start = new Date(Math.ceil((Date.now() + hoursFromNow * HOUR) / HOUR) * HOUR);
+    // Rounded down to the half hour, so the "starts within 2 hours" row is always inside the cancellation cutoff.
+    const start = new Date(Math.floor((Date.now() + hoursFromNow * HOUR) / (HOUR / 2)) * (HOUR / 2));
     return BookingSchema.parse({
       id: crypto.randomUUID(), court: { id: court.courtId, name: court.name, type: court.type }, kind: 'STANDARD',
       member: { id: me.id, memberCode: me.memberCode, fullName: me.fullName, planCode: me.membership?.plan.code ?? null }, guest: null,

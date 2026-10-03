@@ -65,7 +65,7 @@ export class FinanceService {
     const memberIds = [...new Set(rows.map((row) => row.memberId).filter((id): id is string => Boolean(id)))];
     const clientIds = [...new Set(rows.map((row) => row.businessClientId).filter((id): id is string => Boolean(id)))];
     const [lines, paid, memberRows, clientRows] = await Promise.all([
-      this.db.select().from(invoiceLines).where(inArray(invoiceLines.invoiceId, ids)).orderBy(asc(invoiceLines.id)),
+      this.db.select().from(invoiceLines).where(inArray(invoiceLines.invoiceId, ids)).orderBy(asc(invoiceLines.position), asc(invoiceLines.id)),
       this.paidByInvoice(ids),
       memberIds.length ? this.db.select({ id: members.id, name: members.fullName }).from(members).where(inArray(members.id, memberIds)) : [],
       clientIds.length ? this.db.select({ id: businessClients.id, name: businessClients.companyName }).from(businessClients).where(inArray(businessClients.id, clientIds)) : [],
@@ -190,7 +190,7 @@ export class FinanceService {
           createdBy: actorId,
         })
         .returning();
-      await tx.insert(invoiceLines).values(lines.map((line) => ({ invoiceId: row.id, ...line })));
+      await tx.insert(invoiceLines).values(lines.map((line, position) => ({ invoiceId: row.id, position, ...line })));
       return row;
     });
     return (await this.toInvoices([created]))[0];
