@@ -1,0 +1,137 @@
+[
+  {
+    "id": "b0000000-0000-4000-8000-000000000100",
+    "name": "Lime soda",
+    "category": "DRINK",
+    "station": "BAR",
+    "pricePaise": 12000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000101",
+    "name": "Cold coffee",
+    "category": "DRINK",
+    "station": "BAR",
+    "pricePaise": 18000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000102",
+    "name": "Masala chai",
+    "category": "DRINK",
+    "station": "BAR",
+    "pricePaise": 8000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000103",
+    "name": "Orange juice",
+    "category": "DRINK",
+    "station": "BAR",
+    "pricePaise": 15000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000104",
+    "name": "Iced tea",
+    "category": "DRINK",
+    "station": "BAR",
+    "pricePaise": 10000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000105",
+    "name": "Grilled sandwich",
+    "category": "FOOD",
+    "station": "KITCHEN",
+    "pricePaise": 22000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000106",
+    "name": "Pasta",
+    "category": "FOOD",
+    "station": "KITCHEN",
+    "pricePaise": 28000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000107",
+    "name": "Veg wrap",
+    "category": "FOOD",
+    "station": "KITCHEN",
+    "pricePaise": 20000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000108",
+    "name": "Paneer bowl",
+    "category": "FOOD",
+    "station": "KITCHEN",
+    "pricePaise": 30000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000109",
+    "name": "Club burger",
+    "category": "FOOD",
+    "station": "KITCHEN",
+    "pricePaise": 25000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000110",
+    "name": "Fries",
+    "category": "SNACK",
+    "station": "KITCHEN",
+    "pricePaise": 12000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000111",
+    "name": "Nachos",
+    "category": "SNACK",
+    "station": "KITCHEN",
+    "pricePaise": 16000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000112",
+    "name": "Fruit bowl",
+    "category": "SNACK",
+    "station": "KITCHEN",
+    "pricePaise": 14000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000113",
+    "name": "Protein bar",
+    "category": "SNACK",
+    "station": "KITCHEN",
+    "pricePaise": 9000,
+    "discountable": true,
+    "isAvailable": true
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000114",
+    "name": "Cookies",
+    "category": "SNACK",
+    "station": "KITCHEN",
+    "pricePaise": 6000,
+    "discountable": true,
+    "isAvailable": true
+  }
+]

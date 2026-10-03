@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
+import { NotificationBell } from '@/components/app-shell/notification-bell';
 
 /**
  * The signed-in header: identity and account actions only.
@@ -58,6 +59,7 @@ export function Topbar({
       </Button>
 
       <div className="ml-auto flex items-center gap-2">
+        {user && <NotificationBell />}
         <ThemeToggle />
 
         {user && (

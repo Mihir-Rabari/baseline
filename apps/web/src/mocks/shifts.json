@@ -1,0 +1,67 @@
+[
+  {
+    "id": "c0000000-0000-4000-8000-000000000100",
+    "employee": {
+      "id": "c0000000-0000-4000-8000-000000000001",
+      "fullName": "Asha Shah"
+    },
+    "roleLabel": "FRONT_DESK",
+    "startsAt": "2026-10-03T08:40:21.185Z",
+    "endsAt": "2026-10-03T16:40:21.186Z",
+    "clockInAt": null,
+    "clockOutAt": null,
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000101",
+    "employee": {
+      "id": "c0000000-0000-4000-8000-000000000002",
+      "fullName": "Kabir Mehta"
+    },
+    "roleLabel": "BAR",
+    "startsAt": "2026-10-03T08:40:21.186Z",
+    "endsAt": "2026-10-03T16:40:21.186Z",
+    "clockInAt": null,
+    "clockOutAt": null,
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000102",
+    "employee": {
+      "id": "c0000000-0000-4000-8000-000000000003",
+      "fullName": "Rohan Patel"
+    },
+    "roleLabel": "COACHING",
+    "startsAt": "2026-10-03T08:40:21.186Z",
+    "endsAt": "2026-10-03T16:40:21.186Z",
+    "clockInAt": null,
+    "clockOutAt": null,
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000103",
+    "employee": {
+      "id": "c0000000-0000-4000-8000-000000000004",
+      "fullName": "Neha Rao"
+    },
+    "roleLabel": "MANAGEMENT",
+    "startsAt": "2026-10-03T08:40:21.186Z",
+    "endsAt": "2026-10-03T16:40:21.186Z",
+    "clockInAt": null,
+    "clockOutAt": null,
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000104",
+    "employee": {
+      "id": "c0000000-0000-4000-8000-000000000005",
+      "fullName": "Arun Das"
+    },
+    "roleLabel": "MAINTENANCE",
+    "startsAt": "2026-10-03T08:40:21.186Z",
+    "endsAt": "2026-10-03T16:40:21.186Z",
+    "clockInAt": null,
+    "clockOutAt": null,
+    "status": "SCHEDULED"
+  }
+]

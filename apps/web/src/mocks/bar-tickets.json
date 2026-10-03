@@ -1,0 +1,140 @@
+[
+  {
+    "id": "b0000000-0000-4000-8000-000000000300",
+    "ticketNumber": 60,
+    "tab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Guest 1"
+    },
+    "table": {
+      "name": "T1"
+    },
+    "station": "KITCHEN",
+    "status": "NEW",
+    "createdAt": "2026-10-03T09:23:29.037Z",
+    "minutesWaiting": 3,
+    "items": [
+      {
+        "name": "Lime soda",
+        "qty": 2,
+        "note": "Less salt"
+      }
+    ]
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000301",
+    "ticketNumber": 61,
+    "tab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Guest 2"
+    },
+    "table": {
+      "name": "T2"
+    },
+    "station": "BAR",
+    "status": "PREPARING",
+    "createdAt": "2026-10-03T09:20:29.037Z",
+    "minutesWaiting": 6,
+    "items": [
+      {
+        "name": "Cold coffee",
+        "qty": 2,
+        "note": null
+      }
+    ]
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000302",
+    "ticketNumber": 62,
+    "tab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Guest 3"
+    },
+    "table": {
+      "name": "T3"
+    },
+    "station": "KITCHEN",
+    "status": "READY",
+    "createdAt": "2026-10-03T09:17:29.037Z",
+    "minutesWaiting": 9,
+    "items": [
+      {
+        "name": "Masala chai",
+        "qty": 2,
+        "note": null
+      }
+    ]
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000303",
+    "ticketNumber": 63,
+    "tab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Guest 4"
+    },
+    "table": {
+      "name": "T4"
+    },
+    "station": "BAR",
+    "status": "NEW",
+    "createdAt": "2026-10-03T09:14:29.037Z",
+    "minutesWaiting": 12,
+    "items": [
+      {
+        "name": "Orange juice",
+        "qty": 2,
+        "note": null
+      }
+    ]
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000304",
+    "ticketNumber": 64,
+    "tab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Guest 5"
+    },
+    "table": {
+      "name": "T5"
+    },
+    "station": "KITCHEN",
+    "status": "PREPARING",
+    "createdAt": "2026-10-03T09:11:29.037Z",
+    "minutesWaiting": 15,
+    "items": [
+      {
+        "name": "Iced tea",
+        "qty": 2,
+        "note": null
+      }
+    ]
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000305",
+    "ticketNumber": 65,
+    "tab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Guest 6"
+    },
+    "table": {
+      "name": "T6"
+    },
+    "station": "BAR",
+    "status": "READY",
+    "createdAt": "2026-10-03T09:08:29.037Z",
+    "minutesWaiting": 18,
+    "items": [
+      {
+        "name": "Grilled sandwich",
+        "qty": 2,
+        "note": null
+      }
+    ]
+  }
+]

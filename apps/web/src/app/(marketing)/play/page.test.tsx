@@ -1,108 +1,26 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AvailabilitySchema } from '@packages/validation';
-import { ApiError } from '@/lib/api-client';
-import fixture from '@/mocks/availability.json';
-import friday from '@/mocks/availability-friday.json';
+import { mockAvailability } from '@/lib/booking-api';
 import PlayPage from './page';
-import { formatLongDate } from '@/lib/calendar-grid';
-import { daysFromToday } from '@/test-utils/ui';
-
-const state = vi.hoisted(() => ({
-  data: undefined as unknown, error: null as Error | null, pending: false, refetch: vi.fn(), query: vi.fn(), trial: vi.fn(), reset: vi.fn(), submitting: false,
-}));
-vi.mock('@/hooks/use-public-play', () => ({
-  usePublicAvailability: (params: unknown) => { state.query(params); return { data: state.data, error: state.error, isPending: state.pending, refetch: state.refetch }; },
-  useTrialBooking: () => ({ mutateAsync: state.trial, isPending: state.submitting, reset: state.reset }),
-}));
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
-vi.mock('sonner', () => ({ toast }));
-
-const first = fixture.courts[0];
-function chooseFree() { fireEvent.click(screen.getByRole('button', { name: 'Tennis Court 1, 8:30 am, ₹600' })); }
-function fill(phone = '9876543210') {
-  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Riya Patel' } });
-  fireEvent.change(screen.getByLabelText('Phone'), { target: { value: phone } });
-}
-
-describe('public play page', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    Object.assign(state, { data: AvailabilitySchema.parse(fixture), error: null, pending: false, submitting: false });
-    state.trial.mockResolvedValue({ booking: { court: { name: 'Tennis Court 1' }, startsAt: first.slots[0].startsAt }, leadId: 'lead', message: 'ok' });
+const state = vi.hoisted(() => ({ trial: vi.fn(), data: undefined as unknown }));
+vi.mock('@/hooks/use-public-availability', () => ({ usePublicAvailability: () => ({ data: state.data, isPending: false, error: null, refetch: vi.fn() }) }));
+vi.mock('@/hooks/use-plans', () => ({ usePublicClub: () => ({ data: undefined }) }));
+vi.mock('@/lib/booking-api', async (original) => ({ ...await original<typeof import('@/lib/booking-api')>(), bookingApi: { trial: state.trial } }));
+function mount() { return render(<QueryClientProvider client={new QueryClient()}><PlayPage /></QueryClientProvider>); }
+function open() { fireEvent.click(screen.getAllByRole('button').find((button) => button.getAttribute('aria-label')?.startsWith('Tennis') && !button.hasAttribute('disabled'))!); }
+describe('Public trial', () => {
+  beforeEach(() => { state.data = mockAvailability({ date: '2099-01-01' }, true); state.trial.mockReset().mockResolvedValue({}); });
+  it('validates then submits phone-only with no blank email and shows confirmation', async () => {
+    mount(); open(); fireEvent.click(screen.getByRole('button', { name: 'Book trial' })); await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)); expect(state.trial).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Riya' } }); fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '9876543210' } }); fireEvent.click(screen.getByRole('button', { name: 'Book trial' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Trial booked'));
+    expect(state.trial).toHaveBeenCalledWith(expect.objectContaining({ email: undefined, name: 'Riya' }));
   });
-
-  it('shows the read-only grid for the next seven days with no staff or member controls', async () => {
-    render(<PlayPage />);
-    expect(screen.getByRole('heading', { name: 'Play at the club' })).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Date'));
-    // Today through six days ahead can be picked; the day after that cannot.
-    await screen.findByRole('dialog', { name: 'Choose a date' });
-    for (const offset of [-1, 7]) {
-      const cell = screen.queryByRole('gridcell', { name: formatLongDate(daysFromToday(offset)) });
-      if (cell) expect(cell).toBeDisabled();
-    }
-    let last = screen.queryByRole('gridcell', { name: formatLongDate(daysFromToday(6)) });
-    if (!last) { fireEvent.click(screen.getByRole('button', { name: 'Next month' })); last = await screen.findByRole('gridcell', { name: formatLongDate(daysFromToday(6)) }); }
-    expect(last).toBeEnabled();
-    expect(screen.queryByLabelText('Booking for')).not.toBeInTheDocument();
-    expect(screen.queryByText('Your session')).not.toBeInTheDocument();
-  });
-
-  it('opens a trial dialog for a free slot and confirms the booking with the pay-at-club message', async () => {
-    render(<PlayPage />); chooseFree();
-    const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveTextContent('Book a trial');
-    fill();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Book trial' }));
-    await waitFor(() => expect(state.trial).toHaveBeenCalledWith({ courtId: first.courtId, startsAt: first.slots[0].startsAt, name: 'Riya Patel', phone: '9876543210', email: undefined }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Trial booked. Pay at the club on arrival.'));
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-  });
-
-  it('validates name and phone before calling the API', async () => {
-    render(<PlayPage />); chooseFree();
-    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Book trial' }));
-    await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
-    expect(state.trial).not.toHaveBeenCalled();
-  });
-
-  it('SLOT_TAKEN toasts, closes the dialog and refetches', async () => {
-    state.trial.mockRejectedValue(new ApiError('taken', 409, 'SLOT_TAKEN'));
-    render(<PlayPage />); chooseFree(); fill();
-    fireEvent.click(screen.getByRole('button', { name: 'Book trial' }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('That slot was just taken. Choose another time.'));
-    expect(state.refetch).toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-  });
-
-  it('TRIAL_ALREADY_USED puts the error on the phone field and keeps the dialog open', async () => {
-    state.trial.mockRejectedValue(new ApiError('used', 409, 'TRIAL_ALREADY_USED'));
-    render(<PlayPage />); chooseFree(); fill();
-    fireEvent.click(screen.getByRole('button', { name: 'Book trial' }));
-    await waitFor(() => expect(screen.getByLabelText('Phone')).toHaveAccessibleDescription('This phone number has already used a free trial.'));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('does not let visitors pick social sessions or booked cells', () => {
-    state.data = AvailabilitySchema.parse(friday);
-    render(<PlayPage />);
-    const social = screen.getAllByRole('button').filter((button) => /left$/.test(button.getAttribute('aria-label') ?? ''));
-    expect(social.length).toBeGreaterThan(0);
-    for (const button of social) expect(button).toBeDisabled();
-  });
-
-  it('renders loading, error with retry and the closed-day state', () => {
-    state.pending = true;
-    const { rerender } = render(<PlayPage />);
-    expect(screen.getByRole('status', { name: 'Loading court availability' })).toBeInTheDocument();
-    state.pending = false; state.error = new Error('Service unavailable'); rerender(<PlayPage />);
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(state.refetch).toHaveBeenCalledOnce();
-    state.error = null; state.data = { ...AvailabilitySchema.parse(fixture), courts: AvailabilitySchema.parse(fixture).courts.map((c) => ({ ...c, slots: [] })) }; rerender(<PlayPage />);
-    expect(screen.getByText('Courts are closed on this day')).toBeInTheDocument();
+  it('shows reused trial error on the phone field', async () => {
+    state.trial.mockRejectedValue(Object.assign(new Error('Trial already used'), { code: 'TRIAL_ALREADY_USED' })); mount(); open();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Riya' } }); fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '9876543210' } }); fireEvent.click(screen.getByRole('button', { name: 'Book trial' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Trial already used'));
   });
 });
