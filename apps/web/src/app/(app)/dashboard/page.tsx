@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/app-shell/page-header';
+import { DashboardWorkspace } from '@/components/club/dashboard-workspace';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -28,7 +29,7 @@ export default function DashboardPage() {
     <>
       <PageHeader
         title={user.name || user.email}
-        description="Your account and the permissions it resolves to."
+        description="Your club workspace and account."
         actions={
           <Link href="/profile">
             <Button variant="outline" size="sm">
@@ -37,6 +38,8 @@ export default function DashboardPage() {
           </Link>
         }
       />
+
+      <DashboardWorkspace />
 
       <Card>
         <CardHeader>

@@ -106,7 +106,7 @@ describe('member profile', () => {
     expect(screen.queryByRole('button', { name: 'Check in' })).not.toBeInTheDocument();
     switchTab('Membership'); expect(screen.queryByRole('button', { name: 'Renew' })).not.toBeInTheDocument();
   });
-  it.each([[['members:read']], [['members:update']], [[]]])('hides check-in with partial permissions %j', (permissions) => {
+  it.each([{ permissions: ['members:read'] }, { permissions: ['members:update'] }, { permissions: [] }])('hides check-in with partial permissions $permissions', ({ permissions }) => {
     state.permissions = permissions;
     render(<MemberProfilePage />);
     expect(screen.queryByRole('button', { name: 'Check in' })).not.toBeInTheDocument();
