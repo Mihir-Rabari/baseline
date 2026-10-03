@@ -187,14 +187,14 @@ ALTER TABLE court_occupancies ADD CONSTRAINT court_occupancies_shape CHECK (
        AND extract(second FROM (starts_at AT TIME ZONE 'UTC')) = 0)
     OR (kind = 'SOCIAL'
        AND ends_at - starts_at = interval '1 hour'
-       AND extract(minute FROM (starts_at AT TIME ZONE 'UTC')) = 0
+       AND extract(minute FROM (starts_at AT TIME ZONE 'UTC')) = 30
        AND extract(second FROM (starts_at AT TIME ZONE 'UTC')) = 0)
     OR kind = 'MAINTENANCE'
   )
 );
 ```
 
-(India's UTC offset is +05:30, so `:00`/`:30` local equals `:00`/`:30` UTC. If `CLUB_TIMEZONE` changes to an offset with other minutes, rewrite this check.)
+(India's UTC offset is +05:30, so booking starts at `:00`/`:30` local map to `:30`/`:00` UTC. Social starts must be on the club-local hour, which maps to UTC minute `30` (18:00 IST is 12:30 UTC). This check assumes `CLUB_TIMEZONE=Asia/Kolkata`; rewrite it before switching to a timezone with a different offset.)
 
 - **Same person in two places:** a second exclusion constraint on `bookings` stops one member holding overlapping sessions on different courts:
 
