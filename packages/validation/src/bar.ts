@@ -13,6 +13,9 @@ import {
 
 // ---- Tables and menu ----
 
+export const MenuCategoryEnum = z.enum(['DRINK', 'FOOD', 'SNACK']);
+export const BarStationEnum = z.enum(['BAR', 'KITCHEN']);
+
 export const BarTableStatusEnum = z.enum(['FREE', 'OCCUPIED']);
 
 export const BarTableSchema = z.object({
@@ -47,15 +50,15 @@ export const MenuItemListSchema = z.array(MenuItemSchema);
 
 /** GET /bar/menu */
 export const MenuQuerySchema = z.object({
-  category: z.string().trim().min(1).optional(),
+  category: MenuCategoryEnum.optional(),
 });
 export type MenuQuery = z.infer<typeof MenuQuerySchema>;
 
 /** POST /bar/menu */
 export const CreateMenuItemRequestSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  category: z.string().trim().min(1).max(100),
-  station: z.string().trim().min(1).max(50),
+  category: MenuCategoryEnum,
+  station: BarStationEnum,
   pricePaise: PositivePaiseSchema,
   discountable: z.boolean().optional(),
 });
@@ -205,7 +208,7 @@ export const TicketListQuerySchema = z.object({
     .default('NEW,PREPARING,READY')
     .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean))
     .pipe(z.array(TicketStatusEnum).min(1)),
-  station: z.string().trim().min(1).optional(),
+  station: BarStationEnum.optional(),
 });
 export type TicketListQuery = z.infer<typeof TicketListQuerySchema>;
 
