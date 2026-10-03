@@ -1,0 +1,164 @@
+[
+  {
+    "id": "c0000000-0000-4000-8000-000000000000",
+    "court": {
+      "type": "TENNIS",
+      "name": "Tennis Court 1",
+      "id": "d0000000-0000-4000-8000-000000000001"
+    },
+    "kind": "STANDARD",
+    "member": {
+      "fullName": "Diya Shah",
+      "memberCode": "CC-000002",
+      "id": "b0000000-0000-4000-8000-000000000002"
+    },
+    "guest": null,
+    "startsAt": "2026-09-30T13:00:00.000Z",
+    "endsAt": "2026-09-30T14:00:00.000Z",
+    "bookingDate": "2026-09-30",
+    "status": "COMPLETED",
+    "cancelledLate": false,
+    "channel": "ONLINE",
+    "basePricePaise": 60000,
+    "discountPct": 30,
+    "pricePaise": 42000,
+    "paymentStatus": "PAID",
+    "socialSessionId": null,
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000001",
+    "court": {
+      "type": "TENNIS",
+      "name": "Tennis Court 1",
+      "id": "d0000000-0000-4000-8000-000000000001"
+    },
+    "kind": "STANDARD",
+    "member": {
+      "fullName": "Diya Shah",
+      "memberCode": "CC-000002",
+      "id": "b0000000-0000-4000-8000-000000000002"
+    },
+    "guest": null,
+    "startsAt": "2026-10-01T13:00:00.000Z",
+    "endsAt": "2026-10-01T14:00:00.000Z",
+    "bookingDate": "2026-10-01",
+    "status": "COMPLETED",
+    "cancelledLate": false,
+    "channel": "ONLINE",
+    "basePricePaise": 60000,
+    "discountPct": 30,
+    "pricePaise": 42000,
+    "paymentStatus": "PAID",
+    "socialSessionId": null,
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000002",
+    "court": {
+      "type": "TENNIS",
+      "name": "Tennis Court 1",
+      "id": "d0000000-0000-4000-8000-000000000001"
+    },
+    "kind": "STANDARD",
+    "member": {
+      "fullName": "Diya Shah",
+      "memberCode": "CC-000002",
+      "id": "b0000000-0000-4000-8000-000000000002"
+    },
+    "guest": null,
+    "startsAt": "2026-10-02T13:00:00.000Z",
+    "endsAt": "2026-10-02T14:00:00.000Z",
+    "bookingDate": "2026-10-02",
+    "status": "COMPLETED",
+    "cancelledLate": false,
+    "channel": "ONLINE",
+    "basePricePaise": 60000,
+    "discountPct": 30,
+    "pricePaise": 42000,
+    "paymentStatus": "PAID",
+    "socialSessionId": null,
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000003",
+    "court": {
+      "type": "TENNIS",
+      "name": "Tennis Court 1",
+      "id": "d0000000-0000-4000-8000-000000000001"
+    },
+    "kind": "STANDARD",
+    "member": {
+      "fullName": "Diya Shah",
+      "memberCode": "CC-000002",
+      "id": "b0000000-0000-4000-8000-000000000002"
+    },
+    "guest": null,
+    "startsAt": "2026-10-03T13:00:00.000Z",
+    "endsAt": "2026-10-03T14:00:00.000Z",
+    "bookingDate": "2026-10-03",
+    "status": "CONFIRMED",
+    "cancelledLate": false,
+    "channel": "ONLINE",
+    "basePricePaise": 60000,
+    "discountPct": 30,
+    "pricePaise": 42000,
+    "paymentStatus": "PAID",
+    "socialSessionId": null,
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000004",
+    "court": {
+      "type": "TENNIS",
+      "name": "Tennis Court 1",
+      "id": "d0000000-0000-4000-8000-000000000001"
+    },
+    "kind": "STANDARD",
+    "member": {
+      "fullName": "Diya Shah",
+      "memberCode": "CC-000002",
+      "id": "b0000000-0000-4000-8000-000000000002"
+    },
+    "guest": null,
+    "startsAt": "2026-10-04T13:00:00.000Z",
+    "endsAt": "2026-10-04T14:00:00.000Z",
+    "bookingDate": "2026-10-04",
+    "status": "CONFIRMED",
+    "cancelledLate": false,
+    "channel": "ONLINE",
+    "basePricePaise": 60000,
+    "discountPct": 30,
+    "pricePaise": 42000,
+    "paymentStatus": "PAID",
+    "socialSessionId": null,
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000005",
+    "court": {
+      "type": "TENNIS",
+      "name": "Tennis Court 1",
+      "id": "d0000000-0000-4000-8000-000000000001"
+    },
+    "kind": "STANDARD",
+    "member": {
+      "fullName": "Diya Shah",
+      "memberCode": "CC-000002",
+      "id": "b0000000-0000-4000-8000-000000000002"
+    },
+    "guest": null,
+    "startsAt": "2026-10-05T13:00:00.000Z",
+    "endsAt": "2026-10-05T14:00:00.000Z",
+    "bookingDate": "2026-10-05",
+    "status": "CONFIRMED",
+    "cancelledLate": false,
+    "channel": "ONLINE",
+    "basePricePaise": 60000,
+    "discountPct": 30,
+    "pricePaise": 42000,
+    "paymentStatus": "PAID",
+    "socialSessionId": null,
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  }
+]

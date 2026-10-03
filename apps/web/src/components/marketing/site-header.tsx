@@ -17,16 +17,11 @@ export function SiteHeader() {
           <span>Baseline</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-          <a href="#stack" className="transition-colors hover:text-foreground">
-            Stack
-          </a>
-          <a href="#status" className="transition-colors hover:text-foreground">
-            Status
-          </a>
-          <a href="#start" className="transition-colors hover:text-foreground">
-            Get started
-          </a>
+        <nav aria-label="Club website" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+          <Link href="/play" className="transition-colors hover:text-foreground">Play</Link>
+          <Link href="/plans" className="transition-colors hover:text-foreground">Membership</Link>
+          <Link href="/shop" className="transition-colors hover:text-foreground">Shop</Link>
+          <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
@@ -34,23 +29,18 @@ export function SiteHeader() {
           {isLoading ? (
             <div className="h-8 w-32 animate-pulse rounded-md bg-muted" />
           ) : isAuthenticated ? (
-            <Link href="/dashboard">
-              <Button size="sm">Open app</Button>
-            </Link>
+            <Button asChild size="sm"><Link href="/dashboard">Open app</Link></Button>
           ) : (
             <>
-              <Link href="/login">
-                <Button variant="ghost" size="sm">
-                  Sign in
-                </Button>
-              </Link>
-              <Link href="/signup">
-                <Button size="sm">Get started</Button>
-              </Link>
+              <Button asChild variant="ghost" size="sm"><Link href="/login">Sign in</Link></Button>
+              <Button asChild size="sm"><Link href="/signup">Join the club</Link></Button>
             </>
           )}
         </div>
       </div>
+      <nav aria-label="Club website on mobile" className="container flex flex-wrap gap-x-5 gap-y-2 pb-3 text-sm text-muted-foreground md:hidden">
+        <Link href="/play">Play</Link><Link href="/plans">Membership</Link><Link href="/shop">Shop</Link><Link href="/contact">Contact</Link>
+      </nav>
     </header>
   );
 }
