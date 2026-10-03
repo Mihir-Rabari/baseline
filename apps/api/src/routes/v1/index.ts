@@ -1,3 +1,4 @@
+import { crmRoutes } from './crm.js';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { systemRoutes } from './system.js';
 import { authRoutes } from './auth.js';
@@ -27,4 +28,5 @@ export const v1Routes: FastifyPluginAsyncZod = async (fastify) => {
   await fastify.register(adminJobRoutes);
   await fastify.register(bookingRoutes);
   await fastify.register(reportRoutes);
+  await fastify.register(crmRoutes);
 };
