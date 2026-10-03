@@ -108,7 +108,7 @@ export default function KitchenPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Kitchen & Bar Tickets"
         description="Live order display with station routing, time warnings, and service tracking."

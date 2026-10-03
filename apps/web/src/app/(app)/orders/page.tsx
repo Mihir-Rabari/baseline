@@ -85,7 +85,7 @@ export default function OrdersPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title={staff ? 'Orders & Shop Fulfilment' : 'My orders'}
         description={

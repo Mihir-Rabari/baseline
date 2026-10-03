@@ -25,7 +25,7 @@ export default function NotificationsPage() {
     setError(null);
     try { await action(); } catch (error) { setError(error instanceof Error ? error.message : 'Could not update notifications. Try again.'); }
   };
-  return <div className="space-y-6"><PageHeader title="Notifications" description="Follow up on updates from around the club." actions={state.canUpdate && <Button disabled={state.pending || !state.count.data?.count} onClick={() => run(() => state.readAll.mutateAsync())}>{state.readAll.isPending ? 'Marking…' : 'Mark all read'}</Button>} />
+  return <div className="space-y-8"><PageHeader title="Notifications" description="Follow up on updates from around the club." actions={state.canUpdate && <Button disabled={state.pending || !state.count.data?.count} onClick={() => run(() => state.readAll.mutateAsync())}>{state.readAll.isPending ? 'Marking…' : 'Mark all read'}</Button>} />
     {!state.canRead ? <EmptyState title="Notification access required" description="Ask the owner for access to your notifications." /> : state.list.isPending ? <Skeleton className="h-72" /> : state.list.isError ? <PageError error={state.list.error} onRetry={() => state.list.refetch()} /> : <>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {!state.list.data?.data.length ? <EmptyState title="No notifications" description="Club updates will appear here." /> : <Table><TableHeader><TableRow><TableHead>Update</TableHead><TableHead>Received</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{state.list.data.data.map((row) => {

@@ -28,7 +28,7 @@ export default function MembersPage() {
 
   if (!user) return null;
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Members" description="Find a member and check their membership."
         actions={hasPermission('members:create') && hasPermission('memberships:create') ? <Link className={buttonVariants()} href="/members/new">New member</Link> : undefined} />
       <div className="flex flex-wrap gap-4">

@@ -23,7 +23,7 @@ export default function EarningsPage() {
   const { query, canRead, canChooseDate } = useBarEarnings(date);
   if (!user) return null;
   const data = query.data;
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <PageHeader title="Bar earnings" description="Review payments and hand over the closing report." actions={<>
       <Button asChild variant="outline"><Link href="/bar">Bar floor</Link></Button><Button variant="outline" disabled={!data} onClick={() => window.print()}>Print report</Button>
     </>} />
