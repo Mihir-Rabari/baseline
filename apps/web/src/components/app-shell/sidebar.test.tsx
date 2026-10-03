@@ -18,7 +18,7 @@ describe('club navigation', () => {
 
   it('hides restricted destinations and empty sections without permissions', () => {
     render(<Sidebar />);
-    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['Home', 'Profile']);
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['Dashboard']);
     expect(screen.queryByText('Administration')).not.toBeInTheDocument();
     expect(screen.queryByText('Bar')).not.toBeInTheDocument();
   });
@@ -64,7 +64,7 @@ describe('club navigation', () => {
     const onNavigate = vi.fn();
     render(<Sidebar onNavigate={onNavigate} />);
     expect(screen.getAllByRole('link').some((link) => link.hasAttribute('aria-current'))).toBe(false);
-    fireEvent.click(screen.getByRole('link', { name: 'Home' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Dashboard' }));
     expect(onNavigate).toHaveBeenCalledOnce();
   });
 });

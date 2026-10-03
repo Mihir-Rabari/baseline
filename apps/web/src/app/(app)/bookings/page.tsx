@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import type { Booking } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
-import { useCancelBooking, useDayBookings, useMyBookings, type BookingScope } from '@/hooks/use-bookings';
+import { useCancelBooking, useDayBookings, useMyBookings, useWeekBookings, type BookingScope } from '@/hooks/use-bookings';
 import { calendarDate, dateAfter } from '@/lib/booking-calendar';
-import { isLateCancel } from '@/lib/booking-history';
+import { canCancel, isLateCancel } from '@/lib/booking-history';
 import { formatDateTime } from '@/lib/format';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
-import { BookingTable } from '@/components/club/booking-table';
+import { BookingCards, BookingTable } from '@/components/club/booking-table';
+import { ViewSwitcher, WeekCalendar, useViewPreference, type CalendarEvent, type ViewKind } from '@/components/club/views';
+import { mondayOf } from '@/lib/calendar-grid';
 import { DateField } from '@/components/club/date-field';
 import { PageError } from '@/components/club/page-error';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -65,20 +67,34 @@ function Loading() {
   return <div role="status" aria-label="Loading bookings" className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-48 w-full" /></div>;
 }
 
+const VIEWS: ViewKind[] = ['list', 'cards', 'calendar'];
+const toEvents = (rows: Booking[], onPick?: (booking: Booking) => void, who = false): CalendarEvent[] => rows.map((b) => ({
+  id: b.id, startsAt: b.startsAt, endsAt: b.endsAt, title: b.court.name, subtitle: who ? (b.member?.fullName ?? b.guest?.name ?? 'Walk-in') : b.status === 'CANCELLED' ? 'Cancelled' : undefined,
+  tone: b.status === 'CANCELLED' || b.status === 'NO_SHOW' ? 'muted' : b.status === 'COMPLETED' ? 'success' : 'default',
+  onClick: onPick && canCancel(b) ? () => onPick(b) : undefined,
+}));
+
 function MyBookings({ onCancel }: { onCancel: (booking: Booking) => void }) {
+  const [view, setView] = useViewPreference('bookings', VIEWS, 'list');
+  const [weekStart, setWeekStart] = useState(calendarDate());
   const [scope, setScope] = useState<BookingScope>('upcoming');
   const query = useMyBookings(scope);
   const rows = query.data?.data ?? [];
   return (
     <div className="space-y-4">
-      <Tabs value={scope} onValueChange={(value) => setScope(value as BookingScope)}>
-        <TabsList aria-label="Booking period"><TabsTrigger value="upcoming">Upcoming</TabsTrigger><TabsTrigger value="past">Past</TabsTrigger></TabsList>
-      </Tabs>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={scope} onValueChange={(value) => setScope(value as BookingScope)}>
+          <TabsList aria-label="Booking period"><TabsTrigger value="upcoming">Upcoming</TabsTrigger><TabsTrigger value="past">Past</TabsTrigger></TabsList>
+        </Tabs>
+        <ViewSwitcher views={VIEWS} value={view} onChange={setView} />
+      </div>
       {query.error ? <PageError error={query.error} onRetry={() => { void query.refetch(); }} />
         : query.isPending ? <Loading />
         : !rows.length ? <EmptyState title={scope === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
             description={scope === 'upcoming' ? 'Book a court to see it here.' : 'Finished and cancelled sessions appear here.'}
             action={scope === 'upcoming' ? <Button asChild><Link href="/courts">Book a court</Link></Button> : undefined} />
+        : view === 'calendar' ? <WeekCalendar weekStart={weekStart} onWeekChange={setWeekStart} events={toEvents(rows, scope === 'upcoming' ? onCancel : undefined)} />
+        : view === 'cards' ? <BookingCards bookings={rows} onCancel={scope === 'upcoming' ? onCancel : undefined} />
         : <BookingTable bookings={rows} onCancel={scope === 'upcoming' ? onCancel : undefined} />}
     </div>
   );
@@ -87,14 +103,23 @@ function MyBookings({ onCancel }: { onCancel: (booking: Booking) => void }) {
 function DayBookings({ onCancel }: { onCancel: (booking: Booking) => void }) {
   const today = calendarDate();
   const [date, setDate] = useState(today);
-  const query = useDayBookings(date);
+  const [view, setView] = useViewPreference('bookings', VIEWS, 'list');
+  const calendar = view === 'calendar';
+  const day = useDayBookings(date, !calendar);
+  const week = useWeekBookings(mondayOf(date), calendar);
+  const query = calendar ? week : day;
   const rows = query.data?.data ?? [];
   return (
     <div className="space-y-4">
-      <DateField value={date} min={dateAfter(today, -90)} max={dateAfter(today, 30)} onChange={setDate} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        {calendar ? <span /> : <DateField value={date} min={dateAfter(today, -90)} max={dateAfter(today, 30)} onChange={setDate} />}
+        <ViewSwitcher views={VIEWS} value={view} onChange={setView} />
+      </div>
       {query.error ? <PageError error={query.error} onRetry={() => { void query.refetch(); }} />
         : query.isPending ? <Loading />
+        : calendar ? <WeekCalendar weekStart={date} onWeekChange={setDate} events={toEvents(rows, onCancel, true)} emptyLabel="No bookings this week" />
         : !rows.length ? <EmptyState title="No bookings on this date" description="Choose another date to see its bookings." />
+        : view === 'cards' ? <BookingCards bookings={rows} showWho onCancel={onCancel} />
         : <BookingTable bookings={rows} showWho onCancel={onCancel} />}
     </div>
   );

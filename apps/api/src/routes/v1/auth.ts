@@ -15,6 +15,7 @@ import {
   LoginThrottle,
 } from '@packages/auth';
 import { requireAuthentication } from '@packages/iam';
+import { ForgotPasswordRequestSchema, SetPasswordRequestSchema } from '@packages/validation';
 import { z } from 'zod';
 
 /**
@@ -210,6 +211,11 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
         actor: newUser.id,
         target: newUser.id,
         details: { method: 'signup', ip: request.ip },
+      });
+
+      // Confirmation email; a delivery problem must never fail the signup.
+      void fastify.accountService.sendAccountCreated({ name: newUser.name, email: newUser.email }).catch((error: unknown) => {
+        request.log.warn({ error: error instanceof Error ? error.name : 'unknown' }, 'Account confirmation email failed');
       });
 
       // 8. Calculate effective permissions
@@ -512,6 +518,64 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
         },
         effectivePermissions: effectivePerms.effectivePermissions,
       });
+    }
+  );
+  // ---------------------------------------------------------------------------
+  // Password links: set a first password (welcome link) or reset a forgotten one.
+  // ---------------------------------------------------------------------------
+  const linkLimit = { rateLimit: { max: 10, timeWindow: '1 minute' } };
+  const okMessage = z.object({ success: z.boolean(), message: z.string() });
+  const linkErrors = { 400: HttpErrorResponseSchema, 429: HttpErrorResponseSchema };
+
+  fastify.get(
+    '/auth/password/check',
+    {
+      config: linkLimit,
+      schema: {
+        description: 'Whether a password link is still usable',
+        tags: ['Authentication'],
+        querystring: z.object({ token: z.string().min(20).max(200) }),
+        response: { 200: z.object({ valid: z.boolean() }), ...linkErrors },
+      },
+    },
+    async (request, reply) => reply.header('cache-control', 'no-store').send({ valid: await fastify.accountService.checkToken(request.query.token) })
+  );
+
+  fastify.post(
+    '/auth/password/setup',
+    {
+      config: linkLimit,
+      schema: {
+        description: 'Choose a password with a one-time link. Signs the person out of every other device.',
+        tags: ['Authentication'],
+        body: SetPasswordRequestSchema,
+        response: { 200: okMessage, ...linkErrors },
+      },
+    },
+    async (request, reply) => {
+      await fastify.accountService.setPassword(request.body.token, request.body.password);
+      request.log.info('Password set with a one-time link');
+      await fastify.iamService.logAuditEvent({ action: 'PASSWORD_SET_WITH_LINK', details: { ip: request.ip } });
+      return reply.header('cache-control', 'no-store').send({ success: true, message: 'Your password is set. You can sign in now.' });
+    }
+  );
+
+  fastify.post(
+    '/auth/password/forgot',
+    {
+      config: linkLimit,
+      schema: {
+        description: 'Email a reset link. The answer is the same whether or not the address has an account.',
+        tags: ['Authentication'],
+        body: ForgotPasswordRequestSchema,
+        response: { 200: okMessage, ...linkErrors },
+      },
+    },
+    async (request, reply) => {
+      void fastify.accountService.requestReset(request.body.email).catch((error: unknown) => {
+        request.log.warn({ error: error instanceof Error ? error.name : 'unknown' }, 'Password reset email failed');
+      });
+      return reply.send({ success: true, message: 'If that email has an account, a reset link is on its way.' });
     }
   );
 };

@@ -117,7 +117,12 @@ export const envSchema = z.object({
 
   // Optional Providers
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM: z.string().email().optional().default('noreply@example.com'),
+  /** Sender address, either `noreply@club.example` or `Club name <noreply@club.example>`. */
+  RESEND_FROM: z
+    .string()
+    .regex(/^([^<>@]+<)?[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+>?$/, 'Expected an email address, optionally with a display name')
+    .optional()
+    .default('noreply@example.com'),
 
   // Authentication & Sessions (Phase 2)
   SESSION_SECRET: z.string().min(16).default(DEV_PLACEHOLDERS.SESSION_SECRET),

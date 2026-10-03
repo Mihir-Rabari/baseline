@@ -1,14 +1,16 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { asc, eq } from 'drizzle-orm';
-import { courtTypes, courts, socialWindows } from '@packages/db';
+import { courtTypes, courts, socialWindows, systemSettings } from '@packages/db';
 import {
   AvailabilityQuerySchema,
   AvailabilitySchema,
   CourtListSchema,
   HttpErrorResponseSchema,
+  ClubProfileSchema,
   SocialWindowListSchema,
   SocialWindowSchema,
+  UpdateClubProfileRequestSchema,
   UpdateSocialWindowRequestSchema,
   UuidSchema,
 } from '@packages/validation';
@@ -186,6 +188,38 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
         .returning();
       request.log.info({ windowId: id, actorId: request.user!.id }, 'Social window updated');
       return reply.status(200).send(toSocialWindow(row));
+    }
+  );
+  // ---------------------------------------------------------------------------
+  // PUT /api/v1/club/profile - owner edits the details shown on the public website
+  // ---------------------------------------------------------------------------
+  fastify.put(
+    '/club/profile',
+    {
+      preHandler: [requirePermission('courts:update')],
+      schema: {
+        description: "Change the club's public name, tagline, phone or address (owner only). Only the fields sent change.",
+        tags: ['Courts'],
+        body: UpdateClubProfileRequestSchema,
+        response: { 200: ClubProfileSchema, 400: HttpErrorResponseSchema, 401: HttpErrorResponseSchema, 403: HttpErrorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const [existing] = await fastify.db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, 'club.profile')).limit(1);
+      const current = ClubProfileSchema.partial().safeParse(existing?.value);
+      const merged = {
+        name: request.body.name ?? (current.success ? current.data.name : undefined) ?? fastify.env.APP_NAME,
+        tagline: request.body.tagline ?? (current.success ? current.data.tagline : undefined) ?? '',
+        phone: request.body.phone ?? (current.success ? current.data.phone : undefined) ?? '',
+        address: request.body.address ?? (current.success ? current.data.address : undefined) ?? '',
+      };
+      await fastify.db
+        .insert(systemSettings)
+        .values({ key: 'club.profile', value: merged, description: 'Public club details shown on the website (name, tagline, phone, address)' })
+        .onConflictDoUpdate({ target: systemSettings.key, set: { value: merged, updatedAt: new Date() } });
+      request.log.info({ actorId: request.user!.id, fields: Object.keys(request.body) }, 'Club profile updated');
+      await fastify.iamService.logAuditEvent({ action: 'CLUB_PROFILE_UPDATED', actor: request.user!.id, details: { fields: Object.keys(request.body) } });
+      return reply.status(200).send(merged);
     }
   );
 };

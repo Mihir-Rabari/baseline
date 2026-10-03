@@ -37,5 +37,11 @@ export const crmRoutes: FastifyPluginAsyncZod = async fastify => {
   fastify.patch('/crm/quotes/:id', { preHandler: manage, schema: { tags: ['CRM'], params, body: UpdateQuoteRequestSchema, response: { 200: QuoteSchema, ...errors } } },
     async request => service.updateQuote(request.params.id, request.body));
   fastify.post('/crm/leads/:id/convert', { preHandler: manage, schema: { tags: ['CRM'], params, body: ConvertLeadRequestSchema, response: { 201: ConvertLeadResponseSchema, ...errors } } },
-    async (request, reply) => reply.status(201).send(await service.convert(request.params.id, request.body, request.user!.id)));
+    async (request, reply) => {
+      const result = await service.convert(request.params.id, request.body, request.user!.id);
+      void fastify.accountService
+        .provisionMemberLogin({ id: result.member.id, fullName: result.member.fullName, email: result.member.email, planName: result.member.membership?.plan.name })
+        .catch((error: unknown) => request.log.warn({ error: error instanceof Error ? error.name : 'unknown' }, 'Member login email failed'));
+      return reply.status(201).send(result);
+    });
 };

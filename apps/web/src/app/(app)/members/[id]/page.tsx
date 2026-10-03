@@ -22,9 +22,40 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Label } from '@/components/ui/label';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
+import type { Member } from '@packages/validation';
+import { useOpsMutation } from '@/hooks/use-ops';
+import { calendarDate } from '@/lib/booking-calendar';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Field as FormField, FormDialog, errorText } from '@/components/club/form-dialog';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="flex flex-wrap justify-between gap-3 py-3"><dt className="text-muted-foreground">{label}</dt><dd>{children}</dd></div>;
+}
+
+function EditMemberDialog({ member, open, onClose }: { member: Member; open: boolean; onClose: () => void }) {
+  const [form, setForm] = useState({ fullName: member.fullName, phone: member.phone, email: member.email ?? '', dateOfBirth: member.dateOfBirth ?? '' });
+  const [error, setError] = useState<string | null>(null);
+  const save = useOpsMutation<Member, { id: string; [key: string]: unknown }>('patch', ['members'], (v) => `/members/${v.id}`);
+  const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: event.target.value });
+  async function submit() {
+    setError(null);
+    if (!form.fullName.trim()) return setError('Enter the member\'s name.');
+    if (!form.phone.trim()) return setError('Enter a phone number.');
+    try {
+      await save.mutateAsync({ id: member.id, fullName: form.fullName.trim(), phone: form.phone.trim(), ...(form.email.trim() ? { email: form.email.trim() } : {}), ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}) });
+      toast.success('Member details saved'); onClose();
+    } catch (caught) { setError(errorText(caught, 'Could not save the member.')); }
+  }
+  return (
+    <FormDialog open={open} onClose={onClose} title={`Edit ${member.fullName}`} description="Contact details and date of birth. The plan is changed by renewing." onSubmit={submit} submitLabel="Save changes" pending={save.isPending} error={error}>
+      <FormField id="member-name" label="Full name" value={form.fullName} onChange={set('fullName')} autoComplete="name" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField id="member-phone" label="Phone" type="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
+        <FormField id="member-email" label="Email" type="email" value={form.email} onChange={set('email')} autoComplete="email" />
+      </div>
+      <div className="space-y-2"><Label htmlFor="member-dob">Date of birth</Label><DatePicker id="member-dob" value={form.dateOfBirth} onChange={(d) => setForm({ ...form, dateOfBirth: d })} max={calendarDate()} shortcuts={false} placeholder="Not provided" /></div>
+    </FormDialog>
+  );
 }
 
 export default function MemberProfilePage() {
@@ -32,6 +63,7 @@ export default function MemberProfilePage() {
   const { user, hasPermission } = useAuth();
   const [tab, setTab] = useState('overview');
   const [renewOpen, setRenewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const memberQuery = useMemberProfile(id);
   const timeline = useMemberTimeline(id, tab === 'timeline' && Boolean(memberQuery.data));
@@ -56,7 +88,8 @@ export default function MemberProfilePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={member.fullName} description={member.memberCode} actions={hasPermission('members:read') && hasPermission('members:update') ? <Button onClick={onCheckin} disabled={checkin.isPending}>{checkin.isPending ? 'Checking in…' : 'Check in'}</Button> : undefined} />
+      <EditMemberDialog key={`edit-${editOpen}`} member={member} open={editOpen} onClose={() => setEditOpen(false)} />
+      <PageHeader title={member.fullName} description={member.memberCode} actions={hasPermission('members:read') && hasPermission('members:update') ? <><Button variant="outline" onClick={() => setEditOpen(true)}>Edit details</Button><Button onClick={onCheckin} disabled={checkin.isPending}>{checkin.isPending ? 'Checking in…' : 'Check in'}</Button></> : undefined} />
       {checkin.error && <Alert variant="destructive"><AlertDescription>{getErrorMessage(checkin.error, "Couldn't check in. Please try again.")}</AlertDescription></Alert>}
       {membership?.expiryState === 'EXPIRING_SOON' && <Alert className="text-warning"><AlertDescription>Membership expires in {membership.daysLeft} {membership.daysLeft === 1 ? 'day' : 'days'}.</AlertDescription></Alert>}
       {membership?.expiryState === 'EXPIRED' && <Alert variant="destructive"><AlertDescription>Membership expired on {formatDate(membership.endsOn)}. Renew to restore member benefits.</AlertDescription></Alert>}

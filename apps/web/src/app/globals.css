@@ -77,6 +77,18 @@
     font-feature-settings: 'cv11', 'ss01';
   }
 
+  /* Motion is decoration: people who ask their system for less of it get none. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   /* Numbers in tables and stat readouts should not reflow as they update. */
   .tabular {
     font-variant-numeric: tabular-nums;

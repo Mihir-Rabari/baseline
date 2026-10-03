@@ -3,9 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ShieldCheck, User, CalendarDays, Ticket, IdCard, Users,
+import { LayoutDashboard, ShieldCheck, CalendarDays, Ticket, IdCard, Users,
   ShoppingCart, Package, Boxes, Contact, Armchair, ChefHat, Receipt, Clock,
-  FileText, BriefcaseBusiness, ChartColumn, Settings, type LucideIcon } from 'lucide-react';
+  FileText, BriefcaseBusiness, BookOpen, ChartColumn, Settings, type LucideIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 
@@ -40,11 +40,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     {
       label: 'Workspace',
       items: [
-        { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+        { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/courts', label: 'Courts', icon: CalendarDays, show: can('courts:read') || isMember },
         { href: '/bookings', label: 'Bookings', icon: Ticket, show: can('bookings:read') || isMember },
         { href: '/membership', label: 'Membership', icon: IdCard, show: isMember },
-        { href: '/profile', label: 'Profile', icon: User },
       ],
     },
     {
@@ -62,6 +61,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       items: [
         { href: '/bar', label: 'Floor', icon: Armchair, show: can('bar:read') },
         { href: '/bar/kitchen', label: 'Kitchen', icon: ChefHat, show: can('bar:kitchen') },
+        { href: '/bar/menu', label: 'Menu', icon: BookOpen, show: can('bar:read') },
         { href: '/bar/earnings', label: 'Earnings', icon: Receipt, show: can('bar:read') },
       ],
     },

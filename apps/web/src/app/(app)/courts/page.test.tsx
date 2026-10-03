@@ -6,6 +6,7 @@ import { ApiError } from '@/lib/api-client';
 import fixture from '@/mocks/availability.json';
 import friday from '@/mocks/availability-friday.json';
 import CourtsPage from './page';
+import { chooseDate, chooseOption, daysFromToday } from '@/test-utils/ui';
 
 const state = vi.hoisted(() => ({
   staff: false, read: true, book: true,
@@ -44,20 +45,19 @@ describe('booking calendar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Check the guest'));
     expect(state.mutation).not.toHaveBeenCalled(); guest();
-    fireEvent.change(screen.getByLabelText('Payment'), { target: { value: 'UPI' } });
+    await chooseOption('Payment', 'UPI now');
     fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
     await waitFor(() => expect(state.mutation).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ guest: { name: 'Riya Patel', phone: '9876543210' }, payNow: { method: 'UPI' }, channel: 'DESK' }) })));
   });
-  it('clears selection on a date, sport or participant change', () => {
+  it('clears selection on a date, sport or participant change', async () => {
     state.staff = true; render(<CourtsPage />); chooseFree();
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Padel' }), { button: 0, ctrlKey: false });
     expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Tennis Court 1' })).not.toBeInTheDocument();
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'All courts' }), { button: 0, ctrlKey: false }); chooseFree();
-    const date = screen.getByLabelText('Date') as HTMLInputElement;
-    fireEvent.change(date, { target: { value: date.max } });
+    await chooseDate('Date', daysFromToday(14));
     expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument();
-    chooseFree(); fireEvent.change(screen.getByLabelText('Booking for'), { target: { value: 'MEMBER' } });
+    chooseFree(); await chooseOption('Booking for', 'Member');
     expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument();
   });
   it('joins social sessions without payment fields', async () => {

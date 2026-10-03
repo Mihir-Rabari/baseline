@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({ useParams: () => ({ id: 'b0000000-0000-4000-8000-000000000002' }) }));
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'staff' }, hasPermission: (action: string) => state.permissions ? state.permissions.includes(action) : state.permission }) }));
 vi.mock('@/hooks/use-member-profile', () => ({ useMemberProfile: () => state.member, useMemberTimeline: () => state.timeline, useMemberCheckin: () => state.checkin, useMemberRenewal: () => state.renewal }));
+vi.mock('@/hooks/use-ops', () => ({ useOpsMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 function switchTab(name: string) { fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0, ctrlKey: false }); }

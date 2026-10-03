@@ -16,6 +16,7 @@ import { MemberSearch } from '@/components/club/member-search';
 import { Money } from '@/components/club/money';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SelectBox } from '@/components/club/ops-bits';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -77,12 +78,7 @@ export default function CourtsPage() {
         <p className="text-xs text-muted-foreground">Club time · {timezone} · Updates every 10 seconds</p>
       </div>
       {staff && <fieldset disabled={create.isPending} className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
-        <div className="space-y-2"><Label htmlFor="booking-for">Booking for</Label>
-          <select id="booking-for" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={mode}
-            onChange={(event) => { setMode(event.target.value as 'MEMBER' | 'GUEST'); resetSelection(); }}>
-            <option value="GUEST">Walk-in</option><option value="MEMBER">Member</option>
-          </select>
-        </div>
+        <SelectBox id="booking-for" label="Booking for" value={mode} onChange={(value) => { setMode(value as 'MEMBER' | 'GUEST'); resetSelection(); }} options={[{ value: 'GUEST', label: 'Walk-in' }, { value: 'MEMBER', label: 'Member' }]} />
         {mode === 'MEMBER' ? <MemberSearch value={member} disabled={create.isPending} onChange={(value) => { setMember(value); resetSelection(); }} />
           : <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="guest-name">Guest name</Label><Input id="guest-name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div className="space-y-2"><Label htmlFor="guest-phone">Guest phone</Label><Input id="guest-phone" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div></div>}
@@ -106,7 +102,7 @@ export default function CourtsPage() {
                 <div className="py-3"><dt className="text-muted-foreground">Time</dt><dd className="mt-1 tabular">{slotTime(slot.startsAt, timezone)} – {slotTime(slot.endsAt, timezone)}</dd></div>
                 <div className="flex justify-between py-3"><dt className="text-muted-foreground">Total</dt><dd className="font-medium"><Money paise={slot.pricePaise} /></dd></div></dl>
               {data?.limits && <p className="text-sm text-muted-foreground">Used {data.limits.usedToday} of {data.limits.maxPerDay} bookings on this date.</p>}
-              {staff && !social && <div className="space-y-2"><Label htmlFor="booking-payment">Payment</Label><select id="booking-payment" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={payment} disabled={create.isPending} onChange={(event) => setPayment(event.target.value)}><option value="LATER">Pay at the club</option><option value="CASH">Cash now</option><option value="CARD">Card now</option><option value="UPI">UPI now</option></select></div>}
+              {staff && !social && <SelectBox id="booking-payment" label="Payment" value={payment} disabled={create.isPending} onChange={setPayment} options={[{ value: 'LATER', label: 'Pay at the club' }, { value: 'CASH', label: 'Cash now' }, { value: 'CARD', label: 'Card now' }, { value: 'UPI', label: 'UPI now' }]} />}
               {social && <p className="text-sm text-muted-foreground">Shared session · {slot.spotsLeft} places left. Pay at the club.</p>}
               <Button className="w-full" onClick={() => { void book(); }} disabled={create.isPending || availability.isFetching || Boolean(quotaUsed) || (staff && mode === 'MEMBER' && !member)}>{create.isPending ? 'Confirming…' : social ? 'Join session' : 'Book court'}</Button>
               <Button variant="ghost" className="w-full" disabled={create.isPending} onClick={resetSelection}>Change selection</Button>

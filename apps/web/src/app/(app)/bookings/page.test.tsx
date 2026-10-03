@@ -13,6 +13,7 @@ vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'u1' }, hasPe
 vi.mock('@/hooks/use-bookings', () => ({
   useMyBookings: (scope: string) => { state.scope(scope); return { data: state.mine, error: state.error, isPending: state.pending, refetch: state.refetch }; },
   useDayBookings: (date: string) => { state.date(date); return { data: state.day, error: state.error, isPending: state.pending, refetch: state.refetch }; },
+  useWeekBookings: () => ({ data: state.day, error: state.error, isPending: state.pending, refetch: state.refetch }),
   useCancelBooking: () => ({ mutateAsync: state.cancel, isPending: state.cancelling }),
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));

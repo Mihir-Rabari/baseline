@@ -131,7 +131,7 @@ export default async function ClubSitePage({ params }: Params) {
                         <td className="py-3 pr-4">{discount(plan.barDiscountPct, 'Bar')}</td>
                         <td className="py-3 pr-4 text-right tabular">{plan.maxBookingsPerDay}</td>
                         <td className="py-3 pr-4 text-right tabular">{plan.bookingHorizonDays} days</td>
-                        <td className="py-3 text-right"><Link href={`/contact?plan=${encodeURIComponent(plan.code)}`} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))} aria-label={`Ask about ${plan.name}`}>Ask about it</Link></td>
+                        <td className="space-x-2 whitespace-nowrap py-3 text-right"><Link href={`/join?plan=${encodeURIComponent(plan.code)}`} className={buttonVariants({ size: 'sm' })} aria-label={`Join ${plan.name} online`}>Join online</Link><Link href={`/contact?plan=${encodeURIComponent(plan.code)}`} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))} aria-label={`Ask about ${plan.name}`}>Ask about it</Link></td>
                       </tr>
                     ))}
                   </tbody>
