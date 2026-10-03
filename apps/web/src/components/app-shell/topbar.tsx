@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
 import { NotificationBell } from '@/components/app-shell/notification-bell';
+import { useProfileAvatar } from '@/hooks/use-profile-avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 /**
  * The signed-in header: identity and account actions only.
@@ -30,7 +32,8 @@ export function Topbar({
   mobileNavOpen: boolean;
   onToggleMobileNav: () => void;
 }) {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
+  const photo = useProfileAvatar(user?.id, hasPermission('profile:read:self'));
 
   const initials = user?.name
     ? user.name
@@ -65,13 +68,11 @@ export function Topbar({
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <span
-                  aria-hidden
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium"
-                >
-                  {initials}
-                </span>
+              <Button variant="ghost" size="sm" className="gap-2" aria-label="Account menu">
+                <Avatar aria-hidden className="h-6 w-6 shadow-none">
+                  <AvatarImage src={photo.src} alt="" />
+                  <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                </Avatar>
                 <span className="hidden max-w-[140px] truncate sm:inline">
                   {user.name || user.email}
                 </span>
