@@ -148,10 +148,8 @@ export const iamRoutes: FastifyPluginAsyncZod = async (fastify) => {
         });
       }
 
-      // If suspended or disabled, revoke all active sessions immediately
-      if (status === 'SUSPENDED' || status === 'DISABLED') {
-        await fastify.sessionManager.revokeAllUserSessions(id);
-      }
+      // Session revocation for SUSPENDED/DISABLED happens inside IamService.updateUserStatus
+      // so every caller (not just this route) is covered.
 
       return reply.status(200).send(updated);
     }

@@ -9,11 +9,11 @@ declare module 'fastify' {
 }
 
 async function iamPlugin(fastify: FastifyInstance) {
-  const iamService = new IamService(fastify.db);
+  const iamService = new IamService(fastify.db, fastify.sessionManager);
   fastify.decorate('iamService', iamService);
 }
 
 export default fp(iamPlugin, {
   name: 'app-iam',
-  dependencies: ['app-config', 'app-services'],
+  dependencies: ['app-config', 'app-services', 'app-auth'],
 });

@@ -51,8 +51,20 @@ export const SAFE_USER_COLUMNS = {
   updatedAt: users.updatedAt,
 } as const;
 
+/**
+ * Minimal capability IamService needs to kill a user's live sessions. Structurally
+ * satisfied by `SessionManager` from `@packages/auth`; kept as an interface so IAM does
+ * not construct or own session state and tests can substitute a fake.
+ */
+export interface UserSessionRevoker {
+  revokeAllUserSessions(userId: string): Promise<void>;
+}
+
 export class IamService {
-  constructor(private db: DatabaseInstance) {}
+  constructor(
+    private db: DatabaseInstance,
+    private sessionRevoker?: UserSessionRevoker
+  ) {}
 
   // ---------------------------------------------------------------------------
   // AUDIT LOGGING HELPER
@@ -290,6 +302,13 @@ export class IamService {
       .set({ status, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning(SAFE_USER_COLUMNS);
+
+    // Rule 10: suspended/disabled accounts are denied everything. Sessions are cached in
+    // Redis (with the user's status) until TTL, so revoke them here or the cached entry
+    // keeps authenticating the user. Reactivation needs no action: the user logs in again.
+    if (updated && status !== 'ACTIVE' && this.sessionRevoker) {
+      await this.sessionRevoker.revokeAllUserSessions(userId);
+    }
 
     if (updated) {
       await this.logAuditEvent({

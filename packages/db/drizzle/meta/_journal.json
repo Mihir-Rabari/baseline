@@ -15,6 +15,34 @@
       "when": 1740800100000,
       "tag": "0001_identity_and_iam",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1740800200000,
+      "tag": "0002_courtos_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1740800300000,
+      "tag": "0003_courtos_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1740800400000,
+      "tag": "0004_social_shape_club_hour",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1740800500000,
+      "tag": "0005_kitchen_ticket_number",
+      "breakpoints": true
     }
   ]
 }

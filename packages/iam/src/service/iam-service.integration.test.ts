@@ -184,8 +184,15 @@ describe('IamService (integration)', () => {
         .values({ name: `iam-integration-role-${Date.now()}`, description: 'temp', isSystem: false })
         .returning();
 
-      const updated = await service.updateRole(role.id, { name: 'Renamed Role' }, 'system');
-      expect(updated?.name).toBe('Renamed Role');
+      // Unique per run (role names are unique) and removed afterwards so reruns against
+      // the same database stay green.
+      const renamed = `Renamed Role ${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      try {
+        const updated = await service.updateRole(role.id, { name: renamed }, 'system');
+        expect(updated?.name).toBe(renamed);
+      } finally {
+        await db.delete(roles).where(eq(roles.id, role.id));
+      }
     });
   });
 
@@ -230,6 +237,35 @@ describe('IamService (integration)', () => {
 
       const updated = await service.updateUserStatus(actor.id, 'ACTIVE', actor.id);
       expect(updated?.status).toBe('ACTIVE');
+    });
+  });
+
+  describe('session revocation on status change', () => {
+    for (const status of ['SUSPENDED', 'DISABLED'] as const) {
+      it(`revokes all sessions when a user is ${status}`, async (ctx) => {
+        if (!hasDatabase) return ctx.skip();
+
+        const revoked: string[] = [];
+        const svc = new IamService(db, { revokeAllUserSessions: async (id) => { revoked.push(id); } });
+        const target = await createTestUser();
+        const otherActor = await createTestUser();
+
+        await svc.updateUserStatus(target.id, status, otherActor.id);
+
+        expect(revoked).toEqual([target.id]);
+      });
+    }
+
+    it('does not revoke sessions on reactivation', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+
+      const revoked: string[] = [];
+      const svc = new IamService(db, { revokeAllUserSessions: async (id) => { revoked.push(id); } });
+      const target = await createTestUser({ status: 'SUSPENDED' });
+
+      await svc.updateUserStatus(target.id, 'ACTIVE', 'system');
+
+      expect(revoked).toEqual([]);
     });
   });
 

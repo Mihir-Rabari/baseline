@@ -52,6 +52,22 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   HOST: z.string().default('0.0.0.0'),
 
+  // Club (CourtOS): IANA timezone used for opening hours, slot dates and reports.
+  CLUB_TIMEZONE: z
+    .string()
+    .default('Asia/Kolkata')
+    .refine(
+      (tz) => {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: tz });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'CLUB_TIMEZONE must be a valid IANA timezone (e.g. Asia/Kolkata)' }
+    ),
+
   // Reverse proxy trust.
   //
   // Set this when the API sits behind nginx, a cloud load balancer, or Docker's
@@ -111,6 +127,10 @@ export const envSchema = z.object({
   // Root Account Initial Bootstrap (Phase 2)
   INITIAL_ROOT_EMAIL: z.string().email().default('root@example.com'),
   INITIAL_ROOT_PASSWORD: z.string().min(8).default(DEV_PLACEHOLDERS.INITIAL_ROOT_PASSWORD),
+
+  // CourtOS demo seed: shared password for the seeded owner/desk/bar/member demo users.
+  // Optional; when unset the demo users are skipped. Never printed or committed.
+  SEED_DEMO_PASSWORD: z.string().optional(),
 
   // Observability
   PROMETHEUS_URL: z.string().default('http://localhost:9090'),

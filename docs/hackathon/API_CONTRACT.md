@@ -63,6 +63,9 @@ Standard codes: `400 VALIDATION_ERROR` (with `details`), `401 UNAUTHORIZED`, `40
 | `MEMBER_HAS_ACTIVE_MEMBERSHIP` | 409 | Cannot create a second active membership |
 | `LEAVE_OVERLAP` | 409 | Overlaps approved leave |
 | `SHARE_LINK_INVALID` | 404 | Share token unknown, revoked or expired |
+| `TAB_NOT_OPEN` | 409 | Bar tab is settled or void, so items cannot change |
+| `ITEM_UNAVAILABLE` | 409 | Menu item is switched off (`isAvailable: false`) |
+| `ITEM_ALREADY_VOID` | 409 | Tab item was already removed |
 
 ### 0.3 Roles legend (used in every table)
 
@@ -542,6 +545,18 @@ Side effects of any successful sale: a `stock_movements` row per line; when the 
 | GET | `/bar/tickets` | BAR, OWN | query `status` (comma list, default `NEW,PREPARING,READY`), `station` | `{ id, ticketNumber, tab: { id, tabNumber, label }, table: { name } \| null, station, status, createdAt, minutesWaiting, items: [{ name, qty, note }] }[]` oldest first | 401, 403 |
 | PATCH | `/bar/tickets/:id/status` | BAR, OWN | `{ status }`: `NEW→PREPARING→READY→SERVED` (or `CANCELLED`) | the ticket | 400, 401, 403, 404, `409 ORDER_STATE_INVALID` |
 | GET | `/bar/earnings` | BAR (own shift day), OWN | query `date` (default today) | `{ date, totalPaise, tabsSettled, averageTabPaise, byMethod: [{ method, amountPaise }], byShift: [{ shiftId, employeeName, startsAt, endsAt, amountPaise }], topItems: [{ name, qty, amountPaise }] }` | 400, 401, 403 |
+
+**Implementation notes (M-12, these are the rules the code enforces):**
+
+- `category` is `DRINK \| FOOD \| SNACK` and `station` is `BAR \| KITCHEN`; anything else is `400`.
+- **FRONT_DESK cannot call `/bar/*`.** The role holds no `bar:read`, so the "FD" entries for tables and menu above are not granted; widening FD would also expose tabs and earnings.
+- Owner-only (`bar:manage` and `reports:read`): `POST/PUT /bar/menu`, `POST /bar/tabs/:id/void` (the reason is written to the audit log as `BAR_TAB_VOIDED`).
+- Bar staff may remove only `PENDING` items; removing a `SENT` item by bar staff is `403 FORBIDDEN`. Removed items become `status: "VOID"` and drop out of the totals.
+- Each item snapshots its price and the member's bar discount when added. A member whose membership has lapsed pays the undiscounted price. Items marked `discountable: false` are never discounted.
+- Cancelling a ticket (`CANCELLED`) voids its `SENT` items on an `OPEN` tab so cancelled food is not billed; a settled bill is never changed. Voiding a tab cancels its unfinished tickets.
+- `ticketNumber` is a database identity column (migration `0005`).
+- `GET /bar/earnings`: bar staff may only request today's club date (`403` otherwise); the owner may request any date. A day is the club-timezone day, so a payment at 23:30 IST belongs to that day, not the UTC day. `byShift` lists only payments that carry a shift.
+- Settling a tab with `total = 0` (every line discounted 100%) writes no payment rows.
 
 **Example, POST `/bar/tabs/:id/settle` (UPI)**
 
