@@ -3,10 +3,12 @@ import { systemRoutes } from './system.js';
 import { authRoutes } from './auth.js';
 import { iamRoutes } from './iam.js';
 import { profileRoutes } from './profile.js';
+import { notificationRoutes } from './notifications.js';
 
 export const v1Routes: FastifyPluginAsyncZod = async (fastify) => {
   await fastify.register(systemRoutes);
   await fastify.register(authRoutes);
   await fastify.register(iamRoutes);
   await fastify.register(profileRoutes);
+  await fastify.register(notificationRoutes);
 };
