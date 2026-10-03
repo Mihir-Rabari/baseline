@@ -409,57 +409,70 @@ export class MembershipService {
    * PAID invoice and payment row either all exist afterwards or none do.
    */
   async register(input: CreateMemberRequest, actorUserId: string | null): Promise<CreateMemberResponse> {
-    const { memberId, sale } = await this.db.transaction(async (tx) => {
-      // Serialise concurrent registrations of the same phone so duplicates cannot both pass the check.
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`member-phone:${input.phone}`}))`);
-
-      const [plan] = await tx.select().from(plans).where(eq(plans.id, input.planId)).limit(1);
-      if (!plan) throw new DomainError('NOT_FOUND', 404, 'Plan not found');
-      if (!plan.isActive) throw new DomainError('PLAN_INACTIVE', 422, 'This plan is not available');
-      const startsOn = input.startsOn ?? this.today();
-      this.assertAgeEligible(plan, input.dateOfBirth ?? null, startsOn);
-
-      let [member] = await tx.select().from(members).where(eq(members.phone, input.phone)).limit(1);
-      if (member) {
-        const [active] = await tx
-          .select({ id: memberships.id })
-          .from(memberships)
-          .where(and(eq(memberships.memberId, member.id), eq(memberships.status, 'ACTIVE')))
-          .limit(1);
-        if (active) {
-          throw new DomainError(
-            'MEMBER_HAS_ACTIVE_MEMBERSHIP',
-            409,
-            'A member with this phone number already has an active membership'
-          );
-        }
-      } else {
-        const seq = await tx.execute<{ n: string }>(sql`select nextval('member_code_seq') as n`);
-        [member] = await tx
-          .insert(members)
-          .values({
-            memberCode: formatMemberCode(seq[0]!.n),
-            fullName: input.fullName,
-            phone: input.phone,
-            email: input.email ?? null,
-            dateOfBirth: input.dateOfBirth ?? null,
-            createdBy: actorUserId,
-          })
-          .returning();
-      }
-
-      const sold = await this.sellTerm(tx, {
-        member,
-        plan,
-        startsOn,
-        method: input.paymentMethod,
-        actorUserId,
-        eventType: 'CREATED',
-      });
-      return { memberId: member.id, sale: sold };
-    });
-
+    const { memberId, sale } = await this.db.transaction((tx) => this.registerInTransaction(tx, input, actorUserId));
     return { member: await this.getMember(memberId), invoice: sale.invoice, payment: sale.payment };
+  }
+
+  /**
+   * The body of {@link register} for a caller that already holds a transaction (lead conversion):
+   * member, membership, PAID invoice and payment commit or roll back with the caller's other writes.
+   * Build the response with `getMember(memberId, tx)`.
+   */
+  async registerInTransaction(
+    tx: Tx,
+    input: CreateMemberRequest,
+    actorUserId: string | null
+  ): Promise<{
+    memberId: string;
+    sale: { invoice: CreateMemberResponse['invoice']; payment: CreateMemberResponse['payment'] };
+  }> {
+    // Serialise concurrent registrations of the same phone so duplicates cannot both pass the check.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`member-phone:${input.phone}`}))`);
+
+    const [plan] = await tx.select().from(plans).where(eq(plans.id, input.planId)).limit(1);
+    if (!plan) throw new DomainError('NOT_FOUND', 404, 'Plan not found');
+    if (!plan.isActive) throw new DomainError('PLAN_INACTIVE', 422, 'This plan is not available');
+    const startsOn = input.startsOn ?? this.today();
+    this.assertAgeEligible(plan, input.dateOfBirth ?? null, startsOn);
+
+    let [member] = await tx.select().from(members).where(eq(members.phone, input.phone)).limit(1);
+    if (member) {
+      const [active] = await tx
+        .select({ id: memberships.id })
+        .from(memberships)
+        .where(and(eq(memberships.memberId, member.id), eq(memberships.status, 'ACTIVE')))
+        .limit(1);
+      if (active) {
+        throw new DomainError(
+          'MEMBER_HAS_ACTIVE_MEMBERSHIP',
+          409,
+          'A member with this phone number already has an active membership'
+        );
+      }
+    } else {
+      const seq = await tx.execute<{ n: string }>(sql`select nextval('member_code_seq') as n`);
+      [member] = await tx
+        .insert(members)
+        .values({
+          memberCode: formatMemberCode(seq[0]!.n),
+          fullName: input.fullName,
+          phone: input.phone,
+          email: input.email ?? null,
+          dateOfBirth: input.dateOfBirth ?? null,
+          createdBy: actorUserId,
+        })
+        .returning();
+    }
+
+    const sale = await this.sellTerm(tx, {
+      member,
+      plan,
+      startsOn,
+      method: input.paymentMethod,
+      actorUserId,
+      eventType: 'CREATED',
+    });
+    return { memberId: member.id, sale };
   }
 
   async renew(
