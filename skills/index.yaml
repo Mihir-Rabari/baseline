@@ -1,0 +1,62 @@
+version: 1
+
+skills:
+  - name: architecture
+    path: skills/architecture/SKILL.md
+    description: Monorepo package boundaries, layering rules, and extension patterns.
+
+  - name: authentication
+    path: skills/authentication/SKILL.md
+    description: Password hashing (scrypt), server-side session tokens, HTTP-only cookies, and auth events.
+
+  - name: authorization
+    path: skills/authorization/SKILL.md
+    description: Identity and Access Management, policy evaluation engine, declarative route guards, and permissions.
+
+  - name: database
+    path: skills/database/SKILL.md
+    description: PostgreSQL schema conventions, Drizzle ORM, migrations, deterministic seeding, and database integrity.
+
+  - name: api
+    path: skills/api/SKILL.md
+    description: Fastify route development, Zod type providers, OpenAPI documentation, structured logging, and error responses.
+
+  - name: frontend
+    path: skills/frontend/SKILL.md
+    description: Next.js App Router, shadcn/ui components, Tailwind CSS, TanStack Query, AuthContext, and permission-aware UI.
+
+  - name: design
+    path: skills/design/SKILL.md
+    description: Visual design law — screen structure, colour tokens, typography, icons, spacing, and the states every screen owes the user.
+
+  - name: security
+    path: skills/security/SKILL.md
+    description: Zero-trust input rules, server-side authorization, credential protection, and adversarial security testing.
+
+  - name: validation
+    path: skills/validation/SKILL.md
+    description: Runtime Zod validation schemas, business bounds, date ordering, and pagination limits.
+
+  - name: testing
+    path: skills/testing/SKILL.md
+    description: Testing doctrine, pyramid (unit, integration, API, security, smoke), AAA pattern, and coverage enforcement.
+
+  - name: storage
+    path: skills/storage/SKILL.md
+    description: S3/MinIO StorageService abstraction, bucket management, and object storage conventions.
+
+  - name: email
+    path: skills/email/SKILL.md
+    description: Transactional email provider integration, templates, and delivery rules.
+
+  - name: realtime
+    path: skills/realtime/SKILL.md
+    description: Redis Pub/Sub messaging and realtime notification events.
+
+  - name: observability
+    path: skills/observability/SKILL.md
+    description: Structured logging, request correlation, Prometheus metrics, health probes, and sensitive data redaction.
+
+  - name: dependencies
+    path: skills/dependencies/SKILL.md
+    description: Monorepo dependency inventory, safe version upgrades, lockfile integrity, and compatibility verification.

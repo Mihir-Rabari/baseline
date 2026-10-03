@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme: Zinc & Emerald
+ * Type:  IBM Plex Sans (sans) / IBM Plex Mono (mono)
+ *
+ * Every colour in the app comes from a token below. If you are reaching for a
+ * literal Tailwind colour (bg-indigo-600, text-emerald-500), add a token here
+ * instead — that is what keeps light and dark mode in agreement.
+ */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 158 64% 30%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 158 64% 30%;
+
+    /* Status colours. The only hues that carry meaning on their own —
+       everything else is theme. A coloured pixel means a system state. */
+    --success: 158 64% 30%;
+    --warning: 35 92% 40%;
+
+    --radius: 0.375rem;
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 8% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 8% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 158 64% 44%;
+    --primary-foreground: 240 10% 4%;
+    --secondary: 240 4% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 14%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 14%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 158 64% 44%;
+
+    /* Status colours. The only hues that carry meaning on their own —
+       everything else is theme. A coloured pixel means a system state. */
+    --success: 158 64% 44%;
+    --warning: 35 90% 55%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Numbers in tables and stat readouts should not reflow as they update. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

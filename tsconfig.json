@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@packages/auth": ["./packages/auth/src/index.ts"],
+      "@packages/config": ["./packages/config/src/index.ts"],
+      "@packages/db": ["./packages/db/src/index.ts"],
+      "@packages/iam": ["./packages/iam/src/index.ts"],
+      "@packages/openapi": ["./packages/openapi/src/index.ts"],
+      "@packages/shared": ["./packages/shared/src/index.ts"],
+      "@packages/validation": ["./packages/validation/src/index.ts"]
+    }
+  },
+  "include": ["scripts/**/*"],
+  "exclude": ["node_modules", "dist", "apps", "packages"]
+}

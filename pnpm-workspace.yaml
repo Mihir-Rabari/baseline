@@ -1,0 +1,30 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Install-script allowlist.
+#
+# pnpm blocks postinstall scripts by default; only the packages listed here may run
+# them. This is the supply-chain control — it replaces the blanket `ignore-scripts=true`
+# that used to sit in .npmrc and get inherited by every generated project, silently
+# suppressing install scripts for the user's own dependencies too.
+#
+# `allowBuilds` is the pnpm 11 form; `onlyBuiltDependencies` is kept alongside it so the
+# workspace still resolves correctly under pnpm 10.
+allowBuilds:
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild
+  - '@next/swc-win32-x64-msvc'
+  - '@next/swc-darwin-arm64'
+  - '@next/swc-linux-x64-gnu'
+  - '@next/swc-linux-x64-musl'
+
+# Transitive security patches.
+#   postcss          - GHSA path traversal / arbitrary file read, reached via next
+#   @fastify/static  - route guard + authorization bypass, reached via @fastify/swagger-ui
+# Both are pulled in by direct dependencies whose own ranges do not yet reach the fix.
+overrides:
+  postcss: '>=8.5.23'
+  '@fastify/static': '>=10.1.2'
