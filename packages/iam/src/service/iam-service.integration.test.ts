@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { getDb, users, roles, groups, policies, policyStatements } from '@packages/db';
@@ -184,8 +185,10 @@ describe('IamService (integration)', () => {
         .values({ name: `iam-integration-role-${Date.now()}`, description: 'temp', isSystem: false })
         .returning();
 
-      const updated = await service.updateRole(role.id, { name: 'Renamed Role' }, 'system');
-      expect(updated?.name).toBe('Renamed Role');
+      // roles.name is unique and this DB is shared and long-lived, so the new name must be unique per run.
+      const renamed = `iam-integration-renamed-${randomUUID()}`;
+      const updated = await service.updateRole(role.id, { name: renamed }, 'system');
+      expect(updated?.name).toBe(renamed);
     });
   });
 

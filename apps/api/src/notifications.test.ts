@@ -119,6 +119,38 @@ describe('Notifications', () => {
       ).toEqual([]);
     });
 
+    it('skips a recipient deleted after the role lookup instead of failing the whole fan-out', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+      // Regression: a role member removed concurrently (another transaction, another test file)
+      // used to raise a user_id FK violation and surface as a 500 on the sale that raised the alert.
+      const a = await makeUser();
+      const gone = randomUUID(); // resolved as a recipient, but no longer exists
+
+      const created = await service.notifyUsers([a, gone], { type: 'LOW_STOCK', title: 'Low' }, `m09-gone:${randomUUID()}`);
+
+      expect(created.map((n) => n.userId)).toEqual([a]);
+    });
+
+    it('a recipient deleted mid-transaction waits for the fan-out instead of breaking it', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+      const a = await makeUser();
+      const b = await makeUser();
+      let deleted: Promise<unknown> | undefined;
+
+      const created = await db.transaction(async (tx) => {
+        const rows = await new NotificationService(tx).notifyUsers([a, b], { type: 'LOW_STOCK', title: 'Low' });
+        // Another connection tries to delete b while this transaction still holds its key-share lock.
+        deleted = db.delete(users).where(eq(users.id, b));
+        await new Promise((r) => setTimeout(r, 150));
+        return rows;
+      });
+      await deleted;
+
+      expect(created.map((n) => n.userId).sort()).toEqual([a, b].sort());
+      const left = await db.select().from(notifications).where(eq(notifications.userId, b));
+      expect(left).toHaveLength(0); // cascaded away only once the fan-out had committed
+    });
+
     it('rejects an over-long dedupe key instead of overflowing the column', async (ctx) => {
       if (!hasDatabase) return ctx.skip();
       const a = await makeUser();

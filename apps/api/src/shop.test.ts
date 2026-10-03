@@ -619,11 +619,14 @@ describe('Shop and inventory (M-11)', () => {
       ]);
       const initial = new Map(shelf.map((p) => [p.id, p.stockQty]));
       const rand = (n: number) => Math.floor(Math.random() * n);
-      const requests = Array.from({ length: 30 }, () => {
+      const requests = Array.from({ length: 30 }, (_, n) => {
         const chosen = shelf.filter(() => Math.random() < 0.6);
         if (chosen.length === 0) chosen.push(shelf[rand(3)]);
+        // The first six orders always want 2 of the 9-unit product (12 > 9), so at least one
+        // OUT_OF_STOCK is guaranteed rather than merely overwhelmingly likely.
+        if (n < 6 && !chosen.includes(shelf[1])) chosen.push(shelf[1]);
         chosen.sort(() => Math.random() - 0.5); // reversed/shuffled lock order on purpose
-        const items = chosen.map((p) => ({ productId: p.id, qty: 1 + rand(3) }));
+        const items = chosen.map((p) => ({ productId: p.id, qty: n < 6 && p === shelf[1] ? 2 : 1 + rand(3) }));
         const useOnline = Math.random() < 0.3;
         return {
           items,
@@ -800,7 +803,22 @@ describe('Shop and inventory (M-11)', () => {
         .select()
         .from(notifications)
         .where(and(eq(notifications.type, 'ONLINE_ORDER'), sql`${notifications.data}->>'orderId' = ${o.id}`));
-      expect(notes.map((n) => n.userId).sort()).toEqual([desk.id, owner.id].sort());
+      // The alert fans out to every ACTIVE OWNER/FRONT_DESK in the database, and the database is
+      // shared with other test files that create their own staff. So assert on this test's actors
+      // and on the recipient set's shape, never on its exact size.
+      const recipients = notes.map((n) => n.userId);
+      expect(recipients.filter((id) => id === desk.id)).toHaveLength(1);
+      expect(recipients.filter((id) => id === owner.id)).toHaveLength(1);
+      expect(new Set(recipients).size).toBe(recipients.length);
+      for (const member of [memberA, memberB, loginOnly]) expect(recipients).not.toContain(member.id);
+      const roleRows = await db
+        .select({ userId: userRoles.userId, name: roles.name })
+        .from(userRoles)
+        .innerJoin(roles, eq(roles.id, userRoles.roleId))
+        .where(inArray(userRoles.userId, recipients));
+      for (const id of recipients) {
+        expect(roleRows.filter((r) => r.userId === id).some((r) => ['OWNER', 'FRONT_DESK'].includes(r.name))).toBe(true);
+      }
     });
 
     it('delivery adds the fee and requires the address; payNow records a UPI payment', async (ctx) => {

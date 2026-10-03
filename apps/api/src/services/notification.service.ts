@@ -58,10 +58,20 @@ export class NotificationService {
     if (dedupeKey !== undefined && dedupeKey.length > MAX_DEDUPE_KEY_LENGTH) {
       throw new RangeError(`dedupeKey must be at most ${MAX_DEDUPE_KEY_LENGTH} characters`);
     }
+    // A recipient can be deleted between resolving the role members and this insert, which would
+    // fail the whole call on the user_id foreign key (and so the sale or booking that raised the
+    // alert). FOR KEY SHARE re-reads each user, skips ones deleted since the statement began and
+    // blocks a concurrent delete until the surrounding transaction ends.
+    const live = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, unique))
+      .for('key share');
+    if (live.length === 0) return [];
     return this.db
       .insert(notifications)
       .values(
-        unique.map((userId) => ({
+        live.map(({ id: userId }) => ({
           userId,
           type: payload.type,
           title: payload.title,
