@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { courts, members, systemSettings, type DatabaseInstance } from '@packages/db';
 import type { AvailabilityCourt, AvailabilitySlot } from '@packages/validation';
@@ -21,11 +21,9 @@ import {
 import { getCancelCutoffHours, getClubHours, parseClubHours } from './club-settings.js';
 
 const IST = 'Asia/Kolkata';
-// Club zone used by the helpers below. Social-session tests switch it to UTC+4: the M-01 CHECK
-// court_occupancies_shape requires SOCIAL occupancies to start on a UTC hour, which an IST (UTC+5:30)
-// on-the-hour session can never satisfy (see the PR description).
-let zone = IST;
-const DUBAI = 'Asia/Dubai';
+// The real club zone. Migration 0004 shapes SOCIAL occupancies to start at UTC minute 30, which is
+// exactly an on-the-hour IST session (18:00 IST = 12:30Z), so no zone override is needed.
+const zone = IST;
 const MONDAY = '2026-10-12'; // no social window unless a test creates one
 const WEDNESDAY = '2026-10-14';
 const at = (date: string, hhmm: string) => {
@@ -229,13 +227,6 @@ describe('AvailabilityService (database, rolled back per test)', () => {
   });
 
   describe('Friday-style social play (BR-10)', () => {
-    beforeEach(() => {
-      zone = DUBAI;
-    });
-    afterEach(() => {
-      zone = IST;
-    });
-
     it('returns hourly social slots with capacity and spotsLeft, and standard slots outside the window', async (ctx) => {
       await scenario(ctx, async ({ db, service, typeId, courtId }) => {
         await createSocialWindow(db, { weekday: 3, startsTime: '18:00', endsTime: '22:00' }); // Wednesday
