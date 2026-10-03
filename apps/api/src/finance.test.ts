@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { and, eq, gte, inArray, lt } from 'drizzle-orm';
+import { and, eq, gte, inArray, like, lt } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { businessClients, getDb, invoices, members, payments, systemAuditLogs, systemSettings, users } from '@packages/db';
 import {
@@ -56,16 +56,47 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
     return invoice;
   }
 
+  /** Runs every step even when an earlier one fails, so one broken row cannot strand the rest. */
+  async function removeAll(steps: Array<() => Promise<unknown>>) {
+    const failures: unknown[] = [];
+    for (const step of steps) {
+      try { await step(); } catch (error) { failures.push(error); }
+    }
+    if (failures.length) throw failures[0];
+  }
+
+  /** Deletes what an earlier, interrupted run of this file left behind. Only rows carrying this file's markers. */
+  async function purgeStale() {
+    const staleMembers = await db.select({ id: members.id }).from(members).where(like(members.fullName, 'S04 %'));
+    const ids = staleMembers.map((m) => m.id);
+    await removeAll([
+      async () => {
+        const staleInvoices = ids.length ? await db.select({ id: invoices.id }).from(invoices).where(inArray(invoices.memberId, ids)) : [];
+        const invoiceIds2 = staleInvoices.map((i) => i.id);
+        if (invoiceIds2.length) {
+          await db.delete(payments).where(inArray(payments.sourceId, invoiceIds2));
+          await db.delete(invoices).where(inArray(invoices.id, invoiceIds2));
+        }
+      },
+      () => db.delete(payments).where(and(gte(payments.paidAt, new Date('2033-05-01T00:00:00Z')), lt(payments.paidAt, new Date('2033-07-01T00:00:00Z')))),
+      () => db.delete(businessClients).where(like(businessClients.companyName, 'S04 %')),
+      async () => { if (ids.length) await db.delete(members).where(inArray(members.id, ids)); },
+    ]);
+  }
+
   beforeAll(async () => {
     app = buildApp();
     await app.ready();
     ready = (await isDatabaseAvailable()) && (await rolesSeeded());
     if (!ready) return;
-    [owner, desk, bar, member, otherMember] = await Promise.all([
-      makeActor(app, 'OWNER', 's04'), makeActor(app, 'FRONT_DESK', 's04'), makeActor(app, 'BAR_STAFF', 's04'),
-      makeActor(app, 'MEMBER', 's04'), makeActor(app, 'MEMBER', 's04'),
-    ]);
-    userIds.push(owner.id, desk.id, bar.id, member.id, otherMember.id);
+    await purgeStale();
+    // Track each actor as soon as it exists, so a failure part-way still cleans up what was made.
+    const roles = ['OWNER', 'FRONT_DESK', 'BAR_STAFF', 'MEMBER', 'MEMBER'] as const;
+    const settled = await Promise.allSettled(roles.map((role) => makeActor(app, role, 's04')));
+    for (const result of settled) if (result.status === 'fulfilled') userIds.push(result.value.id);
+    const failed = settled.find((r) => r.status === 'rejected');
+    if (failed) throw (failed as PromiseRejectedResult).reason;
+    [owner, desk, bar, member, otherMember] = settled.map((r) => (r as PromiseFulfilledResult<Actor>).value) as [Actor, Actor, Actor, Actor, Actor];
     memberId = (await createMember(db, { userId: member.id, fullName: 'S04 Member' })).id;
     otherMemberId = (await createMember(db, { userId: otherMember.id, fullName: 'S04 Other' })).id;
     memberIds.push(memberId, otherMemberId);
@@ -77,17 +108,25 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
   }, 60_000);
 
   afterAll(async () => {
-    if (ready) {
-      if (invoiceIds.length) {
-        await db.delete(payments).where(inArray(payments.sourceId, invoiceIds));
-        await db.delete(invoices).where(inArray(invoices.id, invoiceIds)); // lines cascade
+    try {
+      if (ready) {
+        const invoiceList = invoiceIds.filter(Boolean);
+        await removeAll([
+          async () => {
+            if (invoiceList.length) {
+              await db.delete(payments).where(inArray(payments.sourceId, invoiceList));
+              await db.delete(invoices).where(inArray(invoices.id, invoiceList)); // lines cascade
+            }
+          },
+          () => db.delete(payments).where(and(gte(payments.paidAt, new Date('2033-05-01T00:00:00Z')), lt(payments.paidAt, new Date('2033-07-01T00:00:00Z')))),
+          async () => { if (clientIds.length) await db.delete(businessClients).where(inArray(businessClients.id, clientIds)); },
+          async () => { if (memberIds.length) await db.delete(members).where(inArray(members.id, memberIds)); },
+          async () => { if (userIds.length) await db.delete(users).where(inArray(users.id, userIds)); },
+        ]);
       }
-      await db.delete(payments).where(and(gte(payments.paidAt, new Date('2033-05-01T00:00:00Z')), lt(payments.paidAt, new Date('2033-07-01T00:00:00Z'))));
-      if (clientIds.length) await db.delete(businessClients).where(inArray(businessClients.id, clientIds));
-      if (memberIds.length) await db.delete(members).where(inArray(members.id, memberIds));
-      if (userIds.length) await db.delete(users).where(inArray(users.id, userIds));
+    } finally {
+      await app.close();
     }
-    await app.close();
   });
 
   // ================================================================ access control
