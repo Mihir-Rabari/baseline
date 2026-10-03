@@ -16,7 +16,7 @@ import {
   type DatabaseInstance,
   type PaymentMethod,
 } from '@packages/db';
-import type { Booking, BookingListQuery } from '@packages/validation';
+import { promiseFeePaise, type Booking, type BookingListQuery } from '@packages/validation';
 import { DomainError } from '../lib/domain-error.js';
 import type { DbExecutor } from './db-types.js';
 import { getCancelCutoffHours, getClubHours } from './club-settings.js';
@@ -66,6 +66,8 @@ export interface CreateBookingInput {
   /** `TRIAL` is only used by the public trial-booking route (M-13). */
   kind?: Exclude<BookingKind, 'SOCIAL'>;
   payNow?: { method: PaymentMethod; reference?: string };
+  /** With `payNow`: collect only the promise fee (20%) now; the rest is due at the venue. */
+  promiseFee?: boolean;
   /** The authenticated user performing the action (audit, `created_by`, `received_by`). */
   actorUserId?: string | null;
   /**
@@ -378,6 +380,12 @@ export class BookingService {
           .returning({ id: courtOccupancies.id });
 
         const paying = Boolean(input.payNow) && plan.price.pricePaise > 0;
+        const collectPaise = paying
+          ? input.promiseFee
+            ? promiseFeePaise(plan.price.pricePaise)
+            : plan.price.pricePaise
+          : 0;
+        const partial = paying && collectPaise < plan.price.pricePaise;
         const [booking] = await tx
           .insert(bookings)
           .values({
@@ -394,7 +402,7 @@ export class BookingService {
             basePricePaise: plan.price.basePricePaise,
             discountPct: plan.price.discountPct,
             pricePaise: plan.price.pricePaise,
-            paymentStatus: plan.price.pricePaise === 0 ? 'WAIVED' : paying ? 'PAID' : 'UNPAID',
+            paymentStatus: plan.price.pricePaise === 0 ? 'WAIVED' : paying ? (partial ? 'PARTIAL' : 'PAID') : 'UNPAID',
             createdBy: input.actorUserId ?? null,
           })
           .returning({ id: bookings.id });
@@ -405,11 +413,11 @@ export class BookingService {
           await new PaymentService(tx).record({
             source: 'COURT',
             sourceId: booking.id,
-            amountPaise: plan.price.pricePaise,
+            amountPaise: collectPaise,
             method: input.payNow.method,
             memberId: input.memberId ?? null,
             receivedBy: input.actorUserId ?? null,
-            reference: input.payNow.reference ?? null,
+            reference: input.payNow.reference ?? (partial ? 'PROMISE_FEE' : null),
           });
         }
         if (input.inTransaction) await input.inTransaction(tx, booking.id);
@@ -567,7 +575,7 @@ export class BookingService {
 
       let refund: CancelResult['refund'] = null;
       let paymentStatus: BookingPaymentStatus = row.paymentStatus;
-      if (!late && row.paymentStatus === 'PAID') {
+      if (!late && (row.paymentStatus === 'PAID' || row.paymentStatus === 'PARTIAL')) {
         const payment = new PaymentService(tx);
         const net = await payment.sumPaid('COURT', row.id);
         if (net > 0) {
@@ -633,12 +641,12 @@ export class BookingService {
     actorUserId: string;
   }): Promise<{ booking: Booking; payment: { id: string; amountPaise: number; method: PaymentMethod; paidAt: string } }> {
     const payment = await this.db.transaction(async (tx) => {
-      // Guarded transition: only one concurrent payer can flip UNPAID -> PAID.
+      // Guarded transition: only one concurrent payer can flip UNPAID or PARTIAL -> PAID.
       const [row] = await tx
         .update(bookings)
         .set({ paymentStatus: 'PAID', updatedAt: this.clock() })
         .where(
-          and(eq(bookings.id, input.bookingId), eq(bookings.paymentStatus, 'UNPAID'), inArray(bookings.status, ['CONFIRMED', 'COMPLETED']))
+          and(eq(bookings.id, input.bookingId), inArray(bookings.paymentStatus, ['UNPAID', 'PARTIAL']), inArray(bookings.status, ['CONFIRMED', 'COMPLETED']))
         )
         .returning({ id: bookings.id, memberId: bookings.memberId, pricePaise: bookings.pricePaise });
       if (!row) {
@@ -648,15 +656,16 @@ export class BookingService {
           .where(eq(bookings.id, input.bookingId))
           .limit(1);
         if (!existing) throw new DomainError('NOT_FOUND', 404, 'Booking not found.');
-        if (existing.paymentStatus !== 'UNPAID') {
+        if (existing.paymentStatus !== 'UNPAID' && existing.paymentStatus !== 'PARTIAL') {
           throw new DomainError('ALREADY_PAID', 409, `This booking is already ${existing.paymentStatus.toLowerCase()}.`);
         }
         throw new DomainError('BOOKING_STATE_INVALID', 409, `A ${existing.status.toLowerCase().replace('_', '-')} booking cannot be paid.`);
       }
+      const alreadyPaid = await new PaymentService(tx).sumPaid('COURT', row.id);
       return new PaymentService(tx).record({
         source: 'COURT',
         sourceId: row.id,
-        amountPaise: row.pricePaise,
+        amountPaise: Math.max(1, row.pricePaise - alreadyPaid),
         method: input.method,
         memberId: row.memberId,
         receivedBy: input.actorUserId,

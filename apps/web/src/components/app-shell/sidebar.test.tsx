@@ -46,7 +46,7 @@ describe('club navigation', () => {
   it('shows every destination for root', () => {
     state.isRoot = true;
     render(<Sidebar />);
-    expect(screen.getAllByRole('link')).toHaveLength(19);
+    expect(screen.getAllByRole('link')).toHaveLength(20);
   });
 
   it.each(['/bar/kitchen', '/bar/earnings', '/admin/club', '/members/member-1'])('highlights only the most specific destination at %s', (pathname) => {

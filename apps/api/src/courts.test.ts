@@ -137,6 +137,8 @@ describe('Court & availability routes', () => {
         typeName: expect.stringContaining('Test sport'),
         baseRatePaise: 60000,
         socialCapacity: 4,
+        courtTypeId: typeId,
+        sortOrder: expect.any(Number),
         isActive: true,
       });
     });

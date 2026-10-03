@@ -11,6 +11,7 @@ import { Money } from '@/components/club/money';
 import { StatTile } from '@/components/club/stat-tile';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DropdownSelect } from '@/components/ui/dropdown-select';
+import { LeaveBoard, LeaveCards } from '@/components/club/leave-views';
+import { ViewSwitcher, useViewPreference, type ViewKind } from '@/components/club/views';
+
+const LEAVE_VIEWS: ViewKind[] = ['list', 'cards', 'board'];
 
 export function HrWorkspace() {
   const { user, hasPermission } = useAuth();
@@ -31,6 +36,7 @@ export function HrWorkspace() {
   const canDecide = hasPermission('leave:decide');
   const canRequest = hasPermission('leave:create:self');
   const [page, setPage] = useState(1);
+  const [leaveView, setLeaveView] = useViewPreference('leave', LEAVE_VIEWS, 'list');
   const [leaveStatus, setLeaveStatus] = useState<LeaveStatus | undefined>();
   const [month, setMonth] = useState(clubToday().slice(0, 7));
   const [employeeDialog, setEmployeeDialog] = useState(false);
@@ -67,13 +73,31 @@ export function HrWorkspace() {
         {employees.isPending ? <Skeleton className="h-64" /> : employees.isError ? <PageError error={employees.error} onRetry={() => employees.refetch()} /> : !employees.data?.length ? <EmptyState title="No employees" description="Add employees to plan shifts and payroll." /> :
           <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Position</TableHead><TableHead>Department</TableHead><TableHead>Monthly salary</TableHead><TableHead>Status</TableHead>{canManage && <TableHead>Actions</TableHead>}</TableRow></TableHeader><TableBody>{employees.data.map((row) => <TableRow key={row.id}><TableCell>{row.fullName}</TableCell><TableCell>{row.position}</TableCell><TableCell>{row.department.replaceAll('_', ' ')}</TableCell><TableCell><Money paise={row.monthlySalaryPaise} /></TableCell><TableCell><Badge variant={row.status === 'ACTIVE' ? 'success' : 'outline'}>{row.status === 'ACTIVE' ? 'Active' : 'Inactive'}</Badge></TableCell>{canManage && <TableCell><Button variant="outline" size="sm" onClick={() => { setEditing(row); setFormError(null); setEmployeeDialog(true); }}>Edit</Button></TableCell>}</TableRow>)}</TableBody></Table>}
       </TabsContent>}
-      <TabsContent value="leave" className="space-y-4"><div className="flex flex-wrap items-end gap-4">{canRequest && <Button onClick={() => { setFormError(null); setLeaveDialog(true); }}>Request leave</Button>}{canHr && <div className="space-y-2"><Label htmlFor="leave-filter">Status</Label><DropdownSelect id="leave-filter" className="w-44" value={leaveStatus ?? ''} onValueChange={(value) => { setLeaveStatus((value || undefined) as LeaveStatus | undefined); setPage(1); }} options={[{ value: '', label: 'All statuses' }, ...['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].map((value) => ({ value, label: value.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) }))]} /></div>}</div>
-        {decide.isError && <p role="alert" className="text-sm text-destructive">{decide.error.message}</p>}
+      <TabsContent value="leave" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-end gap-4">
+            {canRequest && <Button onClick={() => { setFormError(null); setLeaveDialog(true); }}>Request leave</Button>}
+            {canHr && <div className="space-y-2"><Label htmlFor="leave-filter">Status</Label><DropdownSelect id="leave-filter" className="w-44" value={leaveStatus ?? ''} onValueChange={(value) => { setLeaveStatus((value || undefined) as LeaveStatus | undefined); setPage(1); }} options={[{ value: '', label: 'All statuses' }, ...['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].map((value) => ({ value, label: value.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) }))]} /></div>}
+          </div>
+          <ViewSwitcher views={LEAVE_VIEWS} value={leaveView} onChange={setLeaveView} />
+        </div>
+        {decide.error && <p role="alert" className="text-sm text-destructive">{decide.error.message}</p>}
         {leave.isPending ? <Skeleton className="h-64" /> : leave.isError ? <PageError error={leave.error} onRetry={() => leave.refetch()} /> : !leave.data?.data.length ? <EmptyState title="No leave requests" description="Requests matching this filter will appear here." /> :
-          <Table><TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Dates</TableHead><TableHead>Reason</TableHead><TableHead>Status</TableHead>{canDecide && <TableHead>Decision</TableHead>}</TableRow></TableHeader><TableBody>{leave.data.data.map((row) => <TableRow key={row.id}><TableCell>{row.employee.fullName}</TableCell><TableCell className="whitespace-nowrap">{row.fromDate} – {row.toDate}<p className="text-sm text-muted-foreground">{row.days} days · {row.leaveType.toLowerCase()}</p></TableCell><TableCell>{row.reason ?? 'No reason provided'}</TableCell><TableCell><Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'outline'}>{row.status.toLowerCase()}</Badge></TableCell>{canDecide && <TableCell>{row.status === 'PENDING' && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={decide.isPending} onClick={() => decide.mutate({ id: row.id, decision: 'APPROVED' })}>Approve</Button><Button size="sm" variant="ghost" disabled={decide.isPending} onClick={() => decide.mutate({ id: row.id, decision: 'REJECTED' })}>Reject</Button></div>}</TableCell>}</TableRow>)}</TableBody></Table>}
-        {leave.data && leave.data.meta.totalPages > 1 && <div className="flex items-center justify-between"><Button variant="outline" disabled={!leave.data.meta.hasPrevPage} onClick={() => setPage((value) => value - 1)}>Previous</Button><p className="text-sm">Page {page} of {leave.data.meta.totalPages}</p><Button variant="outline" disabled={!leave.data.meta.hasNextPage} onClick={() => setPage((value) => value + 1)}>Next</Button></div>}
+          leaveView === 'board' ? (
+            <LeaveBoard requests={leave.data.data} canDecide={canDecide} disabled={decide.isPending} onDecide={(id, decision) => decide.mutate({ id, decision })} />
+          ) : leaveView === 'cards' ? (
+            <>
+              <LeaveCards requests={leave.data.data} canDecide={canDecide} disabled={decide.isPending} onDecide={(id, decision) => decide.mutate({ id, decision })} />
+              {leave.data && leave.data.meta.totalPages > 1 && <div className="flex items-center justify-between pt-2"><Button variant="outline" disabled={!leave.data.meta.hasPrevPage} onClick={() => setPage((value) => value - 1)}>Previous</Button><p className="text-sm">Page {page} of {leave.data.meta.totalPages}</p><Button variant="outline" disabled={!leave.data.meta.hasNextPage} onClick={() => setPage((value) => value + 1)}>Next</Button></div>}
+            </>
+          ) : (
+            <>
+              <Table><TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Dates</TableHead><TableHead>Reason</TableHead><TableHead>Status</TableHead>{canDecide && <TableHead>Decision</TableHead>}</TableRow></TableHeader><TableBody>{leave.data.data.map((row) => <TableRow key={row.id}><TableCell>{row.employee.fullName}</TableCell><TableCell className="whitespace-nowrap">{row.fromDate} – {row.toDate}<p className="text-sm text-muted-foreground">{row.days} days · {row.leaveType.toLowerCase()}</p></TableCell><TableCell>{row.reason ?? 'No reason provided'}</TableCell><TableCell><Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'outline'}>{row.status.toLowerCase()}</Badge></TableCell>{canDecide && <TableCell>{row.status === 'PENDING' && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={decide.isPending} onClick={() => decide.mutate({ id: row.id, decision: 'APPROVED' })}>Approve</Button><Button size="sm" variant="ghost" disabled={decide.isPending} onClick={() => decide.mutate({ id: row.id, decision: 'REJECTED' })}>Reject</Button></div>}</TableCell>}</TableRow>)}</TableBody></Table>
+              {leave.data && leave.data.meta.totalPages > 1 && <div className="flex items-center justify-between"><Button variant="outline" disabled={!leave.data.meta.hasPrevPage} onClick={() => setPage((value) => value - 1)}>Previous</Button><p className="text-sm">Page {page} of {leave.data.meta.totalPages}</p><Button variant="outline" disabled={!leave.data.meta.hasNextPage} onClick={() => setPage((value) => value + 1)}>Next</Button></div>}
+            </>
+          )}
       </TabsContent>
-      {canHr && <TabsContent value="payroll" className="space-y-4"><div className="space-y-2"><Label htmlFor="payroll-month">Month</Label><Input id="payroll-month" type="month" className="w-fit" value={month} onChange={(event) => { if (event.target.value) setMonth(event.target.value); }} /></div>
+      {canHr && <TabsContent value="payroll" className="space-y-4">{canManage && <Button asChild><Link href="/hr/payroll">Run payroll and payslips</Link></Button>}<div className="space-y-2"><Label htmlFor="payroll-month">Month</Label><Input id="payroll-month" type="month" className="w-fit" value={month} onChange={(event) => { if (event.target.value) setMonth(event.target.value); }} /></div>
         {payroll.isPending ? <Skeleton className="h-64" /> : payroll.isError ? <PageError error={payroll.error} onRetry={() => payroll.refetch()} /> : payroll.data && <><div className="grid gap-4 sm:grid-cols-2"><StatTile label="Payroll due" value={<Money paise={payroll.data.totalPaise} />} /><StatTile label="Employees" value={payroll.data.headcount} /></div>{!payroll.data.headcount ? <EmptyState title="No active employees" description="Add employees to calculate payroll." /> : <Table><TableHeader><TableRow><TableHead>Department</TableHead><TableHead>Employees</TableHead><TableHead>Salary due</TableHead></TableRow></TableHeader><TableBody>{payroll.data.byDepartment.map((row) => <TableRow key={row.department}><TableCell>{row.department.replaceAll('_', ' ')}</TableCell><TableCell className="tabular">{row.headcount}</TableCell><TableCell><Money paise={row.amountPaise} /></TableCell></TableRow>)}</TableBody></Table>}<h2 className="text-lg font-semibold">Approved leave this month</h2>{!payroll.data.onLeave.length ? <p className="text-sm text-muted-foreground">No approved leave.</p> : <ul className="divide-y">{payroll.data.onLeave.map((row, index) => <li key={index} className="py-3">{row.employeeName} · {row.fromDate} – {row.toDate}</li>)}</ul>}</>}
       </TabsContent>}
     </Tabs>

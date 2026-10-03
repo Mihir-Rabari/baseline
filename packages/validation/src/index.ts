@@ -10,6 +10,8 @@ export * from './finance.js';
 export * from './members.js';
 export * from './courts.js';
 export * from './bookings.js';
+export * from './categories.js';
+export * from './uploads.js';
 export * from './shop.js';
 export * from './bar.js';
 export * from './crm.js';

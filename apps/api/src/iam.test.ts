@@ -136,3 +136,27 @@ describe('IAM & Profile Permission Route Guards (/api/v1/iam, /api/v1/profile)',
     });
   });
 });
+
+describe('IAM read guards for non-admin roles (regression #75)', () => {
+  it('denies IAM listings to front desk, bar staff and members with 403, and never 5xx', async (ctx) => {
+    const { MembersFixtures } = await import('./test-support/members-fixtures.js');
+    const { isDatabaseAvailable } = await import('./test-support/database.js');
+    if (!(await isDatabaseAvailable())) return ctx.skip();
+    const app = buildApp();
+    MembersFixtures.spreadClientIps(app);
+    await app.ready();
+    const fx = new MembersFixtures();
+    try {
+      for (const role of ['FRONT_DESK', 'BAR_STAFF', 'MEMBER'] as const) {
+        const actor = await fx.actor(app, role);
+        for (const path of ['groups', 'roles', 'policies', 'permissions', 'users']) {
+          const res = await app.inject({ method: 'GET', url: `/api/v1/iam/${path}`, headers: { cookie: actor.cookie } });
+          expect(res.statusCode, `${role} ${path}`).toBe(403);
+          expect(res.json().requestId).toBeTruthy();
+        }
+      }
+    } finally {
+      await app.close();
+    }
+  });
+});

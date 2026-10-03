@@ -96,6 +96,9 @@ export const reportShares = pgTable('report_shares', {
     .$type<'today' | 'week' | 'month'>()
     .notNull()
     .default('month'),
+  /** A fixed club-date window for custom-period links; both null for preset links. */
+  customFrom: date('custom_from', { mode: 'string' }),
+  customTo: date('custom_to', { mode: 'string' }),
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   expiresAt: tstz('expires_at').notNull(),
   revokedAt: tstz('revoked_at'),

@@ -121,7 +121,7 @@ export default function OrdersPage() {
                     onClick={() => setSearch('')}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4" aria-hidden />
                   </button>
                 )}
               </div>
@@ -172,7 +172,7 @@ export default function OrdersPage() {
                   className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
                   aria-label="Reset all filters"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  <RotateCcw className="h-4 w-4" aria-hidden />
                   Reset
                 </Button>
               )}

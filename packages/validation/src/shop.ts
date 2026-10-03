@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { UuidSchema, IsoDateTimeOutSchema } from './common.js';
+import { CategoryCodeSchema } from './categories.js';
+import { ImageRefSchema } from './uploads.js';
 import { PaginationQuerySchema, createPaginatedResponseSchema } from './pagination.js';
 import {
   PaiseSchema,
@@ -11,7 +13,8 @@ import {
   RefundSchema,
 } from './domain-common.js';
 
-export const ProductCategoryEnum = z.enum(['RACKET', 'BALL', 'SHOE', 'ACCESSORY', 'APPAREL']);
+/** A PRODUCT-scope category code; the API checks it against the managed `categories` list. */
+export const ProductCategoryEnum = CategoryCodeSchema;
 export type ProductCategory = z.infer<typeof ProductCategoryEnum>;
 
 /** Staff-only fields (lowStock, reorderLevel, isActive) are optional so member/public views validate. */
@@ -73,14 +76,18 @@ export const CreateProductRequestSchema = z.object({
   pricePaise: NonNegativePaiseSchema,
   stockQty: z.number().int().min(0),
   reorderLevel: z.number().int().min(0).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: ImageRefSchema.nullable().optional(),
   description: z.string().max(2000).optional(),
   discountable: z.boolean().optional(),
 });
 export type CreateProductRequest = z.infer<typeof CreateProductRequestSchema>;
 
 /** PUT /products/:id: any subset except stockQty. */
-export const UpdateProductRequestSchema = CreateProductRequestSchema.omit({ stockQty: true }).partial();
+export const UpdateProductRequestSchema = CreateProductRequestSchema.omit({ stockQty: true })
+  .extend({
+    isActive: z.boolean().optional(),
+  })
+  .partial();
 export type UpdateProductRequest = z.infer<typeof UpdateProductRequestSchema>;
 
 // ---- Inventory ----
@@ -124,6 +131,7 @@ export const StockMovementSchema = z.object({
 });
 export type StockMovement = z.infer<typeof StockMovementSchema>;
 export const StockMovementPageSchema = createPaginatedResponseSchema(StockMovementSchema);
+export type StockMovementPage = z.infer<typeof StockMovementPageSchema>;
 export const StockMovementListQuerySchema = PaginationQuerySchema.pick({ page: true, limit: true });
 
 /** GET /inventory/low-stock items */
@@ -228,7 +236,7 @@ export const OnlineOrderRequestSchema = z
     items: z.array(OrderLineRequestSchema).min(1).max(100),
     fulfilment: z.enum(['PICKUP', 'DELIVERY']),
     deliveryAddress: z.string().trim().min(1).max(500).optional(),
-    payNow: z.object({ method: z.literal('UPI') }).optional(),
+    payNow: z.object({ method: z.enum(['UPI', 'CARD']) }).optional(),
   })
   .refine((v) => v.fulfilment !== 'DELIVERY' || Boolean(v.deliveryAddress), {
     message: 'deliveryAddress is required for DELIVERY',

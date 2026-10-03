@@ -1864,7 +1864,7 @@ describe("Booking engine (M-07, M-08)", () => {
       expect(guest.statusCode).toBe(403);
     });
 
-    it("a member cannot pay cash through payNow and cannot override a cancellation", async (ctx) => {
+    it("a member's cash payNow only pays the 20% promise fee, and a member cannot override a cancellation", async (ctx) => {
       if (!hasDatabase) return ctx.skip();
       const court = await newCourt();
       const a = await newMember();
@@ -1873,14 +1873,9 @@ describe("Booking engine (M-07, M-08)", () => {
         { courtId: court.id, startsAt: at(2, 10), payNow: { method: "CASH" } },
         a.cookie,
       );
-      expect(cashy.statusCode).toBe(403);
-      const created = (
-        await post(
-          "/bookings",
-          { courtId: court.id, startsAt: at(2, 10) },
-          a.cookie,
-        )
-      ).json();
+      expect(cashy.statusCode).toBe(201);
+      expect(cashy.json().paymentStatus).toBe("PARTIAL");
+      const created = cashy.json();
       const override = await post(
         `/bookings/${created.id}/cancel`,
         { override: true, reason: "let me" },

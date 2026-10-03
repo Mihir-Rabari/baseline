@@ -78,6 +78,7 @@ describe.skipIf(!databaseUrl)('seedCourtOs (database)', () => {
       systemSettings: schema.systemSettings,
       products: schema.products,
       menuItems: schema.menuItems,
+      categories: schema.categories,
       barTables: schema.barTables,
       employees: schema.employees,
       members: schema.members,
@@ -121,6 +122,7 @@ describe.skipIf(!databaseUrl)('seedCourtOs (database)', () => {
     expect(first.socialWindows).toBe(1);
     expect(first.products).toBe(30);
     expect(first.menuItems).toBe(25);
+    expect(first.categories).toBe(8);
     expect(first.barTables).toBe(10);
     expect(first.employees).toBe(5);
     expect(first.demoUsers).toBe(4);

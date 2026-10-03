@@ -9,6 +9,8 @@ import { courtRoutes } from './courts.js';
 import { publicRoutes } from './public.js';
 import { notificationRoutes } from './notifications.js';
 import { shopRoutes } from './shop.js';
+import { categoryRoutes } from './categories.js';
+import { uploadRoutes } from './uploads.js';
 import { memberRoutes } from './members.js';
 import { barRoutes } from './bar.js';
 import { adminJobRoutes } from './admin-jobs.js';
@@ -27,6 +29,8 @@ export const v1Routes: FastifyPluginAsyncZod = async (fastify) => {
   await fastify.register(courtRoutes);
   await fastify.register(publicRoutes);
   await fastify.register(notificationRoutes);
+  await fastify.register(categoryRoutes);
+  await fastify.register(uploadRoutes);
   await fastify.register(shopRoutes);
   await fastify.register(memberRoutes);
   await fastify.register(barRoutes);

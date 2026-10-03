@@ -6,7 +6,7 @@ import { mockDashboard } from '@/lib/report-api';
 import ReportsPage from './page';
 const state = vi.hoisted(() => ({ allowed: true, canShare: true, dashboard: vi.fn(), share: vi.fn() }));
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'owner' }, hasPermission: (permission: string) => permission === 'reports:share' ? state.canShare : state.allowed }) }));
-vi.mock('@/lib/report-api', async original => { const actual = await original<typeof import('@/lib/report-api')>(); return { ...actual, reportApi: { dashboard: state.dashboard, share: state.share, exportUrl: (range: string) => `/exports?range=${range}` } }; });
+vi.mock('@/lib/report-api', async original => { const actual = await original<typeof import('@/lib/report-api')>(); return { ...actual, reportApi: { dashboard: state.dashboard, share: state.share, pdfUrl: (range: string) => `/pdf?range=${range}`, exportUrl: (range: string) => `/exports?range=${range}` } }; });
 function show() { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><ReportsPage /></QueryClientProvider>); }
 beforeEach(() => { state.allowed = true; state.canShare = true; state.dashboard.mockReset().mockImplementation(range => Promise.resolve(mockDashboard(range))); state.share.mockReset(); });
 describe('owner reports', () => {

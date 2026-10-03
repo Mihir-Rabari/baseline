@@ -171,3 +171,103 @@ export const PayrollSummarySchema = z.object({
   onLeave: z.array(z.object({ employeeName: z.string(), fromDate: DateOnlySchema, toDate: DateOnlySchema })),
 });
 export type PayrollSummary = z.infer<typeof PayrollSummarySchema>;
+
+// ---- Bank details (masked in every response) ----
+
+export const IfscSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Enter a valid IFSC, for example HDFC0001234');
+
+/** PUT /hr/employees/:id/bank */
+export const UpdateBankDetailsRequestSchema = z.object({
+  accountHolder: z.string().trim().min(1).max(128),
+  accountNumber: z.string().trim().regex(/^\d{6,18}$/, 'Account numbers have 6 to 18 digits'),
+  ifsc: IfscSchema,
+  bankName: z.string().trim().max(64).optional(),
+  upiId: z
+    .string()
+    .trim()
+    .max(64)
+    .regex(/^[\w.-]{2,}@[A-Za-z]{2,}$/, 'Enter a valid UPI id, for example name@bank')
+    .optional(),
+});
+export type UpdateBankDetailsRequest = z.infer<typeof UpdateBankDetailsRequestSchema>;
+
+/** GET/PUT /hr/employees/:id/bank: the account number is only ever shown as its last four digits. */
+export const BankDetailsSchema = z.discriminatedUnion('configured', [
+  z.object({ configured: z.literal(false) }),
+  z.object({
+    configured: z.literal(true),
+    accountHolder: z.string(),
+    accountNumberMasked: z.string(),
+    ifsc: z.string(),
+    bankName: z.string().nullable(),
+    upiId: z.string().nullable(),
+    updatedAt: IsoDateTimeOutSchema,
+  }),
+]);
+export type BankDetails = z.infer<typeof BankDetailsSchema>;
+
+// ---- Payroll runs and payslips ----
+
+export const PayrollRunStatusEnum = z.enum(['DRAFT', 'FINALIZED', 'PAID']);
+export type PayrollRunStatus = z.infer<typeof PayrollRunStatusEnum>;
+
+/** POST /hr/payroll/runs */
+export const CreatePayrollRunRequestSchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Expected a month in YYYY-MM format'),
+});
+export type CreatePayrollRunRequest = z.infer<typeof CreatePayrollRunRequestSchema>;
+
+export const PayslipSchema = z.object({
+  id: UuidSchema,
+  runId: UuidSchema,
+  month: z.string(),
+  employeeId: UuidSchema,
+  employeeName: z.string(),
+  position: z.string(),
+  department: z.string(),
+  monthlySalaryPaise: PaiseSchema,
+  daysInMonth: z.number().int(),
+  payableDays: z.number().int(),
+  basePaise: PaiseSchema,
+  unpaidLeaveDays: z.number().int().min(0),
+  leaveDeductionPaise: PaiseSchema,
+  bonusPaise: PaiseSchema,
+  otherDeductionPaise: PaiseSchema,
+  netPaise: PaiseSchema,
+  approvedLeaveDays: z.number().int().min(0),
+  shiftsScheduled: z.number().int().min(0),
+  shiftsWorked: z.number().int().min(0),
+  note: z.string().nullable(),
+  bankConfigured: z.boolean(),
+});
+export type Payslip = z.infer<typeof PayslipSchema>;
+export const PayslipListSchema = z.array(PayslipSchema);
+
+/** PUT /hr/payroll/slips/:id: adjustments while the run is still a draft. */
+export const UpdatePayslipRequestSchema = z.object({
+  unpaidLeaveDays: z.number().int().min(0).max(31).optional(),
+  bonusPaise: z.number().int().min(0).max(100_000_000).optional(),
+  otherDeductionPaise: z.number().int().min(0).max(100_000_000).optional(),
+  note: z.string().trim().max(500).nullable().optional(),
+});
+export type UpdatePayslipRequest = z.infer<typeof UpdatePayslipRequestSchema>;
+
+export const PayrollRunSchema = z.object({
+  id: UuidSchema,
+  month: z.string(),
+  status: PayrollRunStatusEnum,
+  headcount: z.number().int().min(0),
+  totalNetPaise: PaiseSchema,
+  createdAt: IsoDateTimeOutSchema,
+  finalizedAt: NullableIsoDateTimeOutSchema,
+  paidAt: NullableIsoDateTimeOutSchema,
+});
+export type PayrollRun = z.infer<typeof PayrollRunSchema>;
+export const PayrollRunListSchema = z.array(PayrollRunSchema);
+
+export const PayrollRunDetailSchema = PayrollRunSchema.extend({ payslips: PayslipListSchema });
+export type PayrollRunDetail = z.infer<typeof PayrollRunDetailSchema>;

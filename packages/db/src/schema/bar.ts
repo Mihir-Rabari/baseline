@@ -8,16 +8,19 @@ import {
   boolean,
   index,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './auth.js';
 import { members } from './members.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
 
-export type MenuCategory = 'DRINK' | 'FOOD' | 'SNACK';
+/** A `categories.code` in the MENU scope. */
+export type MenuCategory = string;
 export type TabStatus = 'OPEN' | 'SETTLED' | 'VOID';
 export type TicketStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 export type TabItemStatus = 'PENDING' | 'SENT' | 'VOID';
+export type TableBookingStatus = 'BOOKED' | 'SEATED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
 export const barTables = pgTable('bar_tables', {
   id: pk(),
@@ -37,6 +40,7 @@ export const menuItems = pgTable(
     discountable: boolean('discountable').notNull().default(true),
     isAvailable: boolean('is_available').notNull().default(true),
     sortOrder: smallint('sort_order').notNull().default(0),
+    imageUrl: varchar('image_url', { length: 512 }),
     createdAt: createdAt(),
   },
   (t) => [index('idx_menu_items_category').on(t.category)]
@@ -109,4 +113,34 @@ export const tabItems = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('idx_tab_items_tab').on(t.tabId), index('idx_tab_items_ticket').on(t.ticketId)]
+);
+
+/**
+ * A reservation of one bar table for a time window. BOOKED and SEATED rows hold the table; the
+ * service refuses overlaps while holding a lock on the table row. COMPLETED, CANCELLED and NO_SHOW
+ * rows stay as history and never block.
+ */
+export const barTableBookings = pgTable(
+  'bar_table_bookings',
+  {
+    id: pk(),
+    tableId: uuid('table_id')
+      .notNull()
+      .references(() => barTables.id),
+    guestName: varchar('guest_name', { length: 255 }).notNull(),
+    memberId: uuid('member_id').references(() => members.id, { onDelete: 'set null' }),
+    partySize: smallint('party_size').notNull().default(2),
+    notes: varchar('notes', { length: 500 }),
+    status: varchar('status', { length: 12 }).$type<TableBookingStatus>().notNull().default('BOOKED'),
+    startsAt: tstz('starts_at').notNull(),
+    endsAt: tstz('ends_at').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('idx_bar_table_bookings_table_time').on(t.tableId, t.startsAt),
+    index('idx_bar_table_bookings_starts').on(t.startsAt),
+    check('bar_table_bookings_range_chk', sql`${t.endsAt} > ${t.startsAt}`),
+  ]
 );

@@ -5,6 +5,9 @@ import {
   CreateReportShareRequestSchema,
   CreateReportShareResponseSchema,
   DashboardReportSchema,
+  OwnerOverviewSchema,
+  ReportBreakdownSchema,
+  ReportPdfQuerySchema,
   HttpErrorResponseSchema,
   ReportShareListSchema,
   UuidSchema,
@@ -13,6 +16,9 @@ import {
 } from '@packages/validation';
 import {
   ReportService,
+  breakdownCsvRows,
+  breakdownPdf,
+  summaryPdf,
   exportFilename,
   paymentsCsvRows,
   summaryCsvRows,
@@ -53,11 +59,74 @@ export const reportRoutes: FastifyPluginAsyncZod = async (fastify) => {
   );
 
   fastify.get(
+    '/reports/overview',
+    {
+      preHandler: [requirePermission('reports:read')],
+      schema: {
+        description: 'Live snapshot for the owner dashboard: upcoming bookings, staff on shift, open orders and tabs, latest payments.',
+        tags: ['Reports'],
+        security: [{ CookieAuth: [] }],
+        response: { 200: OwnerOverviewSchema, 401: HttpErrorResponseSchema, 403: HttpErrorResponseSchema },
+      },
+    },
+    async (_request, reply) => reply.header('cache-control', 'no-store').send(await reports.overview())
+  );
+
+  fastify.get(
+    '/reports/breakdown',
+    {
+      preHandler: [requirePermission('reports:read')],
+      schema: {
+        description: 'Bookings, shop, bar, inventory, members and payroll figures for a range. `range` or `from`+`to`.',
+        tags: ['Reports'],
+        security: [{ CookieAuth: [] }],
+        querystring: ReportRangeQuerySchema,
+        response: { 200: ReportBreakdownSchema, ...errors },
+      },
+    },
+    async (request, reply) => reply.header('cache-control', 'no-store').send(await reports.breakdown(request.query))
+  );
+
+  fastify.get(
+    '/reports/export.pdf',
+    {
+      preHandler: [requirePermission('reports:read')],
+      schema: {
+        description: 'Server-generated PDF of the summary (`type=summary`, default) or the per-area breakdown (`type=breakdown`).',
+        tags: ['Reports'],
+        security: [{ CookieAuth: [] }],
+        querystring: ReportPdfQuerySchema,
+        response: errors,
+      },
+    },
+    async (request, reply) => {
+      const { type, ...input } = request.query;
+      let body: Buffer;
+      let filename: string;
+      if (type === 'breakdown') {
+        const report = await reports.breakdown(input);
+        body = breakdownPdf(report);
+        filename = exportFilename({ label: report.range as ResolvedRange['label'], from: report.from, to: report.to }, 'breakdown').replace(/\.csv$/, '.pdf');
+      } else {
+        const report = await reports.dashboard(input);
+        body = summaryPdf(report);
+        filename = exportFilename({ label: report.range as ResolvedRange['label'], from: report.from, to: report.to }, 'summary').replace(/\.csv$/, '.pdf');
+      }
+      request.log.info({ type, filename }, 'Report PDF generated');
+      return reply
+        .header('content-type', 'application/pdf')
+        .header('content-disposition', `attachment; filename="${filename}"`)
+        .header('cache-control', 'no-store')
+        .send(body as never);
+    }
+  );
+
+  fastify.get(
     '/reports/export.csv',
     {
       preHandler: [requirePermission('reports:read')],
       schema: {
-        description: 'CSV export of the dashboard (`type=summary`, default) or the raw ledger rows (`type=payments`).',
+        description: 'CSV export of the dashboard (`type=summary`, default) the per-area breakdown (`type=breakdown`), row-level detail for one area (`type=bookings|orders|bar|inventory|members|payroll`) or the raw ledger rows (`type=payments`).',
         tags: ['Reports'],
         security: [{ CookieAuth: [] }],
         querystring: ReportExportQuerySchema,
@@ -73,6 +142,15 @@ export const reportRoutes: FastifyPluginAsyncZod = async (fastify) => {
         csv = toCsv(paymentsCsvRows(rows));
         filename = exportFilename(range, 'payments');
         if (truncated) reply.header('x-export-truncated', 'true');
+      } else if (type !== 'summary' && type !== 'breakdown') {
+        const { range, header, rows, truncated } = await reports.detailRows(type, input);
+        csv = toCsv([header, ...rows]);
+        filename = exportFilename(range, type);
+        if (truncated) reply.header('x-export-truncated', 'true');
+      } else if (type === 'breakdown') {
+        const report = await reports.breakdown(input);
+        csv = toCsv(breakdownCsvRows(report));
+        filename = exportFilename({ label: report.range as ResolvedRange['label'], from: report.from, to: report.to }, 'breakdown');
       } else {
         const report = await reports.dashboard(input);
         csv = toCsv(summaryCsvRows(report));

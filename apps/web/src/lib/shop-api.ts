@@ -1,5 +1,16 @@
 import { z } from 'zod';
-import { ProductSchema, ProductPageSchema, PublicProductPageSchema, ProductListQuerySchema, PublicProductListQuerySchema, RestockRequestSchema, StockChangeResponseSchema, QuoteOrderRequestSchema, QuoteOrderResponseSchema, PosOrderRequestSchema, OnlineOrderRequestSchema, OrderSchema, OrderPageSchema, OrderListQuerySchema, UpdateOrderStatusRequestSchema, MemberLookupResponseSchema, type ProductListQuery, type QuoteOrderRequest, type PosOrderRequest, type OnlineOrderRequest, type Order, type RestockRequest, type OrderListQuery, type UpdateOrderStatusRequest } from '@packages/validation';
+import {
+  ProductSchema, ProductPageSchema, PublicProductPageSchema, ProductListQuerySchema,
+  PublicProductListQuerySchema, RestockRequestSchema, StockChangeResponseSchema,
+  QuoteOrderRequestSchema, QuoteOrderResponseSchema, PosOrderRequestSchema,
+  OnlineOrderRequestSchema, OrderSchema, OrderPageSchema, OrderListQuerySchema,
+  UpdateOrderStatusRequestSchema, MemberLookupResponseSchema, CreateProductRequestSchema,
+  UpdateProductRequestSchema, AdjustStockRequestSchema, StockMovementPageSchema,
+  type ProductListQuery, type QuoteOrderRequest, type PosOrderRequest,
+  type OnlineOrderRequest, type Order, type RestockRequest, type OrderListQuery,
+  type UpdateOrderStatusRequest, type CreateProductRequest, type UpdateProductRequest,
+  type AdjustStockRequest,
+} from '@packages/validation';
 import { fetchApi, USE_MOCKS, mock, ApiError } from '@/lib/api-client';
 import fixture from '@/mocks/shop-products.json';
 import { mockMemberStore } from '@/lib/mock-members';
@@ -47,6 +58,64 @@ export const shopApi = {
   async pos(input: PosOrderRequest) { const data = PosOrderRequestSchema.parse(input); return USE_MOCKS ? mock(mockShopOrder(data, true)) : OrderSchema.parse(await fetchApi('/api/v1/orders/pos', { method: 'POST', body: JSON.stringify(data) })); },
   async online(input: OnlineOrderRequest) { const data = OnlineOrderRequestSchema.parse(input); return USE_MOCKS ? mock(mockShopOrder(data, false)) : OrderSchema.parse(await fetchApi('/api/v1/orders/online', { method: 'POST', body: JSON.stringify(data) })); },
   async lookup(q: string) { if (q.trim().length < 2) return []; if (!USE_MOCKS) return MemberLookupResponseSchema.parse(await fetchApi(`/api/v1/members/lookup?q=${encodeURIComponent(q)}`)); return mock(MemberLookupResponseSchema.parse(mockMemberStore.filter((m) => `${m.fullName} ${m.phone} ${m.memberCode}`.toLowerCase().includes(q.toLowerCase())).slice(0, 8).map((m) => ({ id: m.id, memberCode: m.memberCode, fullName: m.fullName, phone: m.phone, planCode: m.membership?.plan.code ?? null, expiryState: m.membership?.expiryState ?? 'NONE', shopDiscountPct: m.entitlements.shopDiscountPct, barDiscountPct: m.entitlements.barDiscountPct })))); },
-  async orders(params: Partial<OrderListQuery> = {}, own = false) { const query = OrderListQuerySchema.parse(params); if (!USE_MOCKS) return OrderPageSchema.parse(await fetchApi(`/api/v1/${own ? 'me/' : ''}orders?${queryString(query)}`)); return mock(OrderPageSchema.parse(page(orders.filter((order) => (!own || order.member?.id === member(undefined, true)?.id) && (!query.status || order.status === query.status)), query.page, query.limit))); },
+  async orders(params: Partial<OrderListQuery> = {}, own = false) { const query = OrderListQuerySchema.parse(params); if (!USE_MOCKS) return OrderPageSchema.parse(await fetchApi(`/api/v1/${own ? 'me/' : ''}orders?${queryString(query)}`)); return mock(OrderPageSchema.parse(page(orders.filter((order) => (!own || order.member?.id === member(undefined, true)?.id) && (!query.status || order.status === query.status) && (!query.channel || order.channel === query.channel)), query.page, query.limit))); },
   async status(id: string, input: UpdateOrderStatusRequest) { const data = UpdateOrderStatusRequestSchema.parse(input); if (!USE_MOCKS) return OrderSchema.parse(await fetchApi(`/api/v1/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) })); const order = orders.find((entry) => entry.id === id); if (!order) throw new ApiError('Order not found', 404, 'NOT_FOUND'); const next = order.status === 'PLACED' ? (order.fulfilment === 'DELIVERY' ? 'OUT_FOR_DELIVERY' : 'READY') : order.status === 'READY' ? 'COLLECTED' : order.status === 'OUT_FOR_DELIVERY' ? 'DELIVERED' : null; if (next !== data.status) throw new ApiError('Order cannot move to this status', 409, 'INVALID_ORDER_STATUS'); order.status = data.status; return mock(OrderSchema.parse(order)); },
+  async createProduct(input: CreateProductRequest) {
+    const data = CreateProductRequestSchema.parse(input);
+    if (!USE_MOCKS) return ProductSchema.parse(await fetchApi('/api/v1/products', { method: 'POST', body: JSON.stringify(data) }));
+    const p = ProductSchema.parse({
+      id: crypto.randomUUID(),
+      sku: data.sku,
+      name: data.name,
+      category: data.category,
+      imageUrl: data.imageUrl ?? null,
+      pricePaise: data.pricePaise,
+      yourPricePaise: data.pricePaise,
+      discountPct: 0,
+      stockQty: data.stockQty,
+      inStock: data.stockQty > 0,
+      lowStock: data.stockQty <= (data.reorderLevel ?? 5),
+      reorderLevel: data.reorderLevel ?? 5,
+      isActive: true,
+    });
+    products.unshift(p);
+    return mock(p);
+  },
+  async updateProduct(id: string, input: UpdateProductRequest) {
+    const data = UpdateProductRequestSchema.parse(input);
+    if (!USE_MOCKS) return ProductSchema.parse(await fetchApi(`/api/v1/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }));
+    const p = product(id);
+    Object.assign(p, data);
+    return mock(ProductSchema.parse(p));
+  },
+  async adjust(id: string, input: AdjustStockRequest) {
+    const data = AdjustStockRequestSchema.parse(input);
+    if (!USE_MOCKS) return StockChangeResponseSchema.parse(await fetchApi(`/api/v1/products/${id}/adjust`, { method: 'POST', body: JSON.stringify(data) }));
+    const p = product(id);
+    const balance = p.stockQty + data.qtyDelta;
+    if (balance < 0) throw new ApiError('Adjustment would result in negative stock.', 409, 'STOCK_NEGATIVE');
+    p.stockQty = balance;
+    p.inStock = p.stockQty > 0;
+    p.lowStock = p.stockQty <= (p.reorderLevel ?? 0);
+    return mock(StockChangeResponseSchema.parse({
+      product: p,
+      movement: { id: crypto.randomUUID(), qtyDelta: data.qtyDelta, balanceAfter: balance, reason: 'ADJUSTMENT', note: data.note },
+    }));
+  },
+  async deleteProduct(id: string) {
+    if (!USE_MOCKS) return fetchApi<{ success: boolean; message: string; deactivated?: boolean }>(`/api/v1/products/${id}`, { method: 'DELETE' });
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new ApiError('Product not found', 404, 'NOT_FOUND');
+    products.splice(idx, 1);
+    return mock({ success: true, message: 'Product deleted' });
+  },
+  async movements(id: string, pageNum = 1, limit = 20) {
+    if (!USE_MOCKS) return StockMovementPageSchema.parse(await fetchApi(`/api/v1/products/${id}/movements?page=${pageNum}&limit=${limit}`));
+    return mock(StockMovementPageSchema.parse({
+      data: [
+        { id: crypto.randomUUID(), qtyDelta: 10, balanceAfter: 10, reason: 'RESTOCK', note: 'Opening stock', createdAt: new Date().toISOString() },
+      ],
+      meta: { page: pageNum, limit, totalItems: 1, totalPages: 1, hasPrevPage: false, hasNextPage: false },
+    }));
+  },
 };

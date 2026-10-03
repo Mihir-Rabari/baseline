@@ -145,7 +145,9 @@ export const bookingRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const subject = await resolveSubject(request, reply, body, 'bookings:create', 'bookings:create:self');
       if (!subject) return;
 
-      if (!subject.staff && body.payNow && body.payNow.method !== 'UPI') {
+      // Without a card gateway, a member's online payment is UPI or card (paid in full) or cash
+      // (the 20% promise fee now, the rest at the venue). Staff record whatever they collected.
+      if (!subject.staff && body.payNow && !['UPI', 'CARD', 'CASH'].includes(body.payNow.method)) {
         return forbidden(request, reply, 'bookings:create');
       }
 
@@ -156,6 +158,7 @@ export const bookingRoutes: FastifyPluginAsyncZod = async (fastify) => {
         guest: subject.guest,
         channel: subject.staff ? (body.channel ?? 'DESK') : 'ONLINE',
         payNow: body.payNow,
+        promiseFee: !subject.staff && body.payNow?.method === 'CASH',
         actorUserId: request.user!.id,
       });
       request.log.info({ bookingId: booking.id, courtId: booking.court.id }, 'Booking created');
@@ -327,7 +330,7 @@ export const bookingRoutes: FastifyPluginAsyncZod = async (fastify) => {
     async (request, reply) => {
       const { id } = request.params;
       if (!(await authorizeBooking(request, reply, id, 'payments:create', 'bookings:create:self'))) return;
-      if (!(await can(request, 'payments:create')) && request.body.method !== 'UPI') {
+      if (!(await can(request, 'payments:create')) && !['UPI', 'CARD'].includes(request.body.method)) {
         return forbidden(request, reply, 'payments:create');
       }
       const result = await bookingService.pay({

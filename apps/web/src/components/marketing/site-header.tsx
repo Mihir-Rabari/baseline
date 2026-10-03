@@ -13,15 +13,13 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="container flex h-16 items-center gap-8">
-        <Link href="/" className="font-semibold tracking-tight">
-          <span>Baseline</span>
+        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+          <span className="text-primary font-bold">CourtOS</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Club OS</span>
         </Link>
 
-        <nav aria-label="Club website" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-          <Link href="/play" className="transition-colors hover:text-foreground">Play</Link>
-          <Link href="/plans" className="transition-colors hover:text-foreground">Membership</Link>
-          <Link href="/shop" className="transition-colors hover:text-foreground">Shop</Link>
-          <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>
+        <nav className="hidden items-center gap-4 text-xs font-medium text-muted-foreground md:flex">
+          <Link href="/site/baseline-sports-club" className="transition-colors hover:text-foreground">Club site</Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
@@ -38,9 +36,6 @@ export function SiteHeader() {
           )}
         </div>
       </div>
-      <nav aria-label="Club website on mobile" className="container flex flex-wrap gap-x-5 gap-y-2 pb-3 text-sm text-muted-foreground md:hidden">
-        <Link href="/play">Play</Link><Link href="/plans">Membership</Link><Link href="/shop">Shop</Link><Link href="/contact">Contact</Link>
-      </nav>
     </header>
   );
 }

@@ -1,4 +1,4 @@
-import { AvailabilitySchema, BookingSchema, CreateBookingRequestSchema, JoinSocialRequestSchema, CreateTrialBookingRequestSchema, type AvailabilityQuery, type Booking, type CreateBookingRequest, type JoinSocialResponse, type CreateTrialBookingRequest, type CancelBookingResponse } from '@packages/validation';
+import { AvailabilitySchema, BookingSchema, CreateBookingRequestSchema, JoinSocialRequestSchema, CreateTrialBookingRequestSchema, CreatePublicBookingRequestSchema, CreatePublicBookingResponseSchema, promiseFeePaise, type CreatePublicBookingRequest, type CreatePublicBookingResponse, type AvailabilityQuery, type Booking, type CreateBookingRequest, type JoinSocialResponse, type CreateTrialBookingRequest, type CancelBookingResponse } from '@packages/validation';
 import standard from '@/mocks/availability.json';
 import friday from '@/mocks/availability-friday.json';
 import club from '@/mocks/club.json';
@@ -86,6 +86,13 @@ export function mockCreateTrial(input: CreateTrialBookingRequest) {
   const booking = create({ courtId: data.courtId, startsAt: data.startsAt, guest: { name: data.name, phone: data.phone, email: data.email } }, 'TRIAL');
   trialPhones.add(data.phone);
   return { booking, leadId: crypto.randomUUID(), message: 'Trial booked. Pay at the club on arrival.' };
+}
+export function mockGuestBook(input: CreatePublicBookingRequest): CreatePublicBookingResponse {
+  const data = CreatePublicBookingRequestSchema.parse(input);
+  const booking = create({ courtId: data.courtId, startsAt: data.startsAt, guest: { name: data.name, phone: data.phone, email: data.email }, channel: 'ONLINE', payNow: { method: data.method } }, 'STANDARD');
+  const paidPaise = data.method === 'CASH' ? promiseFeePaise(booking.pricePaise) : booking.pricePaise;
+  const result = { ...booking, paymentStatus: paidPaise < booking.pricePaise ? ('PARTIAL' as const) : booking.paymentStatus };
+  return CreatePublicBookingResponseSchema.parse({ booking: result, paidPaise, duePaise: booking.pricePaise - paidPaise, message: paidPaise < booking.pricePaise ? 'Booked. Pay the rest at the club.' : 'Booked and paid. See you on court.' });
 }
 export const mockMyMember = () => mockMemberStore[0];
 function allBookings() {
