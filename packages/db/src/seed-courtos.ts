@@ -67,6 +67,11 @@ const COURTS = [
 
 const SETTINGS = [
   { key: 'club.hours', value: { open: '06:00', close: '22:00' }, description: 'Club opening hours (club-local time)' },
+  {
+    key: 'club.profile',
+    value: { name: 'Baseline Sports Club', tagline: 'Courts, coaching and a bar under one roof.', phone: '+91 98765 43210', address: '14 Cubbon Park Road, Bengaluru 560001' },
+    description: 'Public club details shown on the website (name, tagline, phone, address)',
+  },
   { key: 'booking.cancel_cutoff_hours', value: 2, description: 'Hours before start after which a cancellation is late' },
   { key: 'tax.rates', value: { COURT: 1800, SHOP: 1800, BAR: 500, MEMBERSHIP: 1800, INVOICE: 1800 }, description: 'Tax rates in basis points per revenue source' },
   { key: 'shop.delivery_fee_paise', value: 5000, description: 'Flat delivery fee for online shop orders, in paise' },
