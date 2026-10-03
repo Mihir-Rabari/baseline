@@ -15,6 +15,20 @@
       "when": 1740800100000,
       "tag": "0001_identity_and_iam",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1740800200000,
+      "tag": "0002_courtos_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1740800300000,
+      "tag": "0003_courtos_constraints",
+      "breakpoints": true
     }
   ]
 }
