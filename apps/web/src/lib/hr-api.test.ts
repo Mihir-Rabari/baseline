@@ -8,7 +8,7 @@ describe('Staff real transport', () => {
   it('calls versioned employee routes with exact request bodies', async () => {
     const state = createHrMock(); transport.mockResolvedValue(state.employees()); await hrApi.employees();
     expect(transport).toHaveBeenLastCalledWith('/api/v1/hr/employees');
-    const data = { fullName: 'Coach', position: 'Coach', department: 'COACHING', monthlySalaryPaise: 100000, hiredOn: '2026-10-01' };
+    const data = { fullName: 'Coach', position: 'Coach', department: 'COACHING' as const, monthlySalaryPaise: 100000, hiredOn: '2026-10-01' };
     transport.mockResolvedValue(state.employees()[0]); await hrApi.createEmployee(data);
     expect(transport).toHaveBeenLastCalledWith('/api/v1/hr/employees', { method: 'POST', body: JSON.stringify(data) });
     await hrApi.updateEmployee('id/one', { status: 'INACTIVE' });

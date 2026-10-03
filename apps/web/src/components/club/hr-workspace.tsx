@@ -39,7 +39,7 @@ export function HrWorkspace() {
   const leave = useQuery({ queryKey: ['hr', user?.id, 'leave', page, leaveStatus], queryFn: () => hrApi.leave(page, !canHr, canHr ? leaveStatus : undefined), enabled: Boolean(user) && canLeave, staleTime: 10000 });
   const payroll = useQuery({ queryKey: ['hr', user?.id, 'payroll', month], queryFn: () => hrApi.payroll(month), enabled: canHr, staleTime: 15000 });
   const refresh = () => client.invalidateQueries({ queryKey: ['hr'] });
-  const saveEmployee = useMutation({ mutationFn: (data: CreateEmployeeRequest & { status?: string }) => editing ? hrApi.updateEmployee(editing.id, data) : hrApi.createEmployee(data), onSuccess: refresh });
+  const saveEmployee = useMutation({ mutationFn: (data: CreateEmployeeRequest & { status?: "ACTIVE" | "INACTIVE" }) => editing ? hrApi.updateEmployee(editing.id, data) : hrApi.createEmployee(data), onSuccess: refresh });
   const request = useMutation({ mutationFn: (data: CreateLeaveRequest) => hrApi.requestLeave(data), onSuccess: refresh });
   const decide = useMutation({ mutationFn: ({ id, decision }: { id: string; decision: LeaveDecisionRequest['decision'] }) => hrApi.decide(id, { decision }), onSettled: refresh });
   const employeeSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -48,7 +48,7 @@ export function HrWorkspace() {
     const data = CreateEmployeeRequestSchema.safeParse({ fullName: form.get('fullName'), position: form.get('position'), department: form.get('department'),
       monthlySalaryPaise: Math.round(Number(form.get('salary')) * 100), hiredOn: form.get('hiredOn') });
     if (!data.success) { setFormError(data.error.issues[0].message); return; }
-    try { await saveEmployee.mutateAsync({ ...data.data, ...(editing ? { status: String(form.get('status')) } : {}) }); setEmployeeDialog(false); } catch (error) { setFormError(error instanceof Error ? error.message : 'Could not save employee.'); }
+    try { await saveEmployee.mutateAsync({ ...data.data, ...(editing ? { status: String(form.get('status')) as 'ACTIVE' | 'INACTIVE' } : {}) }); setEmployeeDialog(false); } catch (error) { setFormError(error instanceof Error ? error.message : 'Could not save employee.'); }
   };
   const leaveSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); if (!canRequest || request.isPending) return;

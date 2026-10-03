@@ -5,7 +5,7 @@ import clubMock from '@/mocks/club.json';
 import enquiryMock from '@/mocks/enquiry.json';
 import { listMockMembers } from '@/lib/mock-members';
 import { mockGetMember, mockCreateMember, mockMemberTimeline, mockCheckinMember, mockRenewMember } from '@/lib/mock-member-operations';
-import { mockAvailability, mockCreateBooking, mockCreateTrialBooking, mockListBookings, mockCancelBooking, mockMyMember, MockBookingError } from '@/lib/mock-bookings';
+import { mockAvailability, mockCreateBooking, mockCreateTrial, mockListBookings, mockCancelBooking, mockMyMember, MockBookingError } from '@/lib/mock-bookings';
 import type {
   SignupRequest,
   LoginRequest,
@@ -168,7 +168,7 @@ export const api = {
     availability: (params: Pick<AvailabilityQuery, 'date' | 'courtTypeId'>): Promise<Availability> => USE_MOCKS
       ? mock(mockAvailability(params)) : fetchApi<Availability>(`/api/v1/public/availability?${queryString(params)}`),
     createTrialBooking: (data: CreateTrialBookingRequest): Promise<CreateTrialBookingResponse> => USE_MOCKS
-      ? mockBookingCall(() => mockCreateTrialBooking(data)) : fetchApi<CreateTrialBookingResponse>('/api/v1/public/trial-bookings', { method: 'POST', body: JSON.stringify(data) }),
+      ? mockBookingCall(() => mockCreateTrial(data)) : fetchApi<CreateTrialBookingResponse>('/api/v1/public/trial-bookings', { method: 'POST', body: JSON.stringify(data) }),
     createEnquiry: (data: CreateEnquiryRequest): Promise<CreateEnquiryResponse> => USE_MOCKS
       ? mock(enquiryMock, 500)
       : fetchApi<CreateEnquiryResponse>('/api/v1/public/enquiries', { method: 'POST', body: JSON.stringify(data) }),
