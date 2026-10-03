@@ -87,7 +87,7 @@ export default function MemberProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <EditMemberDialog key={`edit-${editOpen}`} member={member} open={editOpen} onClose={() => setEditOpen(false)} />
       <PageHeader title={member.fullName} description={member.memberCode} actions={hasPermission('members:read') && hasPermission('members:update') ? <><Button variant="outline" onClick={() => setEditOpen(true)}>Edit details</Button><Button onClick={onCheckin} disabled={checkin.isPending}>{checkin.isPending ? 'Checking in…' : 'Check in'}</Button></> : undefined} />
       {checkin.error && <Alert variant="destructive"><AlertDescription>{getErrorMessage(checkin.error, "Couldn't check in. Please try again.")}</AlertDescription></Alert>}

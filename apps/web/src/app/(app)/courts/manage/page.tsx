@@ -65,7 +65,7 @@ export default function ManageCourtsPage() {
   if (!allowed) return <NoAccess what="court management" />;
   const list = courts.data ?? [];
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Manage courts" description="Add, rename, reorder, switch off or remove the courts members can book."
         actions={<><Button asChild variant="outline"><Link href="/courts">Back to booking</Link></Button><Button disabled={!types.data?.length} onClick={() => setCreating(true)}>New court</Button></>} />
       <QueryState query={{ ...courts, isEmpty: list.length === 0 }} empty={{ title: 'No courts yet', description: 'Add the first court so members can book it.' }}>

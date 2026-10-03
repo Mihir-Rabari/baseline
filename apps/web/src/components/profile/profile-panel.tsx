@@ -9,10 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/errors';
+import { useTheme } from 'next-themes';
+import { ProfileAvatar } from './profile-avatar';
 
 /** Name, email and password for the signed-in account; shown as the Profile tab of the dashboard. */
 export function ProfilePanel() {
-  const { user, refreshSession } = useAuth();
+  const { user, session, effectivePermissions, isRoot, refreshSession, hasPermission, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const canUpdate = hasPermission('profile:update:self');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Profile fields
   const [name, setName] = useState('');
@@ -29,11 +34,9 @@ export function ProfilePanel() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (user) {
-      setName(user.name);
-      setEmail(user.email);
-    }
-  }, [user]);
+    setName(user?.name ?? '');
+    setEmail(user?.email ?? '');
+  }, [user?.id, user?.name, user?.email]);
 
   // Auth is guaranteed by the (app) layout; this screen renders content only.
   if (!user) return null;
@@ -46,7 +49,7 @@ export function ProfilePanel() {
 
     try {
       await api.profile.update({ name, email });
-      await refreshSession();
+      await refreshSession({ background: true });
       setProfileSuccess('Profile details updated successfully');
       toast.success('Profile updated', {
         description: 'Your profile changes have been saved.',
@@ -67,6 +70,11 @@ export function ProfilePanel() {
     setPasswordError(null);
     setPasswordSuccess(null);
 
+    if (newPassword !== confirmPassword) {
+      setPasswordError('The new passwords do not match.');
+      return;
+    }
+
     if (newPassword.length < 8) {
       const msg = 'New password must be at least 8 characters long';
       setPasswordError(msg);
@@ -84,6 +92,7 @@ export function ProfilePanel() {
       });
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Failed to change password');
       setPasswordError(msg);
@@ -98,20 +107,21 @@ export function ProfilePanel() {
   return (
     <>
 
-      <div className="space-y-6">
+      <div className="grid items-start gap-8 lg:grid-cols-2">
         <Card>
           <form onSubmit={handleUpdateProfile}>
             <CardHeader>
-              <CardTitle>Details</CardTitle>
+              <CardTitle>Personal information</CardTitle>
               <CardDescription>
-                Requires the <code className="font-mono text-xs">profile:update:self</code>{' '}
-                permission.
+                Keep your name, email and profile photo up to date.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
+              <ProfileAvatar />
+              {!canUpdate && <p className="text-sm text-muted-foreground">Your account has read-only access to personal information.</p>}
               {profileSuccess && (
-                <p className="rounded-md border border-success/25 bg-success/10 p-3 text-sm text-success">
+                <p role="status" className="rounded-md border border-success/25 bg-success/10 p-3 text-sm text-success">
                   {profileSuccess}
                 </p>
               )}
@@ -131,6 +141,7 @@ export function ProfilePanel() {
                   type="text"
                   autoComplete="name"
                   required
+                  disabled={!canUpdate || profileLoading}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -143,30 +154,32 @@ export function ProfilePanel() {
                   type="email"
                   autoComplete="email"
                   required
+                  disabled={!canUpdate || profileLoading}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </CardContent>
 
-            <CardFooter className="justify-end border-t pt-6">
+            {canUpdate && <CardFooter className="justify-end border-t pt-4">
               <Button type="submit" disabled={profileLoading}>
-                {profileLoading ? 'Saving…' : 'Save'}
+                {profileLoading ? 'Saving…' : 'Save changes'}
               </Button>
-            </CardFooter>
+            </CardFooter>}
           </form>
         </Card>
 
         <Card>
           <form onSubmit={handleChangePassword}>
             <CardHeader>
-              <CardTitle>Password</CardTitle>
+              <CardTitle>Security</CardTitle>
               <CardDescription>You&apos;ll stay signed in on this device.</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
+              {!canUpdate && <p className="text-sm text-muted-foreground">Contact an administrator to update your password.</p>}
               {passwordSuccess && (
-                <p className="rounded-md border border-success/25 bg-success/10 p-3 text-sm text-success">
+                <p role="status" className="rounded-md border border-success/25 bg-success/10 p-3 text-sm text-success">
                   {passwordSuccess}
                 </p>
               )}
@@ -183,6 +196,7 @@ export function ProfilePanel() {
                 <Label htmlFor="current-pwd">Current password</Label>
                 <Input
                   id="current-pwd"
+                  disabled={!canUpdate || passwordLoading}
                   type="password"
                   autoComplete="current-password"
                   required
@@ -195,6 +209,7 @@ export function ProfilePanel() {
                 <Label htmlFor="new-pwd">New password</Label>
                 <Input
                   id="new-pwd"
+                  disabled={!canUpdate || passwordLoading}
                   type="password"
                   autoComplete="new-password"
                   required
@@ -207,14 +222,41 @@ export function ProfilePanel() {
                   At least 8 characters.
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-pwd">Confirm new password</Label>
+                <Input id="confirm-pwd" type="password" autoComplete="new-password" required disabled={!canUpdate || passwordLoading} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+              </div>
             </CardContent>
 
-            <CardFooter className="justify-end border-t pt-6">
+            {canUpdate && <CardFooter className="justify-end border-t pt-4">
               <Button type="submit" disabled={passwordLoading}>
                 {passwordLoading ? 'Updating…' : 'Update password'}
               </Button>
-            </CardFooter>
+            </CardFooter>}
           </form>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Preferences</CardTitle><CardDescription>Choose the appearance for this browser.</CardDescription></CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="profile-theme">Appearance</Label>
+            <select id="profile-theme" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={theme ?? 'system'} onChange={(event) => setTheme(event.target.value)}>
+              <option value="system">Use device setting</option><option value="light">Light</option><option value="dark">Dark</option>
+            </select>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Sessions</CardTitle><CardDescription>Your current signed-in session.</CardDescription></CardHeader>
+          <CardContent className="space-y-4">
+            {session ? <dl className="space-y-2 text-sm">
+              <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted-foreground">Signed in</dt><dd><time dateTime={session.createdAt}>{new Date(session.createdAt).toLocaleString()}</time></dd></div>
+              <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted-foreground">Expires</dt><dd><time dateTime={session.expiresAt}>{new Date(session.expiresAt).toLocaleString()}</time></dd></div>
+            </dl> : <p className="text-sm text-muted-foreground">Session details are unavailable.</p>}
+            <Button variant="outline" onClick={logout}>Sign out of this session</Button>
+            <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Account details</summary><dl className="mt-2 space-y-2"><dt>Status</dt><dd>{user.status.toLowerCase()}</dd><dt>Account ID</dt><dd className="break-all font-mono text-xs">{user.id}</dd></dl></details>
+            <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Account access</summary>
+              {isRoot ? <p className="mt-2 text-muted-foreground">Administrator access to all actions.</p> : effectivePermissions.length ? <ul className="mt-2 flex flex-wrap gap-2">{effectivePermissions.map((permission) => <li key={permission} className="rounded border px-2 py-1 font-mono text-xs">{permission}</li>)}</ul> : <p className="mt-2 text-muted-foreground">No permissions assigned. Contact an administrator if you need access.</p>}
+            </details>
+          </CardContent>
         </Card>
       </div>
     </>

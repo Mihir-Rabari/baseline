@@ -31,7 +31,7 @@ export interface PolicyDefinition {
 }
 
 /**
- * CourtOS role bundles (docs/hackathon/API_CONTRACT.md section 0.4).
+ * Baseline role bundles (docs/hackathon/API_CONTRACT.md section 0.4).
  *
  * Actions are listed explicitly (never `ns:*`) because the policy engine's namespace
  * wildcard also matches the non-self variants, e.g. `bookings:*` would grant
@@ -162,22 +162,22 @@ export const IamConfig = {
       ],
     },
     MemberPolicy: {
-      description: 'CourtOS member: own profile, notifications, bookings and shop orders only',
+      description: 'Baseline member: own profile, notifications, bookings and shop orders only',
       isSystem: true,
       statements: [{ effect: 'allow', actions: MEMBER_ACTIONS, resources: ['*'] }],
     },
     FrontDeskPolicy: {
-      description: 'CourtOS front desk: members, bookings, shop, CRM, invoicing and own shifts/leave',
+      description: 'Baseline front desk: members, bookings, shop, CRM, invoicing and own shifts/leave',
       isSystem: true,
       statements: [{ effect: 'allow', actions: FRONT_DESK_ACTIONS, resources: ['*'] }],
     },
     BarStaffPolicy: {
-      description: 'CourtOS bar and kitchen staff: bar tabs, kitchen, member lookup and own shifts/leave',
+      description: 'Baseline bar and kitchen staff: bar tabs, kitchen, member lookup and own shifts/leave',
       isSystem: true,
       statements: [{ effect: 'allow', actions: BAR_STAFF_ACTIONS, resources: ['*'] }],
     },
     OwnerPolicy: {
-      description: 'CourtOS owner: all front desk and bar capabilities plus pricing, HR, finance and reports',
+      description: 'Baseline owner: all front desk and bar capabilities plus pricing, HR, finance and reports',
       isSystem: true,
       statements: [{ effect: 'allow', actions: OWNER_ACTIONS, resources: ['*'] }],
     },

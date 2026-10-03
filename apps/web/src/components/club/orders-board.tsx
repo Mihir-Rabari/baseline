@@ -13,19 +13,15 @@ import { KanbanBoard } from '@/components/club/views';
 export type NextStatus = 'READY' | 'COLLECTED' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
 
 const COLUMNS = [
-  { id: 'COUNTER', title: 'Counter sales (POS)' },
-  { id: 'PLACED', title: 'Placed (Online)' },
+  { id: 'PLACED', title: 'Placed' },
   { id: 'READY', title: 'Ready for pickup' },
   { id: 'OUT_FOR_DELIVERY', title: 'Out for delivery' },
-  { id: 'DONE', title: 'Done / Completed' },
+  { id: 'DONE', title: 'Done' },
   { id: 'CANCELLED', title: 'Cancelled' },
 ];
 
-const columnOf = (order: Order) => {
-  if (order.channel === 'POS') return 'COUNTER';
-  if (['COMPLETED', 'COLLECTED', 'DELIVERED'].includes(order.status)) return 'DONE';
-  return order.status;
-};
+const columnOf = (order: Order) =>
+  ['COMPLETED', 'COLLECTED', 'DELIVERED'].includes(order.status) ? 'DONE' : order.status;
 
 /** The next steps staff can take on an online order. */
 export function nextSteps(order: Order): NextStatus[] {
@@ -47,80 +43,88 @@ export function OrdersBoard({
   orders,
   canMove,
   onAdvance,
-  onSelect,
 }: {
   orders: Order[];
   canMove: boolean;
   onAdvance: (order: Order, next: NextStatus) => void;
-  onSelect?: (order: Order) => void;
 }) {
   return (
-    <KanbanBoard
-      columns={COLUMNS}
-      items={orders}
-      idOf={(o) => o.id}
-      columnOf={columnOf}
-      emptyLabel="No orders in this stage"
-      onMove={
-        canMove
-          ? (order, to) => {
-              const next = statusForDrop(order, to);
-              if (next) onAdvance(order, next);
-            }
-          : undefined
-      }
-      canDrop={(order, to) => statusForDrop(order, to) !== null}
-      renderCard={(order) => (
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <p className="font-mono text-xs font-semibold tabular-nums">{order.orderNumber}</p>
-              <Badge variant={order.channel === 'POS' ? 'default' : 'outline'} className="text-[10px] px-1.5 py-0">
-                {order.channel === 'POS' ? 'POS' : order.fulfilment === 'DELIVERY' ? 'Delivery' : 'Pickup'}
-              </Badge>
+    <div className="w-full overflow-x-auto pb-4 pt-1">
+      <KanbanBoard
+        columns={COLUMNS}
+        items={orders}
+        idOf={(o) => o.id}
+        columnOf={columnOf}
+        emptyLabel="No orders"
+        onMove={
+          canMove
+            ? (order, to) => {
+                const next = statusForDrop(order, to);
+                if (next) onAdvance(order, next);
+              }
+            : undefined
+        }
+        canDrop={(order, to) => statusForDrop(order, to) !== null}
+        renderCard={(order) => (
+          <div className="space-y-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-medium tabular text-sm">{order.orderNumber}</p>
+                <Badge
+                  variant={order.channel === 'POS' ? 'secondary' : 'outline'}
+                  className="mt-0.5 text-[10px] font-normal"
+                >
+                  {order.channel === 'POS'
+                    ? 'POS Counter'
+                    : order.fulfilment === 'DELIVERY'
+                    ? 'Online Delivery'
+                    : 'Online Pickup'}
+                </Badge>
+              </div>
+              <StatusBadge kind="order" value={order.status} />
             </div>
-            <StatusBadge kind="order" value={order.status} />
-          </div>
 
-          <p className="text-xs text-muted-foreground">
-            {humanize(order.fulfilment)} &middot; {formatDateTime(order.createdAt)}
-          </p>
-          <p className="text-sm font-medium">
-            {order.member?.fullName ?? order.customerName ?? 'Walk-in customer'}
-          </p>
-          <p className="line-clamp-2 text-xs text-muted-foreground">
-            {order.items.map((item) => `${item.qty}\u00D7 ${item.name}`).join(', ')}
-          </p>
-          <div className="flex items-center justify-between pt-1">
-            <span className="font-mono text-sm font-semibold tabular-nums">
+            <p className="text-xs text-muted-foreground">
+              {formatDateTime(order.createdAt)}
+            </p>
+
+            <p className="text-sm font-medium">
+              {order.member?.fullName ?? order.customerName ?? 'Walk-in customer'}
+            </p>
+
+            {order.items.length > 0 && (
+              <ul className="space-y-0.5 rounded bg-muted/40 p-2 text-xs">
+                {order.items.map((item, idx) => (
+                  <li key={idx} className="line-clamp-1">
+                    <span className="font-semibold tabular">{item.qty}×</span> {item.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex items-center justify-between pt-1 text-sm font-semibold">
+              <span className="text-xs font-normal text-muted-foreground">Total</span>
               <Money paise={order.totalPaise} />
-            </span>
-            {onSelect && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2"
-                onClick={() => onSelect(order)}
-              >
-                Receipt
-              </Button>
+            </div>
+
+            {canMove && nextSteps(order).length > 0 && (
+              <div className="pt-1">
+                {nextSteps(order).map((next) => (
+                  <Button
+                    key={next}
+                    size="sm"
+                    className="w-full text-xs font-medium"
+                    variant="outline"
+                    onClick={() => onAdvance(order, next)}
+                  >
+                    Mark {humanize(next).toLowerCase()}
+                  </Button>
+                ))}
+              </div>
             )}
           </div>
-          {canMove &&
-            nextSteps(order).map((next) => (
-              <Button
-                key={next}
-                size="sm"
-                variant="outline"
-                className="w-full text-xs"
-                onClick={() => onAdvance(order, next)}
-              >
-                Mark {humanize(next).toLowerCase()}
-              </Button>
-            ))}
-        </div>
-      )}
-    />
+        )}
+      />
+    </div>
   );
 }

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+
 import { getErrorMessage } from '@/lib/errors';
 
 export default function GroupsManagementPage() {
@@ -70,7 +70,7 @@ export default function GroupsManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Groups</h1>
@@ -80,7 +80,6 @@ export default function GroupsManagementPage() {
         </div>
 
         <Button onClick={() => setShowCreate(!showCreate)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
           {showCreate ? 'Cancel' : 'Create Group'}
         </Button>
       </div>
@@ -95,8 +94,7 @@ export default function GroupsManagementPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
+                <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
                   <span>{error}</span>
                 </div>
               )}
@@ -186,7 +184,6 @@ export default function GroupsManagementPage() {
                       onClick={() => handleDelete(group.id, group.name)}
                       className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
                       Delete
                     </Button>
                   )}

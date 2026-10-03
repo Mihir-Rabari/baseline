@@ -47,7 +47,7 @@ export function ViewSwitcher({ views, value, onChange }: { views: ViewKind[]; va
         return (
           <button key={view} type="button" aria-pressed={active} onClick={() => onChange(view)}
             className={cn('inline-flex h-8 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}>
-            <Icon className="h-3.5 w-3.5" aria-hidden />{label}
+            <Icon className="h-4 w-4" aria-hidden />{label}
           </button>
         );
       })}

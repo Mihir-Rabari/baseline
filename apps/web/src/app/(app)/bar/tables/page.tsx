@@ -58,7 +58,7 @@ export default function BarTablesPage() {
   if (!allowed) return <NoAccess what="bar table management" />;
   const list = tables.data ?? [];
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Manage tables" description="Add, rename, resize, switch off or remove the tables on the bar floor."
         actions={<><Button asChild variant="outline"><Link href="/bar">Back to floor</Link></Button><Button onClick={() => setCreating(true)}>New table</Button></>} />
       <QueryState query={{ ...tables, isEmpty: list.length === 0 }} empty={{ title: 'No tables yet', description: 'Add the first table to start opening tabs.' }}>

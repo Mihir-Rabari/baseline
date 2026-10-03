@@ -52,7 +52,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={busy || undefined}
         {...props}
       >
-        {busy && <Spinner className="h-3.5 w-3.5" />}
+        {busy && <Spinner className="h-4 w-4" />}
         {children}
       </button>
     );

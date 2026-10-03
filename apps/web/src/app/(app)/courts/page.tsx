@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import type { MemberLookupItem } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
@@ -18,6 +17,7 @@ import { Money } from '@/components/club/money';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SelectBox } from '@/components/club/ops-bits';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -71,7 +71,7 @@ export default function CourtsPage() {
     }
   }
 
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <PageHeader title="Courts" description="Choose a court and time. Prices include the selected member’s benefits." actions={hasPermission('courts:update') ? <Button asChild variant="outline"><Link href="/courts/manage">Manage courts</Link></Button> : undefined} />
     {!canRead ? <EmptyState title="Court booking is unavailable" description="Ask the front desk to help with a booking." /> : <>
       <div className="flex flex-wrap items-end justify-between gap-4">

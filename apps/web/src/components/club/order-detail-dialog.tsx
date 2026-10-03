@@ -131,7 +131,7 @@ export function OrderDetailDialog({
             onClick={() => window.print()}
             className="gap-1.5"
           >
-            <Printer className="h-4 w-4" />
+            <Printer className="h-4 w-4" aria-hidden />
             Print receipt
           </Button>
           <Button

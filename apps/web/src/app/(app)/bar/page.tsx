@@ -37,7 +37,7 @@ export default function BarFloorPage() {
       close(); router.push(`/bar/tabs/${tab.id}`);
     } catch { /* The dialog keeps the entered details and displays the actionable API error. */ }
   };
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <PageHeader title="Bar floor" description="Open a table or continue an existing tab." actions={<>
       {hasPermission('bar:manage') && hasPermission('reports:read') && <Button asChild variant="outline"><Link href="/bar/tables">Manage tables</Link></Button>}
       {hasPermission('bar:kitchen') && <Button asChild variant="outline"><Link href="/bar/kitchen">Kitchen</Link></Button>}

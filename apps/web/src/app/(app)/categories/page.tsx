@@ -14,7 +14,7 @@ export default function CategoriesPage() {
   if (!user) return null;
   if (!canProducts && !canMenu) return <NoAccess what="category management" />;
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Categories" description="The lists that products and menu items are sorted into. Add, rename, reorder or switch them off." />
       <Tabs defaultValue={canProducts ? 'PRODUCT' : 'MENU'}>
         <TabsList>

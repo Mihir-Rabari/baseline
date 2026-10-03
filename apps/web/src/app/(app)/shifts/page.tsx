@@ -57,7 +57,7 @@ export default function ShiftsPage() {
     if (!data.success) { setFormError(data.error.issues[0].message); return; }
     try { await create.mutateAsync(data.data); setDialog(false); } catch (error) { setFormError(error instanceof Error ? error.message : 'Could not schedule shift.'); }
   };
-  return <div className="space-y-6"><PageHeader title="Shifts" description="Review the roster and clock your current shift." actions={<><ViewSwitcher views={SHIFT_VIEWS} value={view} onChange={setView} />{canManage && <Button disabled={pending} onClick={() => { setFormError(null); setDialog(true); }}>Schedule shift</Button>}</>} />
+  return <div className="space-y-8"><PageHeader title="Shifts" description="Review the roster and clock your current shift." actions={<><ViewSwitcher views={SHIFT_VIEWS} value={view} onChange={setView} />{canManage && <Button disabled={pending} onClick={() => { setFormError(null); setDialog(true); }}>Schedule shift</Button>}</>} />
     {!canRead ? <EmptyState title="Shift access required" description="Ask the owner for access to your shifts." /> : <>
       <div className="flex flex-wrap gap-4"><div className="space-y-2"><Label htmlFor="shifts-from">From</Label><DatePicker id="shifts-from" className="w-56" value={from} onChange={(value) => { if (value) setFrom(value); }} /></div><div className="space-y-2"><Label htmlFor="shifts-to">To</Label><DatePicker id="shifts-to" className="w-56" value={to} min={from} onChange={(value) => { if (value) setTo(value); }} /></div></div>
       {!validRange && <p role="alert" className="text-sm text-destructive">Choose an end date on or after the start date.</p>}

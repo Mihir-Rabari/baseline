@@ -192,9 +192,9 @@ export function TableBookings({ tables, canManage }: { tables: BarTable[]; canMa
         <div className="flex flex-wrap items-center gap-2">
           <ViewSwitcher views={VIEWS} value={view} onChange={setView} />
           <div className="inline-flex items-center gap-1" role="group" aria-label="Day">
-            <Button size="icon" variant="outline" aria-label="Previous day" onClick={() => setDate(dateAfter(date, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" aria-label="Previous day" onClick={() => setDate(dateAfter(date, -1))}><ChevronLeft className="h-4 w-4" aria-hidden /></Button>
             <input type="date" aria-label="Booking day" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm" />
-            <Button size="icon" variant="outline" aria-label="Next day" onClick={() => setDate(dateAfter(date, 1))}><ChevronRight className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" aria-label="Next day" onClick={() => setDate(dateAfter(date, 1))}><ChevronRight className="h-4 w-4" aria-hidden /></Button>
             {!isToday && <Button size="sm" variant="ghost" onClick={() => setDate(calendarDate())}>Today</Button>}
           </div>
           {canManage && <Button onClick={() => { const startMs = snap(Math.max(Date.now(), range.startMs)); setDialog({ tableId: rows[0]?.id ?? '', startMs, endMs: startMs + 60 * MINUTE }); }} disabled={!rows.length}>Book a table</Button>}

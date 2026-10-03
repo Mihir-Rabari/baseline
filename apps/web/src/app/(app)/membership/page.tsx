@@ -28,7 +28,7 @@ export default function MembershipPage() {
   const membership = member?.membership;
   const perks = member?.entitlements;
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="My membership" description="Your plan, how long it runs and what it includes." />
       {missing ? <EmptyState title="No membership yet" description="Ask the front desk to set up your member profile, or look at the plans." action={plansLink} />
         : query.error ? <PageError error={query.error} onRetry={() => { void query.refetch(); }} />

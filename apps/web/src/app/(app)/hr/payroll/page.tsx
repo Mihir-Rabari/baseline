@@ -153,7 +153,7 @@ export default function PayrollPage() {
     void create.mutateAsync({ month }).then((run) => { toast.success(`Draft payroll for ${run.month} created`); setOpenId(run.id); }).catch((e: Error) => toast.error(e.message));
   };
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Payroll" description="Run payroll for a month, adjust each payslip, then finalise so employees can see theirs." actions={<Button asChild variant="outline"><Link href="/hr">Back to staff</Link></Button>} />
       {openId ? <RunDetail runId={openId} onBack={() => setOpenId(null)} /> : (
         <>

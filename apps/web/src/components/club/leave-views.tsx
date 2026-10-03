@@ -71,7 +71,7 @@ export function LeaveCards({
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
-              <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <Calendar className="h-4 w-4 shrink-0" aria-hidden />
               <span>
                 {row.fromDate} – {row.toDate} ({row.days} {row.days === 1 ? 'day' : 'days'})
               </span>

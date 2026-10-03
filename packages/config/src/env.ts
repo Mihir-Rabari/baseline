@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AppConfig } from './app-config.js';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -42,7 +43,7 @@ export const DEV_PLACEHOLDERS = {
  */
 export const envSchema = z.object({
   // Application
-  APP_NAME: z.string().default('production-starter'),
+  APP_NAME: z.string().default(AppConfig.name),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 

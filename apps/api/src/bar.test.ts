@@ -388,9 +388,16 @@ describe('Bar POS (M-12)', () => {
     expect(empty.statusCode).toBe(422);
     expect(empty.json().code).toBe('TAB_EMPTY');
 
-    // A later round only sends what is new.
+    // A later round only sends what is new (test JSON content-type and payload).
     await addItem(tabId, food.id, 1);
-    const second = SendTabResponseSchema.parse((await send(tabId)).json());
+    const withJsonPayload = await app.inject({
+      method: 'POST',
+      url: `/api/v1/bar/tabs/${tabId}/send`,
+      headers: { ...as(bar), 'content-type': 'application/json' },
+      payload: {},
+    });
+    expect(withJsonPayload.statusCode).toBe(200);
+    const second = SendTabResponseSchema.parse(withJsonPayload.json());
     expect(second.tickets).toHaveLength(1);
     expect(second.tickets[0].itemCount).toBe(1);
   });

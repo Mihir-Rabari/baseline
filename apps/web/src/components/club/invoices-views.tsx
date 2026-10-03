@@ -63,7 +63,7 @@ export function InvoicesCards({
             <p className="font-medium text-foreground">{inv.billTo.name}</p>
 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" aria-hidden />
+              <Calendar className="h-4 w-4" aria-hidden />
               <span>Due: {formatDate(inv.dueDate)}</span>
             </div>
 
@@ -100,7 +100,7 @@ export function InvoicesCards({
               className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <span>Full page</span>
-              <ArrowRight className="h-3 w-3" aria-hidden />
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
         </article>

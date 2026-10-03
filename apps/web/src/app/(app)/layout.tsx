@@ -84,8 +84,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           mobileNavOpen={mobileNavOpen}
           onToggleMobileNav={() => setMobileNavOpen((open) => !open)}
         />
-        <main className="flex-1 px-4 py-8 lg:px-8">
-          <div className="mx-auto w-full max-w-5xl space-y-8">{children}</div>
+        <main className="min-w-0 flex-1 px-4 py-8 lg:px-8">
+          <div className="mx-auto min-w-0 w-full max-w-5xl space-y-8">{children}</div>
         </main>
       </div>
     </div>

@@ -65,7 +65,7 @@ export function ShiftsCards({
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
-              <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <Clock className="h-4 w-4 shrink-0" aria-hidden />
               <span>
                 {formatDateTime(row.startsAt)} – {formatDateTime(row.endsAt)}
               </span>

@@ -39,7 +39,7 @@ export function ImageUploader({ kind, value, onChange, label = 'Photo', disabled
       <label htmlFor={id} className="text-sm font-medium">{label}</label>
       <div className="flex items-center gap-4">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted text-muted-foreground">
-          {src ? <img src={src} alt={`${label} preview`} className="h-full w-full object-cover" /> : <ImagePlus className="h-6 w-6" aria-hidden />}
+          {src ? <img src={src} alt={`${label} preview`} className="h-full w-full object-cover" /> : <ImagePlus className="h-4 w-4" aria-hidden />}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" loading={busy} disabled={disabled || busy} onClick={() => input.current?.click()}>{src ? 'Replace image' : 'Upload image'}</Button>

@@ -76,7 +76,7 @@ export function InventoryCards({
 
               <div className="flex items-center justify-between border-t pt-2 text-xs">
                 <div className="flex items-center gap-1">
-                  <Layers className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                  <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
                   <span>
                     Stock:{' '}
                     <strong className={`tabular ${outOfStock ? 'text-destructive' : ''}`}>
@@ -97,7 +97,7 @@ export function InventoryCards({
                   title="View stock history ledger"
                   onClick={() => onHistory(p)}
                 >
-                  <History className="h-3.5 w-3.5" />
+                  <History className="h-4 w-4" aria-hidden />
                   <span className="sr-only">History</span>
                 </Button>
               )}
@@ -109,7 +109,7 @@ export function InventoryCards({
                   title="Adjust stock discrepancy"
                   onClick={() => onAdjust(p)}
                 >
-                  <SlidersHorizontal className="mr-1 h-3 w-3" />
+                  <SlidersHorizontal className="mr-1 h-4 w-4" aria-hidden />
                   Adjust
                 </Button>
               )}
@@ -142,7 +142,7 @@ export function InventoryCards({
                   aria-label={`Delete ${p.name}`}
                   onClick={() => onDelete(p)}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </Button>
               )}
             </div>
@@ -211,7 +211,7 @@ export function InventoryBoard({
                 title="View stock history"
                 onClick={() => onHistory(p)}
               >
-                <History className="h-3 w-3" />
+                <History className="h-4 w-4" aria-hidden />
               </Button>
             )}
             {canAdjust && onAdjust && (
@@ -253,7 +253,7 @@ export function InventoryBoard({
                 aria-label={`Delete ${p.name}`}
                 onClick={() => onDelete(p)}
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-4 w-4" aria-hidden />
               </Button>
             )}
           </div>

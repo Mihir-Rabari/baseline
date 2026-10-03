@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** A template (unlike a layout) mounts again on every navigation, so each screen eases in. */
+/** Next remounts templates on navigation so each page gets its own entrance. */
 export default function AppTemplate({ children }: { children: React.ReactNode }) {
-  return <div className="animate-rise">{children}</div>;
+  return <div className="min-w-0 motion-safe:animate-rise">{children}</div>;
 }

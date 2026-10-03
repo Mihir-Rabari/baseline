@@ -16,37 +16,21 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { MembersBoard, MembersCards } from '@/components/club/members-views';
-import { ViewSwitcher, useViewPreference, type ViewKind } from '@/components/club/views';
-
-const MEMBER_VIEWS: ViewKind[] = ['list', 'cards', 'board'];
 
 export default function MembersPage() {
   const { user, hasPermission } = useAuth();
-  const [view, setView] = useViewPreference('members', MEMBER_VIEWS, 'list');
-  const isBoard = view === 'board';
   const [q, setQ] = useState('');
   const [planCode, setPlanCode] = useState('');
   const [page, setPage] = useState(1);
   const debounced = useDebounce(q.trim(), 250);
   const search = debounced.length >= 2 ? debounced : undefined;
-  const { data, error, isPending, refetch } = useMembers({ page: isBoard ? 1 : page, limit: isBoard ? 100 : 20, q: search, planCode: planCode || undefined });
+  const { data, error, isPending, refetch } = useMembers({ page, limit: 20, q: search, planCode: planCode || undefined });
 
   if (!user) return null;
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Members"
-        description="Find a member and check their membership."
-        actions={
-          <>
-            <ViewSwitcher views={MEMBER_VIEWS} value={view} onChange={setView} />
-            {hasPermission('members:create') && hasPermission('memberships:create') ? (
-              <Link className={buttonVariants()} href="/members/new">New member</Link>
-            ) : undefined}
-          </>
-        }
-      />
+    <div className="space-y-8">
+      <PageHeader title="Members" description="Find a member and check their membership."
+        actions={hasPermission('members:create') && hasPermission('memberships:create') ? <Link className={buttonVariants()} href="/members/new">New member</Link> : undefined} />
       <div className="flex flex-wrap gap-4">
         <div className="min-w-60 flex-1 space-y-2">
           <Label htmlFor="member-search">Search members</Label>
@@ -71,44 +55,27 @@ export default function MembersPage() {
           action={<Button variant="outline" onClick={() => { setQ(''); setPlanCode(''); setPage(1); }}>Clear filters</Button>} />
       ) : data ? (
         <>
-          {isBoard ? (
-            <MembersBoard members={data.data} />
-          ) : view === 'cards' ? (
-            <>
-              <MembersCards members={data.data} />
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <p className="text-sm text-muted-foreground" aria-live="polite">{data.meta.totalItems} members · Page {data.meta.page} of {data.meta.totalPages}</p>
-                <div className="flex gap-2">
-                  <Button variant="outline" disabled={!data.meta.hasPrevPage} onClick={() => setPage((current) => current - 1)}>Previous</Button>
-                  <Button variant="outline" disabled={!data.meta.hasNextPage} onClick={() => setPage((current) => current + 1)}>Next</Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <Table className="min-w-[760px] text-left">
-                <caption className="sr-only">Club members</caption>
-                <TableHeader><TableRow>{['Code', 'Name', 'Phone', 'Plan', 'Expiry', 'Days left'].map((heading) => <TableHead key={heading} scope="col" className={heading === 'Days left' ? 'text-right' : undefined}>{heading}</TableHead>)}</TableRow></TableHeader>
-                <TableBody>{data.data.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-mono text-xs">{member.memberCode}</TableCell>
-                    <TableCell><Link href={`/members/${member.id}`} className="font-medium underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{member.fullName}</Link></TableCell>
-                    <TableCell>{member.phone}</TableCell>
-                    <TableCell>{member.membership ? <Badge variant={member.membership.plan.code === 'GOLD' ? 'default' : member.membership.plan.code === 'SILVER' ? 'secondary' : 'outline'}>{member.membership.plan.name}</Badge> : '—'}</TableCell>
-                    <TableCell><StatusBadge kind="membership" value={member.membership?.expiryState ?? 'NONE'} /></TableCell>
-                    <TableCell className="tabular text-right">{member.membership ? Math.max(0, member.membership.daysLeft) : '—'}</TableCell>
-                  </TableRow>
-                ))}</TableBody>
-              </Table>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground" aria-live="polite">{data.meta.totalItems} members · Page {data.meta.page} of {data.meta.totalPages}</p>
-                <div className="flex gap-2">
-                  <Button variant="outline" disabled={!data.meta.hasPrevPage} onClick={() => setPage((current) => current - 1)}>Previous</Button>
-                  <Button variant="outline" disabled={!data.meta.hasNextPage} onClick={() => setPage((current) => current + 1)}>Next</Button>
-                </div>
-              </div>
-            </>
-          )}
+            <Table className="min-w-[760px] text-left">
+              <caption className="sr-only">Club members</caption>
+              <TableHeader><TableRow>{['Code', 'Name', 'Phone', 'Plan', 'Expiry', 'Days left'].map((heading) => <TableHead key={heading} scope="col" className={heading === 'Days left' ? 'text-right' : undefined}>{heading}</TableHead>)}</TableRow></TableHeader>
+              <TableBody>{data.data.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell className="font-mono text-xs">{member.memberCode}</TableCell>
+                  <TableCell><Link href={`/members/${member.id}`} className="font-medium underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{member.fullName}</Link></TableCell>
+                  <TableCell>{member.phone}</TableCell>
+                  <TableCell>{member.membership ? <Badge variant={member.membership.plan.code === 'GOLD' ? 'default' : member.membership.plan.code === 'SILVER' ? 'secondary' : 'outline'}>{member.membership.plan.name}</Badge> : '—'}</TableCell>
+                  <TableCell><StatusBadge kind="membership" value={member.membership?.expiryState ?? 'NONE'} /></TableCell>
+                  <TableCell className="tabular text-right">{member.membership ? Math.max(0, member.membership.daysLeft) : '—'}</TableCell>
+                </TableRow>
+              ))}</TableBody>
+            </Table>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground" aria-live="polite">{data.meta.totalItems} members · Page {data.meta.page} of {data.meta.totalPages}</p>
+            <div className="flex gap-2">
+              <Button variant="outline" disabled={!data.meta.hasPrevPage} onClick={() => setPage((current) => current - 1)}>Previous</Button>
+              <Button variant="outline" disabled={!data.meta.hasNextPage} onClick={() => setPage((current) => current + 1)}>Next</Button>
+            </div>
+          </div>
         </>
       ) : null}
     </div>

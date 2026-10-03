@@ -197,7 +197,7 @@ export function InvoiceDetailDialog({
                   className={buttonVariants({ variant: 'ghost', size: 'sm' })}
                   onClick={onClose}
                 >
-                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                  <ExternalLink className="mr-1.5 h-4 w-4" aria-hidden />
                   Full page & print
                 </Link>
 

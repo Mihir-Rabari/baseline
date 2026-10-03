@@ -80,7 +80,7 @@ export function LeadsBoard({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {lead.phone ? (
                 <span className="flex items-center gap-1">
-                  <Phone className="h-3 w-3" aria-hidden />
+                  <Phone className="h-4 w-4" aria-hidden />
                   {lead.phone}
                 </span>
               ) : (
@@ -102,14 +102,14 @@ export function LeadsBoard({
                   overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
                 }`}
               >
-                <Calendar className="h-3 w-3" aria-hidden />
+                <Calendar className="h-4 w-4" aria-hidden />
                 <span>Follow-up: {formatDateTime(lead.nextFollowUpAt)}</span>
               </p>
             )}
 
             {(lead.quoteCount ?? 0) > 0 && (
               <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                <FileText className="h-3 w-3" aria-hidden />
+                <FileText className="h-4 w-4" aria-hidden />
                 <span>{lead.quoteCount} quote(s)</span>
               </p>
             )}

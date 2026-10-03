@@ -51,7 +51,7 @@ export function MembersCards({ members }: { members: MemberItem[] }) {
                 {member.fullName}
               </Link>
               <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-                <Phone className="h-3.5 w-3.5" aria-hidden />
+                <Phone className="h-4 w-4" aria-hidden />
                 <span>{member.phone}</span>
               </div>
             </div>
@@ -76,7 +76,7 @@ export function MembersCards({ members }: { members: MemberItem[] }) {
               </div>
               {member.membership && (
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <Calendar className="h-3 w-3" aria-hidden />
+                  <Calendar className="h-4 w-4" aria-hidden />
                   <span className="tabular">{Math.max(0, member.membership.daysLeft)} days left</span>
                 </div>
               )}
@@ -89,7 +89,7 @@ export function MembersCards({ members }: { members: MemberItem[] }) {
               className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               <span>View profile</span>
-              <ArrowRight className="h-3 w-3" aria-hidden />
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
         </article>
