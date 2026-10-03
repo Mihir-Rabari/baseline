@@ -1,0 +1,15 @@
+{
+  "name": "CourtOS Club",
+  "tagline": "A place to play, meet and unwind.",
+  "phone": "+91 98765 43210",
+  "address": "12 Club Road, Ahmedabad, Gujarat",
+  "hours": { "open": "06:00", "close": "23:00" },
+  "timezone": "Asia/Kolkata",
+  "courtTypes": [
+    { "id": "d0000000-0000-4000-8000-000000000001", "code": "TENNIS", "name": "Tennis", "baseRatePaise": 60000, "trialFeePaise": 19900, "courtCount": 2 },
+    { "id": "d0000000-0000-4000-8000-000000000002", "code": "PADEL", "name": "Padel", "baseRatePaise": 100000, "trialFeePaise": 19900, "courtCount": 2 },
+    { "id": "d0000000-0000-4000-8000-000000000003", "code": "BADMINTON", "name": "Badminton", "baseRatePaise": 40000, "trialFeePaise": 19900, "courtCount": 2 },
+    { "id": "d0000000-0000-4000-8000-000000000004", "code": "CRICKET_NETS", "name": "Cricket nets", "baseRatePaise": 50000, "trialFeePaise": 19900, "courtCount": 2 }
+  ],
+  "socialPlay": { "weekday": 5, "startsTime": "18:00", "endsTime": "22:00" }
+}
