@@ -295,6 +295,8 @@ export default function MembersPage() {
 
 ### K-15: Public live slots `/play` · Tier 1 · depends on: K-14
 
+**Status (2026-10-03): Implemented, not yet test-run.** `/play` shows the read-only `SlotGrid` (free cells only are selectable; social cells are joined at the club) for today to +6 days with a 10-second refresh. A free cell opens the trial dialog (React Hook Form + Zod). Success shows the pay-at-club message, `SLOT_TAKEN` toasts and refetches, `TRIAL_ALREADY_USED` becomes a phone-field error. The public grid now reaches 7 days on the backend (issue #33). Mutable mocks cover availability and trials. Unit tests added; typecheck and lint pass; Mihir still needs `pnpm verify` and a real-backend pass.
+
 - **Build:** the website's "what is free this week" and trial booking (Scene 5).
 - **Where:** `app/(marketing)/play/page.tsx`, a `TrialDialog` inside the same file.
 - **Steps:** reuse `SlotGrid` read-only (public data has no holder names). Selecting a free slot opens a `Dialog` with name, phone and email (React Hook Form + Zod) and a "Book trial" button calling `api.public.createTrialBooking`. Success: replace the dialog body with "Trial booked. Pay at the club on arrival." and the time. `SLOT_TAKEN`: toast and refetch. `TRIAL_ALREADY_USED`: field error on phone.

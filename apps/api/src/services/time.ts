@@ -272,3 +272,7 @@ export function isInSocialWindow(
       start + durationMinutes <= parseTimeOfDay(w.endsTime)
   );
 }
+
+/** BR-06: how far ahead a walk-in guest may book, and how far ahead the public grid and trial bookings reach. */
+export const GUEST_HORIZON_DAYS = 2;
+export const TRIAL_HORIZON_DAYS = 7;

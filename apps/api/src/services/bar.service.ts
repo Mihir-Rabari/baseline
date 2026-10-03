@@ -340,6 +340,36 @@ export class BarService {
     return this.getTab(tabId);
   }
 
+  /**
+   * Sets the quantity of one line in a single locked transaction, so two taps on +/- never lose an
+   * update. Only PENDING lines can change: a SENT line is already being cooked, so its quantity is
+   * fixed (the owner may remove it). The price and member discount snapshotted when the line was
+   * added are kept, so a lapsed membership cannot change an existing line.
+   */
+  async updateItemQty(tabId: string, itemId: string, qty: number): Promise<Tab> {
+    await this.db.transaction(async (tx) => {
+      const tab = await this.lockTab(tx, tabId);
+      this.assertOpen(tab.status);
+
+      const [item] = await tx
+        .select()
+        .from(tabItems)
+        .where(and(eq(tabItems.id, itemId), eq(tabItems.tabId, tabId)));
+      if (!item) throw new DomainError('NOT_FOUND', 404, 'Item not found on this tab');
+      if (item.status === 'VOID') {
+        throw new DomainError('ITEM_ALREADY_VOID', 409, 'That item has already been removed');
+      }
+      if (item.status === 'SENT') {
+        throw new DomainError('ITEM_ALREADY_SENT', 409, 'That item is already with the kitchen, so its quantity cannot change');
+      }
+      await tx
+        .update(tabItems)
+        .set({ qty, lineTotalPaise: discountedLine(item.unitPricePaise, qty, item.discountPct) })
+        .where(eq(tabItems.id, itemId));
+    });
+    return this.getTab(tabId);
+  }
+
   /** `isOwner` lifts the "PENDING items only" limit that applies to bar staff. */
   async removeItem(tabId: string, itemId: string, isOwner: boolean): Promise<Tab> {
     await this.db.transaction(async (tx) => {

@@ -332,6 +332,40 @@ describe('Bar POS (M-12)', () => {
     expect(unknown.statusCode).toBe(404);
   });
 
+  it('updates the quantity of a PENDING line, keeps its snapshot price and refuses SENT, VOID and invalid quantities', async (ctx) => {
+    if (!hasDatabase) return ctx.skip();
+    const tabId = await guestTab();
+    const [pending, sentOne] = [(await addItem(tabId, drink.id, 2)).json().items[0].id, (await addItem(tabId, food.id, 1)).json().items[1].id];
+    const patch = (itemId: string, payload: object, actor = bar) =>
+      app.inject({ method: 'PATCH', url: `/api/v1/bar/tabs/${tabId}/items/${itemId}`, headers: as(actor), payload });
+
+    const down = await patch(pending, { qty: 1 });
+    expect(down.statusCode).toBe(200);
+    const line = down.json().items.find((i: { id: string }) => i.id === pending);
+    expect(line).toMatchObject({ qty: 1, lineTotalPaise: line.unitPricePaise });
+    const up = await patch(pending, { qty: 3 });
+    expect(up.json().items.find((i: { id: string }) => i.id === pending).lineTotalPaise).toBe(line.unitPricePaise * 3);
+
+    for (const bad of [{ qty: 0 }, { qty: 21 }, { qty: 1.5 }, {}]) expect((await patch(pending, bad)).statusCode).toBe(400);
+    expect((await patch(randomUUID(), { qty: 2 })).statusCode).toBe(404);
+
+    await send(tabId);
+    const sent = await patch(sentOne, { qty: 2 });
+    expect(sent.statusCode).toBe(409);
+    expect(sent.json().code).toBe('ITEM_ALREADY_SENT');
+    expect((await patch(sentOne, { qty: 2 }, owner)).statusCode).toBe(409);
+  });
+
+  it('refuses a quantity change on a removed line', async (ctx) => {
+    if (!hasDatabase) return ctx.skip();
+    const tabId = await guestTab();
+    const item = (await addItem(tabId, drink.id, 1)).json().items[0].id;
+    await app.inject({ method: 'DELETE', url: `/api/v1/bar/tabs/${tabId}/items/${item}`, headers: as(bar) });
+    const res = await app.inject({ method: 'PATCH', url: `/api/v1/bar/tabs/${tabId}/items/${item}`, headers: as(bar), payload: { qty: 2 } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('ITEM_ALREADY_VOID');
+  });
+
   it('sends PENDING items grouped into one ticket per station and flags them SENT', async (ctx) => {
     if (!hasDatabase) return ctx.skip();
     const tabId = await guestTab();
@@ -669,6 +703,7 @@ describe('Bar POS (M-12)', () => {
       ['PUT', `/bar/menu/${id}`, { name: 'x' }],
       ['POST', '/bar/tabs', { guestName: 'x' }], ['GET', '/bar/tabs'], ['GET', `/bar/tabs/${id}`],
       ['POST', `/bar/tabs/${id}/items`, { menuItemId: id, qty: 1 }],
+      ['PATCH', `/bar/tabs/${id}/items/${id}`, { qty: 2 }],
       ['DELETE', `/bar/tabs/${id}/items/${id}`], ['POST', `/bar/tabs/${id}/send`],
       ['POST', `/bar/tabs/${id}/settle`, { payments: [{ method: 'CASH' }] }],
       ['POST', `/bar/tabs/${id}/void`, { reason: 'x' }], ['GET', '/bar/tickets'],
@@ -688,6 +723,7 @@ describe('Bar POS (M-12)', () => {
       const calls: Array<[string, string, object?]> = [
         ['GET', '/bar/tables'], ['GET', '/bar/menu'], ['POST', '/bar/tabs', { guestName: 'x' }], ['GET', '/bar/tabs'],
         ['GET', `/bar/tabs/${tabId}`], ['POST', `/bar/tabs/${tabId}/items`, { menuItemId: drink.id, qty: 1 }],
+        ['PATCH', `/bar/tabs/${tabId}/items/${id}`, { qty: 2 }],
         ['POST', `/bar/tabs/${tabId}/send`], ['POST', `/bar/tabs/${tabId}/settle`, { payments: [{ method: 'CASH' }] }],
         ['POST', `/bar/tabs/${tabId}/void`, { reason: 'x' }], ['GET', '/bar/tickets'],
         ['PATCH', `/bar/tickets/${id}/status`, { status: 'PREPARING' }], ['GET', '/bar/earnings'],

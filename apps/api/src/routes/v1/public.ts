@@ -6,11 +6,14 @@ import {
   AvailabilityQuerySchema, AvailabilitySchema, HttpErrorResponseSchema,
   PublicClubSchema, PlanListSchema, CreateEnquiryRequestSchema, CreateEnquiryResponseSchema,
   CreateTrialBookingRequestSchema, CreateTrialBookingResponseSchema,
+  SharedReportParamSchema, SharedReportQuerySchema, SharedReportResponseSchema,
 } from '@packages/validation';
 import { AvailabilityService } from '../../services/availability.service.js';
 import { BookingService } from '../../services/booking.service.js';
 import { CrmService } from '../../services/crm.service.js';
 import { getClubHours } from '../../services/club-settings.js';
+import { ReportService } from '../../services/report.service.js';
+import { ReportShareService } from '../../services/report-share.service.js';
 
 const PublicAvailabilityQuerySchema = AvailabilityQuerySchema.omit({ memberId: true });
 
@@ -18,6 +21,8 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
   const availabilityService = new AvailabilityService(fastify.db, fastify.env.CLUB_TIMEZONE);
   const crm = new CrmService(fastify.db, fastify.env.CLUB_TIMEZONE);
   const bookingService = new BookingService(fastify.db, { timezone: fastify.env.CLUB_TIMEZONE });
+  const reports = new ReportService(fastify.db, fastify.env.CLUB_TIMEZONE);
+  const reportShares = new ReportShareService(fastify.db, fastify.env.WEB_URL);
   const getLimit = { rateLimit: { max: 30, timeWindow: '1 minute' } };
   const postLimit = { rateLimit: { max: 5, timeWindow: '1 minute' } };
   const errors = {
@@ -64,6 +69,22 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
     .where(eq(plans.isActive, true)).orderBy(asc(plans.sortOrder), asc(plans.code))));
 
   // /public/products is registered by shopRoutes, using the public-only catalogue projection.
+  // Owner-created, read-only dashboard link. Summary only: no owed amounts, no alerts, no names.
+  fastify.get('/public/reports/shared/:token', {
+    config: getLimit,
+    schema: {
+      description: 'Shared dashboard summary for a valid, unexpired, unrevoked token',
+      tags: ['Public'],
+      params: SharedReportParamSchema,
+      querystring: SharedReportQuerySchema,
+      response: { 200: SharedReportResponseSchema, 404: HttpErrorResponseSchema, 429: HttpErrorResponseSchema },
+    },
+  }, async (request, reply) => {
+    const share = await reportShares.resolve(request.params.token);
+    const { owed: _owed, alerts: _alerts, ...summary } = await reports.dashboard({ range: request.query.range ?? share.defaultRange });
+    return reply.header('cache-control', 'no-store').send({ ...summary, expiresAt: share.expiresAt });
+  });
+
   fastify.post('/public/enquiries', {
     config: postLimit,
     schema: { tags: ['Public'], body: CreateEnquiryRequestSchema, response: { 201: CreateEnquiryResponseSchema, ...errors } },
@@ -98,7 +119,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
       // Stricter than the global limit: 30 GETs/minute/IP (API_CONTRACT.md section 3).
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
       schema: {
-        description: 'Public availability grid at walk-in prices (guests may look 2 days ahead)',
+        description: 'Public availability grid at walk-in prices (looks 7 days ahead, the trial booking horizon)',
         tags: ['Public'],
         querystring: PublicAvailabilityQuerySchema,
         response: {

@@ -327,7 +327,7 @@ Times are in the club time zone, `Asia/Kolkata` **(ADDITION: assumed because UPI
 
 - **BR-04 Daily limit.** A member may hold at most **2 active bookings per club-local day**, counted by session start date. Social-play joins count. A booking is "active" if it is CONFIRMED, COMPLETED or NO_SHOW, or CANCELLED late (see BR-08). A cancelled-in-time booking does not count. Walk-in guests have no daily limit (the PDF limits members only).
 - **BR-05 Price.** `price = round(court_type.base_rate × (100 − plan.court_discount_pct) / 100)`. Walk-ins and guests pay `base_rate`. "Free play" means `court_discount_pct = 100`, so the price is 0, the booking is `payment_status = WAIVED`, and it still occupies the court and still counts toward BR-04. The price is **snapshotted on the booking** so later plan changes never rewrite history.
-- **BR-06 Booking horizon.** A member cannot book further ahead than their plan's `booking_horizon_days`; guests 2 days; trial bookings 7 days.
+- **BR-06 Booking horizon.** A member cannot book further ahead than their plan's `booking_horizon_days`; walk-in guests booked by staff 2 days; trial bookings and the public availability grid 7 days.
 - **BR-07 Membership validity.** Member pricing requires an ACTIVE membership on the session date. If the membership ends before the session date, the booking is refused with `422 MEMBERSHIP_EXPIRES_BEFORE_SLOT` and a "renew first" hint. An expired member keeps the profile and history and books at walk-in price.
 
 ### Cancellations, plan changes

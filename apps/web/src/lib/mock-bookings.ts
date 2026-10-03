@@ -1,4 +1,4 @@
-import { AvailabilitySchema, BookingSchema, type AvailabilityQuery, type Booking, type BookingPage, type CancelBookingResponse, type CreateBookingRequest, type JoinSocialResponse } from '@packages/validation';
+import { AvailabilitySchema, BookingSchema, type AvailabilityQuery, type Booking, type BookingPage, type CancelBookingResponse, type CreateBookingRequest, type CreateTrialBookingRequest, type CreateTrialBookingResponse, type JoinSocialResponse } from '@packages/validation';
 import standard from '@/mocks/availability.json';
 import friday from '@/mocks/availability-friday.json';
 import { mockMemberStore } from './mock-members';
@@ -29,6 +29,16 @@ export function mockAvailability(query: AvailabilityQuery) {
     if (Date.parse(slot.startsAt) <= Date.now()) slot.status = 'PAST';
   }
   return data;
+}
+const trialPhones = new Set<string>();
+export function mockCreateTrialBooking(input: CreateTrialBookingRequest): CreateTrialBookingResponse {
+  const phone = input.phone.replace(/\D/g, '').slice(-10);
+  if (trialPhones.has(phone)) throw new MockBookingError('TRIAL_ALREADY_USED', 'This phone number has already used a free trial.');
+  const booking = mockCreateBooking({ courtId: input.courtId, startsAt: input.startsAt, guest: { name: input.name, phone: input.phone, email: input.email }, channel: 'ONLINE' });
+  trialPhones.add(phone);
+  const stored = created.find((item) => item.id === booking.id)!;
+  stored.kind = 'TRIAL'; stored.channel = 'WEBSITE_TRIAL';
+  return { booking: { ...stored }, leadId: crypto.randomUUID(), message: 'Trial booked. Pay at the club on arrival.' };
 }
 export function mockCreateBooking(input: CreateBookingRequest, social = false): Booking | JoinSocialResponse {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(input.startsAt));

@@ -142,7 +142,13 @@ export const AddTabItemRequestSchema = z.object({
 });
 export type AddTabItemRequest = z.infer<typeof AddTabItemRequestSchema>;
 
-/** DELETE /bar/tabs/:id/items/:itemId params */
+/** PATCH /bar/tabs/:id/items/:itemId: sets the quantity of one PENDING line (the +/- buttons). */
+export const UpdateTabItemRequestSchema = z.object({
+  qty: z.number().int().min(1).max(20),
+});
+export type UpdateTabItemRequest = z.infer<typeof UpdateTabItemRequestSchema>;
+
+/** PATCH and DELETE /bar/tabs/:id/items/:itemId params */
 export const TabItemParamSchema = z.object({
   id: UuidSchema,
   itemId: UuidSchema,

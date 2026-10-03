@@ -73,6 +73,10 @@ export type DashboardReport = z.infer<typeof DashboardReportSchema>;
 export const SharedDashboardReportSchema = DashboardReportSchema.omit({ owed: true, alerts: true });
 export type SharedDashboardReport = z.infer<typeof SharedDashboardReportSchema>;
 
+/** GET /public/reports/shared/:token: the summary plus when the link stops working. */
+export const SharedReportResponseSchema = SharedDashboardReportSchema.extend({ expiresAt: IsoDateTimeOutSchema });
+export type SharedReportResponse = z.infer<typeof SharedReportResponseSchema>;
+
 /** GET /reports/export.csv */
 export const ReportExportQuerySchema = z
   .object({
@@ -124,3 +128,7 @@ export const ReportShareListSchema = z.array(ReportShareSchema);
 export const SharedReportParamSchema = z.object({
   token: z.string().min(1),
 });
+
+/** GET /public/reports/shared/:token query: optionally view another range than the link's default. */
+export const SharedReportQuerySchema = z.object({ range: ReportRangeEnum.optional() });
+export type SharedReportQuery = z.infer<typeof SharedReportQuerySchema>;

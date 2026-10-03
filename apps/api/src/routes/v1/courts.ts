@@ -1,15 +1,39 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { asc, eq } from 'drizzle-orm';
-import { courtTypes, courts } from '@packages/db';
+import { courtTypes, courts, socialWindows } from '@packages/db';
 import {
   AvailabilityQuerySchema,
   AvailabilitySchema,
   CourtListSchema,
   HttpErrorResponseSchema,
+  SocialWindowListSchema,
+  SocialWindowSchema,
+  UpdateSocialWindowRequestSchema,
+  UuidSchema,
 } from '@packages/validation';
 import { requirePermission } from '@packages/iam';
 import { AvailabilityService } from '../../services/availability.service.js';
 import { requireCourtCaller, resolveCourtCaller } from '../../lib/court-caller.js';
+import { DomainError } from '../../lib/domain-error.js';
+
+/**
+ * `social_windows.weekday` is stored as an ISO weekday (1 = Monday ... 7 = Sunday) because that is what
+ * the slot generator compares against. The API speaks 0..6 with Sunday = 0, matching /public/club.
+ */
+const toApiWeekday = (stored: number) => stored % 7;
+const toStoredWeekday = (api: number) => (api === 0 ? 7 : api);
+const hhmm = (time: string) => time.slice(0, 5);
+
+function toSocialWindow(row: typeof socialWindows.$inferSelect) {
+  return {
+    id: row.id,
+    weekday: toApiWeekday(row.weekday),
+    startsTime: hhmm(row.startsTime),
+    endsTime: hhmm(row.endsTime),
+    isActive: row.isActive,
+  };
+}
 
 export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
   const availabilityService = new AvailabilityService(fastify.db, fastify.env.CLUB_TIMEZONE);
@@ -89,6 +113,79 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
       });
 
       return reply.status(200).send(availability);
+    }
+  );
+  // ---------------------------------------------------------------------------
+  // GET /api/v1/social-windows - weekly social-play windows (any logged-in, active user)
+  // ---------------------------------------------------------------------------
+  fastify.get(
+    '/social-windows',
+    {
+      preHandler: [requirePermission('profile:read:self', (req) => ({ resourceOwnerId: req.user?.id }))],
+      schema: {
+        description: 'Weekly social-play windows (weekday 0 = Sunday ... 6 = Saturday)',
+        tags: ['Courts'],
+        response: { 200: SocialWindowListSchema, 401: HttpErrorResponseSchema, 403: HttpErrorResponseSchema },
+      },
+    },
+    async (_request, reply) => {
+      const rows = await fastify.db
+        .select()
+        .from(socialWindows)
+        .orderBy(asc(socialWindows.weekday), asc(socialWindows.startsTime), asc(socialWindows.id));
+      return reply.status(200).send(rows.map(toSocialWindow));
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // PUT /api/v1/social-windows/:id - owner edits a window
+  // ---------------------------------------------------------------------------
+  fastify.put(
+    '/social-windows/:id',
+    {
+      preHandler: [requirePermission('courts:update')],
+      schema: {
+        description: 'Change the weekday, times or active flag of a social-play window (owner only)',
+        tags: ['Courts'],
+        params: z.object({ id: UuidSchema }),
+        body: UpdateSocialWindowRequestSchema,
+        response: {
+          200: SocialWindowSchema,
+          400: HttpErrorResponseSchema,
+          401: HttpErrorResponseSchema,
+          403: HttpErrorResponseSchema,
+          404: HttpErrorResponseSchema,
+          422: HttpErrorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const body = request.body;
+      const [current] = await fastify.db.select().from(socialWindows).where(eq(socialWindows.id, id)).limit(1);
+      if (!current) throw new DomainError('NOT_FOUND', 404, 'Social window not found.');
+
+      // The schema only compares times when both are sent; a one-sided edit is checked against the stored value.
+      const startsTime = body.startsTime ?? hhmm(current.startsTime);
+      const endsTime = body.endsTime ?? hhmm(current.endsTime);
+      if (endsTime <= startsTime) {
+        throw new DomainError('VALIDATION_ERROR', 422, 'endsTime must be after startsTime', [
+          { field: 'endsTime', message: 'endsTime must be after startsTime', code: 'INVALID_RANGE' },
+        ]);
+      }
+
+      const [row] = await fastify.db
+        .update(socialWindows)
+        .set({
+          ...(body.weekday !== undefined && { weekday: toStoredWeekday(body.weekday) }),
+          ...(body.startsTime !== undefined && { startsTime: body.startsTime }),
+          ...(body.endsTime !== undefined && { endsTime: body.endsTime }),
+          ...(body.isActive !== undefined && { isActive: body.isActive }),
+        })
+        .where(eq(socialWindows.id, id))
+        .returning();
+      request.log.info({ windowId: id, actorId: request.user!.id }, 'Social window updated');
+      return reply.status(200).send(toSocialWindow(row));
     }
   );
 };

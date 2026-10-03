@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authorize, requirePermission } from '@packages/iam';
 import {
   AddTabItemRequestSchema,
+  UpdateTabItemRequestSchema,
   BarEarningsQuerySchema,
   BarEarningsSchema,
   BarTableListSchema,
@@ -192,6 +193,28 @@ export const barRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
     async (request, reply) =>
       reply.status(200).send(await service.addItem(request.params.id, request.body, request.user!.id))
+  );
+
+  fastify.patch(
+    '/bar/tabs/:id/items/:itemId',
+    {
+      preHandler: [requirePermission('bar:manage')],
+      schema: {
+        description: 'Set the quantity of a PENDING item (items already sent to the kitchen are fixed)',
+        tags: ['Bar'],
+        params: TabItemParamSchema,
+        body: UpdateTabItemRequestSchema,
+        response: { 200: TabSchema, 400: err, 404: err, 409: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const tab = await service.updateItemQty(request.params.id, request.params.itemId, request.body.qty);
+      request.log.info(
+        { tabId: tab.id, itemId: request.params.itemId, qty: request.body.qty, actorId: request.user!.id },
+        'Bar tab item quantity updated'
+      );
+      return reply.status(200).send(tab);
+    }
   );
 
   fastify.delete(
