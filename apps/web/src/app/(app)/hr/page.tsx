@@ -10,6 +10,7 @@ import { calendarDate } from '@/lib/booking-calendar';
 import { formatDate } from '@/lib/format';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { Money } from '@/components/club/money';
+import { Field, FormDialog, errorText, fromPaise, toPaise } from '@/components/club/form-dialog';
 import { NoAccess, Pager, QueryState, SelectBox, Stat, humanize } from '@/components/club/ops-bits';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
@@ -46,19 +47,72 @@ function LeaveTable({ rows, decide }: { rows: LeaveRequest[]; decide?: (leave: L
   );
 }
 
-function Employees() {
+const DEPARTMENTS = ['FRONT_DESK', 'BAR', 'MAINTENANCE', 'COACHING', 'MANAGEMENT'];
+
+function EmployeeDialog({ employee, open, onClose }: { employee: Employee | null; open: boolean; onClose: () => void }) {
+  const editing = Boolean(employee);
+  const [form, setForm] = useState({
+    fullName: employee?.fullName ?? '', position: employee?.position ?? '', department: employee?.department ?? 'FRONT_DESK',
+    salary: employee ? fromPaise(employee.monthlySalaryPaise) : '', hiredOn: employee?.hiredOn ?? calendarDate(), email: '', phone: '', status: employee?.status ?? 'ACTIVE',
+  });
+  const [error, setError] = useState<string | null>(null);
+  const create = useOpsMutation<Employee, object>('post', ['hr', 'shifts', 'reports'], () => '/hr/employees');
+  const update = useOpsMutation<Employee, { id: string; [key: string]: unknown }>('put', ['hr', 'shifts', 'reports'], (v) => `/hr/employees/${v.id}`);
+  const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: event.target.value });
+  async function submit() {
+    setError(null);
+    const monthlySalaryPaise = toPaise(form.salary);
+    if (!form.fullName.trim()) return setError('Enter the employee\'s name.');
+    if (!form.position.trim()) return setError('Enter a position, for example Bartender.');
+    if (!Number.isFinite(monthlySalaryPaise)) return setError('Enter the monthly salary in rupees.');
+    try {
+      const base = { fullName: form.fullName.trim(), position: form.position.trim(), department: form.department, monthlySalaryPaise, hiredOn: form.hiredOn, ...(form.email.trim() ? { email: form.email.trim() } : {}), ...(form.phone.trim() ? { phone: form.phone.trim() } : {}) };
+      if (employee) await update.mutateAsync({ id: employee.id, ...base, status: form.status });
+      else await create.mutateAsync(base);
+      toast.success(editing ? `${form.fullName.trim()} updated` : `${form.fullName.trim()} added`);
+      onClose();
+    } catch (caught) { setError(errorText(caught, 'Could not save the employee.')); }
+  }
+  return (
+    <FormDialog open={open} onClose={onClose} title={editing ? `Edit ${employee?.fullName}` : 'New employee'} description={editing ? 'Leave email and phone blank to keep what is on file.' : 'Add someone to the staff list. Link a login later so they can clock in.'} onSubmit={submit} submitLabel={editing ? 'Save changes' : 'Add employee'} pending={create.isPending || update.isPending} error={error}>
+      <Field id="emp-name" label="Full name" value={form.fullName} onChange={set('fullName')} autoComplete="off" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="emp-position" label="Position" value={form.position} onChange={set('position')} />
+        <SelectBox id="emp-department" label="Department" value={form.department} onChange={(value) => setForm({ ...form, department: value as typeof form.department })} options={DEPARTMENTS.map((d) => ({ value: d, label: humanize(d) }))} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="emp-salary" label="Monthly salary (₹)" inputMode="decimal" value={form.salary} onChange={set('salary')} />
+        <div className="space-y-2"><Label htmlFor="emp-hired">Hired on</Label><DatePicker id="emp-hired" value={form.hiredOn} onChange={(d) => setForm({ ...form, hiredOn: d })} shortcuts={false} /></div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="emp-email" label="Email" type="email" value={form.email} onChange={set('email')} autoComplete="off" />
+        <Field id="emp-phone" label="Phone" type="tel" value={form.phone} onChange={set('phone')} autoComplete="off" />
+      </div>
+      {editing && <SelectBox id="emp-status" label="Status" value={form.status} onChange={(value) => setForm({ ...form, status: value as typeof form.status })} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive (left the club)' }]} />}
+    </FormDialog>
+  );
+}
+
+function Employees({ canManage }: { canManage: boolean }) {
   const [department, setDepartment] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Employee | null>(null);
   const query = useOpsQuery<Employee[]>(['hr', 'employees', department], `/hr/employees${qs({ department })}`);
   const rows = query.data ?? [];
   return (
     <div className="space-y-4">
-      <SelectBox id="hr-dept" label="Department" className="max-w-xs" value={department} onChange={setDepartment} options={[{ value: '', label: 'All departments' }, ...['FRONT_DESK', 'BAR', 'MAINTENANCE', 'COACHING', 'MANAGEMENT'].map((d) => ({ value: d, label: humanize(d) }))]} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+      <SelectBox id="hr-dept" label="Department" className="w-56" value={department} onChange={setDepartment} options={[{ value: '', label: 'All departments' }, ...DEPARTMENTS.map((d) => ({ value: d, label: humanize(d) }))]} />
+      {canManage && <Button onClick={() => setCreating(true)}>New employee</Button>}
+      </div>
       <QueryState query={{ ...query, isEmpty: rows.length === 0 }} empty={{ title: 'No employees', description: 'Nobody matches that department.' }}>
         <Table>
-          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Position</TableHead><TableHead>Department</TableHead><TableHead className="text-right">Monthly salary</TableHead><TableHead>Hired</TableHead><TableHead className="text-right">Leave this year</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-          <TableBody>{rows.map((e) => <TableRow key={e.id}><TableCell className="font-medium">{e.fullName}</TableCell><TableCell>{e.position}</TableCell><TableCell>{humanize(e.department)}</TableCell><TableCell className="text-right"><Money paise={e.monthlySalaryPaise} /></TableCell><TableCell className="tabular">{day(e.hiredOn)}</TableCell><TableCell className="text-right tabular">{e.leaveDaysThisYear} days</TableCell><TableCell><Badge variant={e.status === 'ACTIVE' ? 'success' : 'outline'}>{humanize(e.status)}</Badge></TableCell></TableRow>)}</TableBody>
+          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Position</TableHead><TableHead>Department</TableHead><TableHead className="text-right">Monthly salary</TableHead><TableHead>Hired</TableHead><TableHead className="text-right">Leave this year</TableHead><TableHead>Status</TableHead>{canManage && <TableHead><span className="sr-only">Actions</span></TableHead>}</TableRow></TableHeader>
+          <TableBody>{rows.map((e) => <TableRow key={e.id}><TableCell className="font-medium">{e.fullName}</TableCell><TableCell>{e.position}</TableCell><TableCell>{humanize(e.department)}</TableCell><TableCell className="text-right"><Money paise={e.monthlySalaryPaise} /></TableCell><TableCell className="tabular">{day(e.hiredOn)}</TableCell><TableCell className="text-right tabular">{e.leaveDaysThisYear} days</TableCell><TableCell><Badge variant={e.status === 'ACTIVE' ? 'success' : 'outline'}>{humanize(e.status)}</Badge></TableCell>{canManage && <TableCell className="text-right"><Button size="sm" variant="outline" aria-label={`Edit ${e.fullName}`} onClick={() => setEditing(e)}>Edit</Button></TableCell>}</TableRow>)}</TableBody>
         </Table>
       </QueryState>
+      <EmployeeDialog key={`n-${creating}`} employee={null} open={creating} onClose={() => setCreating(false)} />
+      <EmployeeDialog key={`e-${editing?.id ?? 'none'}`} employee={editing} open={Boolean(editing)} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -166,7 +220,7 @@ export default function HrPage() {
     <div className="space-y-6">
       <PageHeader title="Staff and leave" description="Employees, leave requests and monthly payroll." />
       <Tabs value={active} onValueChange={setTab}><TabsList aria-label="Section">{tabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}</TabsList></Tabs>
-      {active === 'employees' && <Employees />}
+      {active === 'employees' && <Employees canManage={hasPermission('hr:manage')} />}
       {active === 'leave' && <AllLeave />}
       {active === 'mine' && <MyLeave />}
       {active === 'payroll' && <Payroll />}

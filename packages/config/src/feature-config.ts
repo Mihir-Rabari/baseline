@@ -37,7 +37,7 @@ export const FeatureConfig = {
   /**
    * Transactional email provider integration (e.g. Resend)
    */
-  enableEmail: false,
+  enableEmail: true,
 } as const;
 
 export type FeatureConfigType = typeof FeatureConfig;

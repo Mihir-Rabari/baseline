@@ -50,6 +50,13 @@
       "when": 1740800600000,
       "tag": "0006_invoice_line_position",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1740800700000,
+      "tag": "0007_password_setup_tokens",
+      "breakpoints": true
     }
   ]
 }

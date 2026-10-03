@@ -149,6 +149,10 @@ export const memberRoutes: FastifyPluginAsyncZod = async (fastify) => {
         { memberId: result.member.id, memberCode: result.member.memberCode, actorId: request.user!.id },
         'Member registered'
       );
+      // Give the new member a login and email them how to choose a password. Never blocks or fails the registration.
+      void fastify.accountService
+        .provisionMemberLogin({ id: result.member.id, fullName: result.member.fullName, email: result.member.email, planName: result.member.membership?.plan.name })
+        .catch((error: unknown) => request.log.warn({ error: error instanceof Error ? error.name : 'unknown' }, 'Member login email failed'));
       return reply.status(201).send(result);
     }
   );

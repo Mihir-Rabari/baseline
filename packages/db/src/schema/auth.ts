@@ -72,3 +72,24 @@ export const sessions = pgTable(
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+/**
+ * One-time links that let a person choose a password: a WELCOME link for an account staff created,
+ * a RESET link for a forgotten password. Only the SHA-256 hash of the token is stored, and every
+ * token expires and can be used once.
+ */
+export const passwordSetupTokens = pgTable(
+  'password_setup_tokens',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tokenHash: varchar('token_hash', { length: 128 }).notNull().unique(),
+    purpose: varchar('purpose', { length: 8 }).$type<'WELCOME' | 'RESET'>().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('idx_password_setup_tokens_user').on(t.userId)]
+);

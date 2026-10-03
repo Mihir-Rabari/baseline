@@ -33,6 +33,17 @@ export function createSignupRequestSchema(minPasswordLength = 8) {
 export const SignupRequestSchema = createSignupRequestSchema();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 
+/** POST /auth/password/setup: the one-time link's token and the new password. */
+export const SetPasswordRequestSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(1, 'Password is required').max(200),
+});
+export type SetPasswordRequest = z.infer<typeof SetPasswordRequestSchema>;
+
+/** POST /auth/password/forgot */
+export const ForgotPasswordRequestSchema = z.object({ email: EmailSchema });
+export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
+
 export const LoginRequestSchema = z.object({
   email: EmailSchema,
   password: z.string().min(1, 'Password is required'),

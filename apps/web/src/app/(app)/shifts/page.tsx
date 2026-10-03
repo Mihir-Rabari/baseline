@@ -6,6 +6,7 @@ import type { Employee, Shift } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { useOpsMutation, useOpsQuery } from '@/hooks/use-ops';
 import { qs } from '@/lib/ops';
+import { mondayOf } from '@/lib/calendar-grid';
 import { calendarDate, dateAfter } from '@/lib/booking-calendar';
 import { formatDateTime } from '@/lib/format';
 import { PageHeader } from '@/components/app-shell/page-header';
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
+import { CardGrid, ViewSwitcher, WeekCalendar, useViewPreference, type ViewKind } from '@/components/club/views';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const variant: Record<string, BadgeProps['variant']> = { SCHEDULED: 'secondary', ON_SHIFT: 'success', DONE: 'outline', MISSED: 'destructive' };
@@ -83,24 +85,42 @@ function ScheduleDialog({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
+const VIEWS: ViewKind[] = ['list', 'cards', 'calendar'];
+const tone = (status: string) => (status === 'ON_SHIFT' ? 'success' : status === 'MISSED' ? 'warning' : status === 'DONE' ? 'muted' : 'default') as 'success' | 'warning' | 'muted' | 'default';
+
 export default function ShiftsPage() {
   const { user, hasPermission } = useAuth();
   const allowed = hasPermission('shifts:read');
   const manage = hasPermission('shifts:manage');
   const today = calendarDate();
   const [from, setFrom] = useState(today);
+  const [view, setView] = useViewPreference('shifts', VIEWS, 'list');
   const [scheduling, setScheduling] = useState(false);
-  const roster = useOpsQuery<Shift[]>(['shifts', 'roster', from], `/shifts${qs({ from, to: dateAfter(from, 6) })}`, { enabled: allowed, refetchMs: 30000 });
+  const rangeFrom = view === 'calendar' ? mondayOf(from) : from;
+  const roster = useOpsQuery<Shift[]>(['shifts', 'roster', rangeFrom], `/shifts${qs({ from: rangeFrom, to: dateAfter(rangeFrom, 6) })}`, { enabled: allowed, refetchMs: 30000 });
   const remove = useOpsMutation<unknown, { id: string }>('delete', ['shifts'], (v) => `/shifts/${v.id}`);
   if (!user) return null;
   if (!allowed) return <NoAccess what="shifts" />;
   const rows = roster.data ?? [];
   return (
     <div className="space-y-6">
-      <PageHeader title="Shifts" description="Who is working when, for the seven days from the chosen date." actions={manage ? <Button onClick={() => setScheduling(true)}>Schedule shift</Button> : undefined} />
+      <PageHeader title="Shifts" description="Who is working when, for the seven days from the chosen date." actions={<><ViewSwitcher views={VIEWS} value={view} onChange={setView} />{manage && <Button onClick={() => setScheduling(true)}>Schedule shift</Button>}</>} />
       {hasPermission('shifts:clock:self') && <MyShift />}
-      <DateField value={from} min={dateAfter(today, -60)} max={dateAfter(today, 60)} onChange={setFrom} />
-      <QueryState query={{ ...roster, isEmpty: rows.length === 0 }} empty={{ title: 'No shifts in this week', description: manage ? 'Schedule a shift to fill the roster.' : 'You have no shifts scheduled.' }}>
+      {view !== 'calendar' && <DateField value={from} min={dateAfter(today, -60)} max={dateAfter(today, 60)} onChange={setFrom} />}
+      <QueryState query={{ ...roster, isEmpty: rows.length === 0 && view !== 'calendar' }} empty={{ title: 'No shifts in this week', description: manage ? 'Schedule a shift to fill the roster.' : 'You have no shifts scheduled.' }}>
+        {view === 'calendar' ? (
+          <WeekCalendar weekStart={from} onWeekChange={setFrom} emptyLabel="No shifts this week"
+            events={rows.map((s) => ({ id: s.id, startsAt: s.startsAt, endsAt: s.endsAt, title: s.employee.fullName, subtitle: humanize(s.roleLabel), tone: tone(s.status) }))} />
+        ) : view === 'cards' ? (
+          <CardGrid>{rows.map((shift) => (
+            <div key={shift.id} className="space-y-2 rounded-lg border bg-card p-4 text-sm">
+              <div className="flex items-start justify-between gap-2"><p className="font-medium">{shift.employee.fullName}</p><Badge variant={variant[shift.status]}>{humanize(shift.status)}</Badge></div>
+              <p className="text-muted-foreground">{humanize(shift.roleLabel)}</p>
+              <p className="tabular">{formatDateTime(shift.startsAt)}<br />to {formatDateTime(shift.endsAt)}</p>
+              {manage && shift.status === 'SCHEDULED' && <Button size="sm" variant="ghost" onClick={() => { void remove.mutateAsync({ id: shift.id }).then(() => toast.success('Shift deleted')).catch((e: Error) => toast.error(e.message)); }}>Delete</Button>}
+            </div>
+          ))}</CardGrid>
+        ) : (
         <Table>
           <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Role</TableHead><TableHead>Starts</TableHead><TableHead>Ends</TableHead><TableHead>Status</TableHead>{manage && <TableHead><span className="sr-only">Actions</span></TableHead>}</TableRow></TableHeader>
           <TableBody>
@@ -116,6 +136,7 @@ export default function ShiftsPage() {
             ))}
           </TableBody>
         </Table>
+        )}
       </QueryState>
       <ScheduleDialog key={String(scheduling)} open={scheduling} onClose={() => setScheduling(false)} />
     </div>

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CancelBookingRequest } from '@packages/validation';
 import { api } from '@/lib/api-client';
+import { dateAfter } from '@/lib/booking-calendar';
 
 export type BookingScope = 'upcoming' | 'past';
 
@@ -12,6 +13,11 @@ export function useMyBookings(scope: BookingScope, enabled = true) {
 
 export function useDayBookings(date: string, enabled = true) {
   return useQuery({ queryKey: ['bookings', 'day', date], queryFn: () => api.bookings.list({ date, limit: 100 }), enabled, staleTime: 15000 });
+}
+
+/** Every booking in the week starting `monday`, for the calendar view. */
+export function useWeekBookings(monday: string, enabled = true) {
+  return useQuery({ queryKey: ['bookings', 'week', monday], queryFn: () => api.bookings.list({ from: monday, to: dateAfter(monday, 6), limit: 100 }), enabled, staleTime: 15000 });
 }
 
 export function useCancelBooking() {

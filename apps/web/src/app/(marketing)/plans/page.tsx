@@ -50,7 +50,7 @@ export default function PlansPage() {
                 <TableCell className="tabular">{plan.shopDiscountPct}%</TableCell>
                 <TableCell className="tabular">{plan.barDiscountPct}%</TableCell>
                 <TableCell className="tabular">{plan.bookingHorizonDays} days</TableCell>
-                <TableCell><Link className={buttonVariants({ variant: 'outline', size: 'sm' })} href={`/contact?plan=${encodeURIComponent(plan.code)}`} aria-label={`Enquire about ${plan.name}`}>Enquire</Link></TableCell>
+                <TableCell className="space-x-2 whitespace-nowrap"><Link className={buttonVariants({ size: 'sm' })} href={`/join?plan=${encodeURIComponent(plan.code)}`} aria-label={`Join ${plan.name} online`}>Join online</Link><Link className={buttonVariants({ variant: 'outline', size: 'sm' })} href={`/contact?plan=${encodeURIComponent(plan.code)}`} aria-label={`Enquire about ${plan.name}`}>Enquire</Link></TableCell>
               </TableRow>
             ))}</TableBody>
           </Table>

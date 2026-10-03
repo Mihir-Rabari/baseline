@@ -29,6 +29,9 @@ export function monthGrid(date: string): DayCell[] {
   });
 }
 
+/** The Monday of the week that contains `date`. */
+export const mondayOf = (date: string) => dateAfter(date, -weekdayIndex(date));
+
 export const clampDate = (date: string, min?: string, max?: string) => (min && date < min ? min : max && date > max ? max : date);
 
 export function formatLongDate(date: string): string {
