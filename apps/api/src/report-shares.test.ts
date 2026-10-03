@@ -193,6 +193,36 @@ describe('Report share links (S-06)', () => {
     });
   });
 
+  describe('custom-period links (#91)', () => {
+    it('shares a fixed window: the viewer sees it and cannot widen it with ?range', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+      const share = await createShare({ from: '2031-03-01', to: '2031-03-10' });
+      expect(share).toMatchObject({ from: '2031-03-01', to: '2031-03-10' });
+      const res = await call('GET', `/public/reports/shared/${share.token}?range=month`, null);
+      expect(res.statusCode).toBe(200);
+      expect(SharedReportResponseSchema.parse(res.json())).toMatchObject({ range: 'custom', from: '2031-03-01', to: '2031-03-10' });
+      const listed = ReportShareListSchema.parse((await call('GET', '/reports/shares', owner)).json());
+      expect(listed.find((x) => x.id === share.id)).toMatchObject({ from: '2031-03-01', to: '2031-03-10' });
+      expect(JSON.stringify(listed)).not.toContain(share.token);
+    });
+
+    it('400 for a half-open, reversed, mixed or over-long period', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+      for (const payload of [
+        { from: '2031-03-01' }, { to: '2031-03-01' }, { from: '2031-03-10', to: '2031-03-01' },
+        { defaultRange: 'week', from: '2031-03-01', to: '2031-03-02' }, { from: '2030-01-01', to: '2031-03-01' }, { from: '2031-02-30', to: '2031-03-01' },
+      ]) {
+        expect((await call('POST', '/reports/shares', owner, payload)).statusCode, JSON.stringify(payload)).toBe(400);
+      }
+      expect((await call('POST', '/reports/shares', owner, { from: '2031-01-01', to: '2031-12-31' })).statusCode).toBe(201);
+    });
+
+    it('a front desk user still cannot create one', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+      expect((await call('POST', '/reports/shares', desk, { from: '2031-03-01', to: '2031-03-02' })).statusCode).toBe(403);
+    });
+  });
+
   describe('DELETE /reports/shares/:id', () => {
     it('400 for a non-UUID id and 404 for an unknown one', async (ctx) => {
       if (!hasDatabase) return ctx.skip();

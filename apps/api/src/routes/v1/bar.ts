@@ -7,7 +7,17 @@ import {
   BarEarningsQuerySchema,
   BarEarningsSchema,
   BarTableListSchema,
+  BarTableQuerySchema,
+  BarTableSchema,
+  CreateBarTableRequestSchema,
   CreateMenuItemRequestSchema,
+  DeleteBarTableResponseSchema,
+  UpdateBarTableRequestSchema,
+  CreateTableBookingRequestSchema,
+  TableBookingListSchema,
+  TableBookingQuerySchema,
+  TableBookingSchema,
+  UpdateTableBookingRequestSchema,
   HttpErrorResponseSchema,
   MenuItemListSchema,
   MenuItemSchema,
@@ -30,6 +40,7 @@ import {
 } from '@packages/validation';
 import { DomainError } from '../../lib/domain-error.js';
 import { BarService } from '../../services/bar.service.js';
+import { TableBookingService } from '../../services/table-booking.service.js';
 
 const IdParams = z.object({ id: UuidSchema });
 
@@ -48,6 +59,7 @@ const authErrors = { 401: err, 403: err } as const;
  */
 export const barRoutes: FastifyPluginAsyncZod = async (fastify) => {
   const service = new BarService(fastify.db);
+  const bookings = new TableBookingService(fastify.db);
   const ownerOnly = [requirePermission('bar:manage'), requirePermission('reports:read')];
 
   const isOwner = (request: { user?: unknown; effectiveStatements?: unknown }): boolean =>
@@ -64,12 +76,74 @@ export const barRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [requirePermission('bar:read')],
       schema: {
-        description: 'Bar tables with their open tab, if any',
+        description: 'Bar tables with their open tab, if any. Owners may pass includeInactive=true.',
         tags: ['Bar'],
-        response: { 200: BarTableListSchema, ...authErrors },
+        querystring: BarTableQuerySchema,
+        response: { 200: BarTableListSchema, 400: err, ...authErrors },
       },
     },
-    async (_request, reply) => reply.status(200).send(await service.listTables())
+    async (request, reply) =>
+      reply
+        .status(200)
+        .send(await service.listTables({ includeInactive: request.query.includeInactive === 'true' && isOwner(request) }))
+  );
+
+  fastify.post(
+    '/bar/tables',
+    {
+      preHandler: ownerOnly,
+      schema: {
+        description: 'Add a bar table (owner)',
+        tags: ['Bar'],
+        body: CreateBarTableRequestSchema,
+        response: { 201: BarTableSchema.omit({ status: true, openTab: true }), 400: err, 409: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const table = await service.createTable(request.body);
+      await fastify.iamService.logAuditEvent({ action: 'BAR_TABLE_CREATED', actor: request.user!.id, target: table.id, details: { name: table.name, seats: table.seats } });
+      request.log.info({ tableId: table.id, actorId: request.user!.id }, 'Bar table created');
+      return reply.status(201).send(table);
+    }
+  );
+
+  fastify.put(
+    '/bar/tables/:id',
+    {
+      preHandler: ownerOnly,
+      schema: {
+        description: 'Rename a bar table, change its seats or switch it on or off (owner)',
+        tags: ['Bar'],
+        params: IdParams,
+        body: UpdateBarTableRequestSchema,
+        response: { 200: BarTableSchema.omit({ status: true, openTab: true }), 400: err, 404: err, 409: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const table = await service.updateTable(request.params.id, request.body);
+      await fastify.iamService.logAuditEvent({ action: 'BAR_TABLE_UPDATED', actor: request.user!.id, target: table.id, details: { fields: Object.keys(request.body) } });
+      request.log.info({ tableId: table.id, actorId: request.user!.id }, 'Bar table updated');
+      return reply.status(200).send(table);
+    }
+  );
+
+  fastify.delete(
+    '/bar/tables/:id',
+    {
+      preHandler: ownerOnly,
+      schema: {
+        description: 'Remove a bar table (owner). A table with past tabs is switched off instead of deleted.',
+        tags: ['Bar'],
+        params: IdParams,
+        response: { 200: DeleteBarTableResponseSchema, 404: err, 409: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const { name, ...result } = await service.deleteTable(request.params.id);
+      await fastify.iamService.logAuditEvent({ action: 'BAR_TABLE_REMOVED', actor: request.user!.id, target: request.params.id, details: { name, ...result } });
+      request.log.warn({ tableId: request.params.id, actorId: request.user!.id, ...result }, 'Bar table removed');
+      return reply.status(200).send(result);
+    }
   );
 
   fastify.get(
@@ -78,6 +152,20 @@ export const barRoutes: FastifyPluginAsyncZod = async (fastify) => {
       preHandler: [requirePermission('bar:read')],
       schema: {
         description: 'Menu items, optionally filtered by category',
+        tags: ['Bar'],
+        querystring: MenuQuerySchema,
+        response: { 200: MenuItemListSchema, 400: err, ...authErrors },
+      },
+    },
+    async (request, reply) => reply.status(200).send(await service.listMenu(request.query.category))
+  );
+
+  fastify.get(
+    '/menu',
+    {
+      preHandler: [requirePermission('bar:read')],
+      schema: {
+        description: 'Menu items alias',
         tags: ['Bar'],
         querystring: MenuQuerySchema,
         response: { 200: MenuItemListSchema, 400: err, ...authErrors },
@@ -350,6 +438,78 @@ export const barRoutes: FastifyPluginAsyncZod = async (fastify) => {
         throw new DomainError('FORBIDDEN', 403, "Bar staff can only view today's earnings");
       }
       return reply.status(200).send(await service.earnings(date));
+    }
+  );
+
+  // ---------------------------------------------------------- table bookings
+
+  fastify.get(
+    '/bar/bookings',
+    {
+      preHandler: [requirePermission('bar:read')],
+      schema: {
+        description: 'Table bookings for one club day (or up to 14 days from it), for the floor timeline',
+        tags: ['Bar'],
+        querystring: TableBookingQuerySchema,
+        response: { 200: TableBookingListSchema, 400: err, ...authErrors },
+      },
+    },
+    async (request, reply) => reply.status(200).send(await bookings.list(request.query))
+  );
+
+  fastify.post(
+    '/bar/bookings',
+    {
+      preHandler: [requirePermission('bar:manage')],
+      schema: {
+        description: 'Reserve a bar table. Refused with 409 when the table is already booked in that window.',
+        tags: ['Bar'],
+        body: CreateTableBookingRequestSchema,
+        response: { 201: TableBookingSchema, 400: err, 404: err, 409: err, 422: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const booking = await bookings.create(request.body, request.user!.id);
+      await fastify.iamService.logAuditEvent({ action: 'BAR_BOOKING_CREATED', actor: request.user!.id, target: booking.id, details: { tableId: booking.tableId, startsAt: booking.startsAt } });
+      request.log.info({ bookingId: booking.id, actorId: request.user!.id }, 'Bar table booked');
+      return reply.status(201).send(booking);
+    }
+  );
+
+  fastify.put(
+    '/bar/bookings/:id',
+    {
+      preHandler: [requirePermission('bar:manage')],
+      schema: {
+        description: 'Move or resize a booking, edit its details, or change its status. Overlaps are refused with 409.',
+        tags: ['Bar'],
+        params: IdParams,
+        body: UpdateTableBookingRequestSchema,
+        response: { 200: TableBookingSchema, 400: err, 404: err, 409: err, 422: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const booking = await bookings.update(request.params.id, request.body);
+      await fastify.iamService.logAuditEvent({ action: 'BAR_BOOKING_UPDATED', actor: request.user!.id, target: booking.id, details: { fields: Object.keys(request.body) } });
+      return reply.status(200).send(booking);
+    }
+  );
+
+  fastify.delete(
+    '/bar/bookings/:id',
+    {
+      preHandler: [requirePermission('bar:manage')],
+      schema: {
+        description: 'Cancel a booking (kept as history)',
+        tags: ['Bar'],
+        params: IdParams,
+        response: { 200: TableBookingSchema, 404: err, 409: err, ...authErrors },
+      },
+    },
+    async (request, reply) => {
+      const booking = await bookings.cancel(request.params.id);
+      await fastify.iamService.logAuditEvent({ action: 'BAR_BOOKING_CANCELLED', actor: request.user!.id, target: booking.id, details: { tableId: booking.tableId } });
+      return reply.status(200).send(booking);
     }
   );
 };

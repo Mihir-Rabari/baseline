@@ -17,6 +17,7 @@ import {
 } from '@packages/db';
 import { getEnv } from '@packages/config/env';
 import { DomainError } from '../lib/domain-error.js';
+import { CategoryService } from './category.service.js';
 import type { DbExecutor } from './db-types.js';
 import { NotificationService } from './notification.service.js';
 import { PaymentService } from './payment.service.js';
@@ -197,10 +198,13 @@ const STATUS_TRANSITIONS: Record<
 export class ShopService {
   private readonly timezone: string;
 
+  private readonly categories: CategoryService;
+
   constructor(
     private readonly db: DatabaseInstance,
     options: { timezone?: string } = {}
   ) {
+    this.categories = new CategoryService(db);
     this.timezone = options.timezone ?? getEnv().CLUB_TIMEZONE;
   }
 
@@ -663,12 +667,13 @@ export class ShopService {
       pricePaise: number;
       stockQty: number;
       reorderLevel?: number;
-      imageUrl?: string;
+      imageUrl?: string | null;
       description?: string;
       discountable?: boolean;
     },
     actorUserId: string | null
   ) {
+    await this.categories.assertUsable('PRODUCT', input.category);
     return this.db.transaction(async (tx) => {
       const [existing] = await tx.select({ id: products.id }).from(products).where(eq(products.sku, input.sku)).limit(1);
       if (existing) throw new DomainError('SKU_EXISTS', 409, `A product with SKU ${input.sku} already exists.`);
@@ -708,11 +713,16 @@ export class ShopService {
       category: ProductRow['category'];
       pricePaise: number;
       reorderLevel: number;
-      imageUrl: string;
+      imageUrl: string | null;
       description: string;
       discountable: boolean;
+      isActive: boolean;
     }>
   ) {
+    if (patch.category !== undefined) {
+      const [before] = await this.db.select({ category: products.category }).from(products).where(eq(products.id, id)).limit(1);
+      if (before && before.category !== patch.category) await this.categories.assertUsable('PRODUCT', patch.category);
+    }
     return this.db.transaction(async (tx) => {
       if (patch.sku) {
         const [clash] = await tx
@@ -729,6 +739,21 @@ export class ShopService {
         .returning();
       if (!row) throw notFound('Product not found');
       return this.toProductDto(row, 0, true);
+    });
+  }
+
+  async deleteProduct(id: string) {
+    return this.db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(products).where(eq(products.id, id)).limit(1);
+      if (!existing) throw notFound('Product not found');
+      const [ordered] = await tx.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.productId, id)).limit(1);
+      if (ordered) {
+        const [updated] = await tx.update(products).set({ isActive: false, updatedAt: sql`now()` }).where(eq(products.id, id)).returning();
+        return { deleted: false, deactivated: true, product: this.toProductDto(updated, 0, true) };
+      }
+      await tx.delete(stockMovements).where(eq(stockMovements.productId, id));
+      await tx.delete(products).where(eq(products.id, id));
+      return { deleted: true, deactivated: false };
     });
   }
 

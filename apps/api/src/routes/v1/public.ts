@@ -5,7 +5,10 @@ import { bookings, courts, courtTypes, plans, socialWindows, systemSettings } fr
 import {
   AvailabilityQuerySchema, AvailabilitySchema, HttpErrorResponseSchema,
   PublicClubSchema, PlanListSchema, CreateEnquiryRequestSchema, CreateEnquiryResponseSchema,
-  CreateTrialBookingRequestSchema, CreateTrialBookingResponseSchema,
+  CreateTrialBookingRequestSchema,
+  CreatePublicBookingRequestSchema,
+  CreatePublicBookingResponseSchema,
+  promiseFeePaise, CreateTrialBookingResponseSchema,
   SharedReportParamSchema, SharedReportQuerySchema, SharedReportResponseSchema,
 } from '@packages/validation';
 import { AvailabilityService } from '../../services/availability.service.js';
@@ -81,7 +84,10 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
   }, async (request, reply) => {
     const share = await reportShares.resolve(request.params.token);
-    const { owed: _owed, alerts: _alerts, ...summary } = await reports.dashboard({ range: request.query.range ?? share.defaultRange });
+    const { owed: _owed, alerts: _alerts, ...summary } = await reports.dashboard(
+      // A custom-period link is fixed to its window; the viewer cannot widen it with ?range.
+      share.from && share.to ? { from: share.from, to: share.to } : { range: request.query.range ?? share.defaultRange }
+    );
     return reply.header('cache-control', 'no-store').send({ ...summary, expiresAt: share.expiresAt });
   });
 
@@ -108,6 +114,27 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
       },
     });
     return reply.status(201).send({ booking, leadId, message: 'Trial booked. Pay at the club on arrival.' });
+  });
+
+  // A guest picks a slot, chooses how to pay and confirms. UPI and card collect the full price;
+  // cash collects a 20% promise fee now and the rest at the venue. There is no external gateway:
+  // the chosen method is recorded as paid, exactly like a desk payment.
+  fastify.post('/public/bookings', {
+    config: postLimit,
+    schema: { tags: ['Public'], description: 'Guest booking with checkout (UPI/card full, cash = 20% promise fee).', body: CreatePublicBookingRequestSchema, response: { 201: CreatePublicBookingResponseSchema, ...errors } },
+  }, async (request, reply) => {
+    const { courtId, startsAt, name, phone, email, method } = request.body;
+    const booking = await bookingService.create({
+      courtId, startsAt: new Date(startsAt), guest: { name, phone, email }, channel: 'ONLINE', kind: 'STANDARD',
+      payNow: { method }, promiseFee: method === 'CASH',
+    });
+    const paidPaise = booking.paymentStatus === 'PAID' ? booking.pricePaise : booking.paymentStatus === 'PARTIAL' ? promiseFeePaise(booking.pricePaise) : 0;
+    const duePaise = booking.pricePaise - paidPaise;
+    request.log.info({ bookingId: booking.id, courtId, method }, 'Guest booking created');
+    return reply.status(201).send({
+      booking, paidPaise, duePaise,
+      message: duePaise > 0 ? 'Booked. Pay the rest at the club.' : 'Booked and paid. See you on court.',
+    });
   });
 
   // ---------------------------------------------------------------------------

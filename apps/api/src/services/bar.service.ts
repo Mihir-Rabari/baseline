@@ -19,6 +19,7 @@ import { getEnv } from '@packages/config/env';
 import type {
   AddTabItemRequest,
   BarEarnings,
+  CreateBarTableRequest,
   CreateMenuItemRequest,
   MenuItem,
   OpenTabRequest,
@@ -30,9 +31,11 @@ import type {
   TabSummary,
   Ticket,
   TicketListQuery,
+  UpdateBarTableRequest,
   UpdateMenuItemRequest,
 } from '@packages/validation';
 import { DomainError } from '../lib/domain-error.js';
+import { CategoryService } from './category.service.js';
 import { clubDateOf } from '../lib/club-date.js';
 import type { DbExecutor } from './db-types.js';
 import { PaymentService } from './payment.service.js';
@@ -77,6 +80,7 @@ function menuRow(row: typeof menuItems.$inferSelect): MenuItem {
     pricePaise: row.pricePaise,
     discountable: row.discountable,
     isAvailable: row.isAvailable,
+    imageUrl: row.imageUrl,
   };
 }
 
@@ -105,12 +109,13 @@ export class BarService {
     const rows = await this.db
       .select()
       .from(menuItems)
-      .where(category ? eq(menuItems.category, category as 'DRINK') : undefined)
+      .where(category ? eq(menuItems.category, category) : undefined)
       .orderBy(asc(menuItems.sortOrder), asc(menuItems.name));
     return rows.map(menuRow);
   }
 
   async createMenuItem(input: CreateMenuItemRequest): Promise<MenuItem> {
+    await new CategoryService(this.db).assertUsable('MENU', input.category);
     const [row] = await this.db
       .insert(menuItems)
       .values({
@@ -119,12 +124,17 @@ export class BarService {
         station: input.station,
         pricePaise: input.pricePaise,
         discountable: input.discountable ?? true,
+        imageUrl: input.imageUrl ?? null,
       })
       .returning();
     return menuRow(row);
   }
 
   async updateMenuItem(id: string, input: UpdateMenuItemRequest): Promise<MenuItem> {
+    if (input.category !== undefined) {
+      const [before] = await this.db.select({ category: menuItems.category }).from(menuItems).where(eq(menuItems.id, id)).limit(1);
+      if (before && before.category !== input.category) await new CategoryService(this.db).assertUsable('MENU', input.category);
+    }
     const patch: Partial<typeof menuItems.$inferInsert> = {};
     if (input.name !== undefined) patch.name = input.name;
     if (input.category !== undefined) patch.category = input.category;
@@ -132,6 +142,7 @@ export class BarService {
     if (input.pricePaise !== undefined) patch.pricePaise = input.pricePaise;
     if (input.discountable !== undefined) patch.discountable = input.discountable;
     if (input.isAvailable !== undefined) patch.isAvailable = input.isAvailable;
+    if (input.imageUrl !== undefined) patch.imageUrl = input.imageUrl;
 
     const [row] =
       Object.keys(patch).length === 0
@@ -143,11 +154,11 @@ export class BarService {
 
   // ----------------------------------------------------------------- tables
 
-  async listTables() {
+  async listTables(options: { includeInactive?: boolean } = {}) {
     const tables = await this.db
       .select()
       .from(barTables)
-      .where(eq(barTables.isActive, true))
+      .where(options.includeInactive ? undefined : eq(barTables.isActive, true))
       .orderBy(asc(barTables.name));
 
     const open = await this.db
@@ -172,6 +183,7 @@ export class BarService {
         id: table.id,
         name: table.name,
         seats: table.seats,
+        isActive: table.isActive,
         status: tab ? ('OCCUPIED' as const) : ('FREE' as const),
         openTab: tab
           ? {
@@ -184,6 +196,64 @@ export class BarService {
           : null,
       };
     });
+  }
+
+  private async tableHasOpenTab(id: string): Promise<boolean> {
+    const [open] = await this.db
+      .select({ id: tabs.id })
+      .from(tabs)
+      .where(and(eq(tabs.tableId, id), eq(tabs.status, 'OPEN')))
+      .limit(1);
+    return Boolean(open);
+  }
+
+  async createTable(input: CreateBarTableRequest) {
+    try {
+      const [row] = await this.db.insert(barTables).values({ name: input.name, seats: input.seats }).returning();
+      return { id: row.id, name: row.name, seats: row.seats, isActive: row.isActive };
+    } catch (error) {
+      if (pgCode(error) === '23505') throw new DomainError('CONFLICT', 409, `A table named "${input.name}" already exists.`);
+      throw error;
+    }
+  }
+
+  async updateTable(id: string, input: UpdateBarTableRequest) {
+    const [current] = await this.db.select().from(barTables).where(eq(barTables.id, id));
+    if (!current) throw new DomainError('NOT_FOUND', 404, 'Table not found');
+    if (input.isActive === false && current.isActive && (await this.tableHasOpenTab(id))) {
+      throw new DomainError('TABLE_OCCUPIED', 409, 'Settle or void the open tab before switching this table off.');
+    }
+    const patch: Partial<typeof barTables.$inferInsert> = {};
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.seats !== undefined) patch.seats = input.seats;
+    if (input.isActive !== undefined) patch.isActive = input.isActive;
+    if (Object.keys(patch).length === 0) {
+      return { id: current.id, name: current.name, seats: current.seats, isActive: current.isActive };
+    }
+    try {
+      const [row] = await this.db.update(barTables).set(patch).where(eq(barTables.id, id)).returning();
+      return { id: row.id, name: row.name, seats: row.seats, isActive: row.isActive };
+    } catch (error) {
+      if (pgCode(error) === '23505') throw new DomainError('CONFLICT', 409, `A table named "${input.name}" already exists.`);
+      throw error;
+    }
+  }
+
+  /** Deletes a table; one that has hosted tabs is kept (switched off) so past bills keep their table. */
+  async deleteTable(id: string): Promise<{ deleted: boolean; deactivated: boolean; name: string }> {
+    const [current] = await this.db.select().from(barTables).where(eq(barTables.id, id));
+    if (!current) throw new DomainError('NOT_FOUND', 404, 'Table not found');
+    if (await this.tableHasOpenTab(id)) {
+      throw new DomainError('TABLE_OCCUPIED', 409, 'Settle or void the open tab before removing this table.');
+    }
+    try {
+      await this.db.delete(barTables).where(eq(barTables.id, id));
+      return { deleted: true, deactivated: false, name: current.name };
+    } catch (error) {
+      if (pgCode(error) !== '23503') throw error;
+      await this.db.update(barTables).set({ isActive: false }).where(eq(barTables.id, id));
+      return { deleted: false, deactivated: true, name: current.name };
+    }
   }
 
   // ------------------------------------------------------------------- tabs

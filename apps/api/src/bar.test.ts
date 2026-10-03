@@ -277,7 +277,8 @@ describe('Bar POS (M-12)', () => {
     expect(
       (await app.inject({ method: 'GET', url: `/api/v1/bar/tabs/${randomUUID()}`, headers: as(bar) })).statusCode
     ).toBe(404);
-    expect((await createMenu(owner, { name: 'x', category: 'WINE', station: 'BAR', pricePaise: 100 })).statusCode).toBe(400);
+    expect((await createMenu(owner, { name: 'x', category: 'WINE', station: 'BAR', pricePaise: 100 })).statusCode).toBe(422); // not in the managed list
+    expect((await createMenu(owner, { name: 'x', category: 'wine list', station: 'BAR', pricePaise: 100 })).statusCode).toBe(400); // malformed code
     expect((await createMenu(owner, { name: 'x', category: 'DRINK', station: 'BAR', pricePaise: 0 })).statusCode).toBe(400);
   });
 
@@ -299,7 +300,9 @@ describe('Bar POS (M-12)', () => {
     const res = await app.inject({ method: 'GET', url: '/api/v1/bar/menu?category=FOOD', headers: as(bar) });
     expect(res.statusCode).toBe(200);
     expect(res.json().every((m: { category: string }) => m.category === 'FOOD')).toBe(true);
-    expect((await app.inject({ method: 'GET', url: '/api/v1/bar/menu?category=WINE', headers: as(bar) })).statusCode).toBe(400);
+    const unknown = await app.inject({ method: 'GET', url: '/api/v1/bar/menu?category=WINE', headers: as(bar) });
+    expect(unknown.statusCode).toBe(200);
+    expect(unknown.json()).toEqual([]);
     const missing = await app.inject({ method: 'PUT', url: `/api/v1/bar/menu/${randomUUID()}`, headers: as(owner), payload: { name: 'x' } });
     expect(missing.statusCode).toBe(404);
   });
@@ -390,6 +393,25 @@ describe('Bar POS (M-12)', () => {
     const second = SendTabResponseSchema.parse((await send(tabId)).json());
     expect(second.tickets).toHaveLength(1);
     expect(second.tickets[0].itemCount).toBe(1);
+  });
+
+  it('accepts a body-less send even when the browser sets Content-Type: application/json (regression #76)', async (ctx) => {
+    if (!hasDatabase) return ctx.skip();
+    const tabId = await guestTab();
+    await addItem(tabId, food.id, 1);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/bar/tabs/${tabId}/send`,
+      headers: { ...as(bar), 'content-type': 'application/json' },
+    });
+    expect(res.statusCode).toBe(200);
+    const malformed = await app.inject({
+      method: 'POST',
+      url: `/api/v1/bar/tabs/${tabId}/settle`,
+      headers: { ...as(bar), 'content-type': 'application/json' },
+      payload: '{not json',
+    });
+    expect(malformed.statusCode).toBe(400);
   });
 
   it('refuses to send, add to or settle an empty tab', async (ctx) => {
