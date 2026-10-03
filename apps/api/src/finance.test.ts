@@ -326,7 +326,7 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
   describe('business clients', () => {
     it('creates, searches and updates a client; open balance follows sent invoices and payments', async (ctx) => {
       if (!ready) return ctx.skip();
-      const created = await call('POST', '/business-clients', desk, { companyName: 'S04 Zephyr Unique', contactName: 'Ravi', email: ' Ops@GLOBEX.example ', gstin: '29ABCDE1234F1Z5' });
+      const created = await call('POST', '/business-clients', desk, { companyName: 'S04 Zephyr Unique', contactName: 'Ravi', email: ' Ops@ZEPHYR-S04.example ', gstin: '29ABCDE1234F1Z5' });
       expect(created.statusCode).toBe(201);
       const client = BusinessClientSchema.parse(created.json());
       clientIds.push(client.id);
