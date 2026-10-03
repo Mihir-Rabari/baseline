@@ -134,12 +134,22 @@ describe.skipIf(!url)('CourtOS schema constraints (M-01)', () => {
       expect(err.code).toBe('23514');
     });
 
-    it('rejects a SOCIAL occupancy that starts on the half hour', async () => {
+    // Regression (issue #9): SOCIAL must align to the club hour. In Asia/Kolkata (+05:30)
+    // 18:00 local is 12:30 UTC; the original check demanded UTC minute 0 and got it backwards.
+    it('accepts a SOCIAL occupancy starting on the club hour (18:00 IST = 12:30 UTC)', async () => {
+      await inRollback(async (tx) => {
+        const court = await makeCourt(tx);
+        await occupy(tx, court, '2030-01-04T12:30:00Z', '2030-01-04T13:30:00Z', 'SOCIAL');
+      });
+    });
+
+    it('rejects a SOCIAL occupancy starting at 18:30 IST (13:00 UTC)', async () => {
       const err = await violation(async (tx) => {
         const court = await makeCourt(tx);
-        await occupy(tx, court, '2030-01-01T12:30:00Z', '2030-01-01T13:30:00Z', 'SOCIAL');
+        await occupy(tx, court, '2030-01-04T13:00:00Z', '2030-01-04T14:00:00Z', 'SOCIAL');
       });
       expect(err.code).toBe('23514');
+      expect(err.constraint_name).toBe('court_occupancies_shape');
     });
 
     it('allows a MAINTENANCE block of any length', async () => {
