@@ -17,7 +17,9 @@ describe('counter sale', () => {
     vi.mocked(shopApi.pos).mockResolvedValue({ orderNumber: 'ORD-000001' } as Awaited<ReturnType<typeof shopApi.pos>>);
     mount(); fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ })); fireEvent.click(screen.getByRole('button', { name: 'Pay UPI' }));
     await waitFor(() => expect(shopApi.pos).toHaveBeenCalledWith({ items: [{ productId: products[0].id, qty: 1 }], memberId: undefined, paymentMethod: 'UPI' }));
-    await waitFor(() => expect(screen.getByText('Add products to start an order.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/completed successfully/)).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /View in orders/ })).toHaveAttribute('href', '/orders?channel=POS&q=ORD-000001');
+    expect(screen.getByText('Add products to start an order.')).toBeInTheDocument();
   });
   it('retains cart and shows an out-of-stock failure', async () => {
     vi.mocked(shopApi.pos).mockRejectedValue(new Error('Control tennis racket has insufficient stock.'));

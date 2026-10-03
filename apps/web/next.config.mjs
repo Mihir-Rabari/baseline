@@ -14,6 +14,15 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   },
+  async redirects() {
+    return [
+      {
+        source: '/menu',
+        destination: '/bar/menu',
+        permanent: true,
+      },
+    ];
+  },
   turbopack: {},
   webpack: (config) => {
     // The workspace packages above re-export their own submodules with explicit `.js`

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import type { MemberLookupItem } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
@@ -71,7 +72,7 @@ export default function CourtsPage() {
   }
 
   return <div className="space-y-6">
-    <PageHeader title="Courts" description="Choose a court and time. Prices include the selected member’s benefits." />
+    <PageHeader title="Courts" description="Choose a court and time. Prices include the selected member’s benefits." actions={hasPermission('courts:update') ? <Button asChild variant="outline"><Link href="/courts/manage">Manage courts</Link></Button> : undefined} />
     {!canRead ? <EmptyState title="Court booking is unavailable" description="Ask the front desk to help with a booking." /> : <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <DateField value={date} min={today} max={dateAfter(today, 14)} disabled={create.isPending} onChange={(value) => { setDate(value); resetSelection(); }} />

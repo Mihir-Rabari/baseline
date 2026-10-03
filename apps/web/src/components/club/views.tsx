@@ -1,19 +1,20 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Columns3, LayoutGrid, List, type LucideIcon } from 'lucide-react';
+import { CalendarDays, ChartGantt, ChevronLeft, ChevronRight, Columns3, LayoutGrid, List, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calendarDate, dateAfter } from '@/lib/booking-calendar';
 import { weekdayIndex } from '@/lib/calendar-grid';
 import { cn } from '@/lib/utils';
 
-export type ViewKind = 'list' | 'cards' | 'board' | 'calendar';
+export type ViewKind = 'list' | 'cards' | 'board' | 'calendar' | 'timeline';
 
 const VIEW_META: Record<ViewKind, { label: string; icon: LucideIcon }> = {
   list: { label: 'List', icon: List },
   cards: { label: 'Cards', icon: LayoutGrid },
   board: { label: 'Board', icon: Columns3 },
   calendar: { label: 'Calendar', icon: CalendarDays },
+  timeline: { label: 'Timeline', icon: ChartGantt },
 };
 
 /**

@@ -7,6 +7,7 @@ import type { PaymentMethod } from '@packages/validation';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { useBarTab } from '@/hooks/use-bar';
+import { categoryOptions, useCategories } from '@/hooks/use-categories';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
@@ -22,6 +23,15 @@ export default function BarTabPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const state = useBarTab(id);
+  const menuCategories = useCategories('MENU');
+  // Managed categories in their display order, plus any code still on an available item (e.g. switched off since).
+  const menuTabs = (() => {
+    const tabs = categoryOptions(menuCategories.data);
+    for (const item of state.menu.data ?? []) {
+      if (item.isAvailable && !tabs.some((t) => t.value === item.category)) tabs.push(...categoryOptions(menuCategories.data, item.category).filter((t) => t.value === item.category));
+    }
+    return tabs;
+  })();
   const [settleOpen, setSettleOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>('UPI');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -44,8 +54,8 @@ export default function BarTabPage() {
           {tab.status === 'OPEN' && <section className="space-y-4" aria-label="Menu"><h2 className="text-lg font-semibold">Add items</h2>
             {state.menu.isPending ? <Skeleton className="h-64" /> : state.menu.isError ? <PageError error={state.menu.error} onRetry={() => state.menu.refetch()} /> :
               !state.menu.data?.some((item) => item.isAvailable) ? <EmptyState title="No menu items available" description="Ask the owner to update the menu." /> :
-              <Tabs defaultValue="DRINK"><TabsList className="w-full"><TabsTrigger value="DRINK">Drinks</TabsTrigger><TabsTrigger value="FOOD">Food</TabsTrigger><TabsTrigger value="SNACK">Snacks</TabsTrigger></TabsList>
-                {['DRINK', 'FOOD', 'SNACK'].map((category) => <TabsContent key={category} value={category}><div className="grid grid-cols-2 gap-3">
+              <Tabs defaultValue={menuTabs[0]?.value}><TabsList className="w-full">{menuTabs.map((c) => <TabsTrigger key={c.value} value={c.value}>{c.label}</TabsTrigger>)}</TabsList>
+                {menuTabs.map(({ value: category }) => <TabsContent key={category} value={category}><div className="grid grid-cols-2 gap-3">
                   {state.menu.data?.filter((item) => item.category === category && item.isAvailable).map((item) => <button key={item.id} type="button" disabled={!editable || state.pending}
                     className="flex min-h-24 flex-col items-start justify-between gap-2 rounded-lg border bg-card p-4 text-left hover:bg-muted disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => run(() => state.add.mutateAsync({ menuItemId: item.id, qty: 1 }))}><span className="font-medium">{item.name}</span><Money paise={item.pricePaise} className="text-sm text-muted-foreground" /></button>)}

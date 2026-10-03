@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ShieldCheck, CalendarDays, Ticket, IdCard, Users,
   ShoppingCart, Package, Boxes, Contact, Armchair, ChefHat, Receipt, Clock,
-  FileText, BriefcaseBusiness, BookOpen, ChartColumn, Settings, type LucideIcon } from 'lucide-react';
+  FileText, BriefcaseBusiness, BookOpen, ChartColumn, Settings, Tags, type LucideIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 
@@ -71,6 +71,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         { href: '/shifts', label: 'Shifts', icon: Clock, show: can('shifts:read') },
         { href: '/invoices', label: 'Invoices', icon: FileText, show: can('invoices:read') },
         { href: '/hr', label: 'Staff and leave', icon: BriefcaseBusiness, show: can('hr:read') || can('leave:read:self') },
+        { href: '/categories', label: 'Categories', icon: Tags, show: can('products:update') || (can('bar:manage') && can('reports:read')) },
         { href: '/reports', label: 'Reports', icon: ChartColumn, show: can('reports:read') },
       ],
     },

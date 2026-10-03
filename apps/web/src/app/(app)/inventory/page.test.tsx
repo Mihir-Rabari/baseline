@@ -5,8 +5,21 @@ import products from '@/mocks/shop-products.json';
 import InventoryPage from './page';
 const state = vi.hoisted(() => ({ allowed: true, adjust: true, low: false, mutate: vi.fn(), reset: vi.fn(), error: null as Error | null }));
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'staff' }, hasPermission: (permission: string) => permission === 'inventory:adjust' ? state.adjust : state.allowed }) }));
-vi.mock('@/hooks/use-shop', () => ({ useShopProducts: (params: { lowStock?: string }) => ({ data: { data: params.lowStock === 'true' ? products.filter((p) => p.lowStock) : products }, isPending: false, error: state.error, refetch: vi.fn() }), useRestock: () => ({ mutateAsync: state.mutate, reset: state.reset, error: null, isPending: false }) }));
-vi.mock('@/hooks/use-ops', () => ({ useOpsMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+vi.mock('@/hooks/use-shop', () => ({
+  useShopProducts: (params: { lowStock?: string }) => ({
+    data: { data: params.lowStock === 'true' ? products.filter((p) => p.lowStock) : products },
+    isPending: false,
+    error: state.error,
+    refetch: vi.fn(),
+  }),
+  useRestock: () => ({ mutateAsync: state.mutate, reset: state.reset, error: null, isPending: false }),
+  useAdjustStock: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), reset: vi.fn(), error: null, isPending: false }),
+  useDeleteProduct: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useProductMovements: () => ({ data: { data: [] }, isPending: false, isError: false }),
+  useCreateProduct: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useUpdateProduct: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+}));
+vi.mock('@/hooks/use-ops', () => ({ useOpsQuery: () => ({ data: [{ id: 'c1', scope: 'PRODUCT', code: 'RACKET', name: 'Rackets', sortOrder: 1, isActive: true }], isPending: false, error: null }), useOpsMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
 describe('inventory', () => {
   beforeEach(() => { state.allowed = true; state.adjust = true; state.error = null; state.mutate.mockReset().mockResolvedValue({}); });
