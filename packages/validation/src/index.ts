@@ -2,6 +2,7 @@ export * from './pagination.js';
 export * from './common.js';
 export * from './http-errors.js';
 export * from './auth.js';
+export * from './profile-avatar.js';
 export * from './iam.js';
 export * from './domain-common.js';
 export * from './plans.js';
