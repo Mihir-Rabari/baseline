@@ -8,9 +8,12 @@ import { cn } from '@/lib/utils';
 
 export interface DatePickerProps {
   id?: string;
-  /** `YYYY-MM-DD`, or empty for no date. */
-  value: string;
-  onChange: (date: string) => void;
+  /** `YYYY-MM-DD`, or empty for no date. Omit to let the picker keep its own value (use with `name` in a form). */
+  value?: string;
+  defaultValue?: string;
+  /** Submits the date with a form, like an input would. */
+  name?: string;
+  onChange?: (date: string) => void;
   min?: string;
   max?: string;
   disabled?: boolean;
@@ -27,11 +30,13 @@ export interface DatePickerProps {
  * stays trapped where it should) and by keyboard: arrows move a day or a week, Page Up and Page
  * Down move a month, Home and End jump to the start and end of the week, Enter picks, Escape closes.
  */
-export function DatePicker({ id, value, onChange, min, max, disabled, placeholder = 'Choose a date', className, shortcuts = true, timezone = 'Asia/Kolkata' }: DatePickerProps) {
+export function DatePicker({ id, value: controlled, defaultValue = '', name, onChange, min, max, disabled, placeholder = 'Choose a date', className, shortcuts = true, timezone = 'Asia/Kolkata' }: DatePickerProps) {
   const autoId = useId();
   const triggerId = id ?? autoId;
   const today = calendarDate(new Date(), timezone);
   const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(defaultValue);
+  const value = controlled ?? own;
   const [focused, setFocused] = useState(value || today);
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -50,7 +55,7 @@ export function DatePicker({ id, value, onChange, min, max, disabled, placeholde
   }, [open, focused]);
 
   function openPanel() { setFocused(clampDate(value || today, min, max)); setOpen(true); }
-  function pick(date: string) { if (!inRange(date)) return; onChange(date); setOpen(false); trigger.current?.focus(); }
+  function pick(date: string) { if (!inRange(date)) return; setOwn(date); onChange?.(date); setOpen(false); trigger.current?.focus(); }
 
   function onKeyDown(event: React.KeyboardEvent) {
     const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
@@ -73,6 +78,7 @@ export function DatePicker({ id, value, onChange, min, max, disabled, placeholde
   const presets = shortcuts ? [{ label: 'Today', date: today }, { label: 'Tomorrow', date: dateAfter(today, 1) }, { label: 'Next week', date: dateAfter(today, 7) }].filter((p) => inRange(p.date)) : [];
   return (
     <div ref={root} className={cn('relative', className)}>
+      {name && <input type="hidden" name={name} value={value} />}
       <button
         ref={trigger} id={triggerId} type="button" disabled={disabled} aria-haspopup="dialog" aria-expanded={open}
         onClick={() => (open ? setOpen(false) : openPanel())}

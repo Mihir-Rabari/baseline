@@ -12,10 +12,10 @@ import { PageError } from '@/components/club/page-error';
 import { StatTile } from '@/components/club/stat-tile';
 import { Money } from '@/components/club/money';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function EarningsPage() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function EarningsPage() {
     <PageHeader title="Bar earnings" description="Review payments and hand over the closing report." actions={<>
       <Button asChild variant="outline"><Link href="/bar">Bar floor</Link></Button><Button variant="outline" disabled={!data} onClick={() => window.print()}>Print report</Button>
     </>} />
-    {canRead && <div className="space-y-2"><Label htmlFor="earnings-date">Club date</Label><Input id="earnings-date" type="date" className="w-fit" value={date} max={clubToday()} disabled={!canChooseDate} onChange={(event) => { if (event.target.value) setDate(event.target.value); }} />{!canChooseDate && <p className="text-sm text-muted-foreground">Your earnings report shows today.</p>}</div>}
+    {canRead && <div className="space-y-2"><Label htmlFor="earnings-date">Club date</Label><DatePicker id="earnings-date" className="w-56" value={date} max={clubToday()} disabled={!canChooseDate} shortcuts={false} onChange={(value) => { if (value) setDate(value); }} />{!canChooseDate && <p className="text-sm text-muted-foreground">Your earnings report shows today.</p>}</div>}
     {!canRead ? <EmptyState title="Bar access required" description="Ask the owner for access to bar earnings." /> : query.isPending ? <Skeleton className="h-72" /> : query.isError ? <PageError error={query.error} onRetry={() => query.refetch()} /> : data && <>
       <div className="grid gap-4 sm:grid-cols-3"><StatTile label="Takings" value={formatMoney(data.totalPaise)} /><StatTile label="Tabs settled" value={String(data.tabsSettled)} /><StatTile label="Average tab" value={formatMoney(data.averageTabPaise)} /></div>
       {data.tabsSettled === 0 ? <EmptyState title="No settled tabs" description="Payments appear here after a tab is settled on this date." /> : <>
