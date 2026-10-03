@@ -104,7 +104,7 @@ describe('Report breakdown (#63)', () => {
     const res = await get('/api/v1/reports/export.csv?type=breakdown&range=month', owner);
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toContain('text/csv');
-    expect(res.headers['content-disposition']).toMatch(/courtos-breakdown-month-\d{4}-\d{2}\.csv/);
+    expect(res.headers['content-disposition']).toMatch(/baseline-breakdown-month-\d{4}-\d{2}\.csv/);
     expect(res.body.split('\r\n')[0]).toBe('Section,Label,Count,Amount (INR)');
   });
 });
@@ -228,7 +228,7 @@ describe('Report detail exports and PDF (#91)', () => {
         const res = await get(`/api/v1/reports/export.csv?type=${t}&${window}`, owner);
         expect(res.statusCode, t).toBe(200);
         expect(res.headers['content-type']).toContain('text/csv');
-        expect(res.headers['content-disposition']).toContain(`courtos-${t}-`);
+        expect(res.headers['content-disposition']).toContain(`baseline-${t}-`);
         expect(res.body.split('\r\n')[0]).toBe(headers[t]);
       }
 
@@ -251,7 +251,7 @@ describe('Report detail exports and PDF (#91)', () => {
         const pdf = await get(`/api/v1/reports/export.pdf?type=${type}&${window}`, owner);
         expect(pdf.statusCode, type).toBe(200);
         expect(pdf.headers['content-type']).toBe('application/pdf');
-        expect(pdf.headers['content-disposition']).toMatch(/attachment; filename="courtos-.*\.pdf"/);
+        expect(pdf.headers['content-disposition']).toMatch(/attachment; filename="baseline-.*\.pdf"/);
         expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
         expect(pdf.rawPayload.toString('latin1').trimEnd().endsWith('%%EOF')).toBe(true);
       }
