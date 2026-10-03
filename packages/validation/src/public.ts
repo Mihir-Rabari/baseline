@@ -5,6 +5,20 @@ import { BookingSchema } from './bookings.js';
 import { PhoneSchema } from './members.js';
 
 /** GET /public/club */
+/** PUT /club/profile: the public details of the club. Any subset; at least one field. */
+export const UpdateClubProfileRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120).optional(),
+    tagline: z.string().trim().max(200).optional(),
+    phone: z.string().trim().max(32).optional(),
+    address: z.string().trim().max(300).optional(),
+  })
+  .refine((v) => Object.values(v).some((value) => value !== undefined), { message: 'Provide at least one field to change', path: ['name'] });
+export type UpdateClubProfileRequest = z.infer<typeof UpdateClubProfileRequestSchema>;
+
+export const ClubProfileSchema = z.object({ name: z.string(), tagline: z.string(), phone: z.string(), address: z.string() });
+export type ClubProfile = z.infer<typeof ClubProfileSchema>;
+
 export const PublicClubSchema = z.object({
   name: z.string(),
   tagline: z.string(),

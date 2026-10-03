@@ -2,9 +2,10 @@ import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -33,17 +34,27 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Shows a spinner and blocks clicks. A label ending in an ellipsis ("Saving…") does this automatically. */
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Component = asChild ? Slot : 'button';
+  ({ className, variant, size, asChild = false, loading, children, disabled, ...props }, ref) => {
+    if (asChild) {
+      return <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>{children}</Slot>;
+    }
+    const busy = loading ?? (typeof children === 'string' && /(…|\.\.\.)$/.test(children));
     return (
-      <Component
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        disabled={disabled || busy}
+        aria-busy={busy || undefined}
         {...props}
-      />
+      >
+        {busy && <Spinner className="h-3.5 w-3.5" />}
+        {children}
+      </button>
     );
   }
 );

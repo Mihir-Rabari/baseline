@@ -21,6 +21,7 @@ import type {
   Plan,
   RenewMembershipResponse,
   UpdatePlanRequest,
+  UpdateMemberRequest,
   UpsertMyMemberRequest,
   CreateMemberResponse,
 } from '@packages/validation';
@@ -520,6 +521,21 @@ export class MembershipService {
     });
 
     return { member: await this.getMember(memberId), invoice: sale.invoice, payment: sale.payment };
+  }
+
+  /** Staff edit of a member's contact details (PATCH /members/:id). Only the fields sent change. */
+  async updateMember(id: string, input: UpdateMemberRequest): Promise<Member> {
+    const values: Partial<typeof members.$inferInsert> = {};
+    if (input.fullName !== undefined) values.fullName = input.fullName;
+    if (input.phone !== undefined) values.phone = input.phone;
+    if (input.email !== undefined) values.email = input.email;
+    if (input.dateOfBirth !== undefined) values.dateOfBirth = input.dateOfBirth;
+    if (input.notes !== undefined) values.notes = input.notes;
+    if (Object.keys(values).length) {
+      const updated = await this.db.update(members).set({ ...values, updatedAt: new Date() }).where(eq(members.id, id)).returning({ id: members.id });
+      if (!updated.length) throw new DomainError('NOT_FOUND', 404, 'Member not found');
+    }
+    return this.getMember(id);
   }
 
   /** Creates or updates the caller's own profile (PUT /me/member). */

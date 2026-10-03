@@ -19,6 +19,7 @@ import {
   RenewMembershipRequestSchema,
   RenewMembershipResponseSchema,
   UpdatePlanRequestSchema,
+  UpdateMemberRequestSchema,
   UpsertMyMemberRequestSchema,
   UuidSchema,
 } from '@packages/validation';
@@ -164,6 +165,25 @@ export const memberRoutes: FastifyPluginAsyncZod = async (fastify) => {
       },
     },
     async (request, reply) => reply.status(200).send(await service.getMember(request.params.id))
+  );
+
+  fastify.patch(
+    '/members/:id',
+    {
+      preHandler: deskRead,
+      schema: {
+        description: "Edit a member's name, phone, email, date of birth or notes",
+        tags: ['Members'],
+        params: IdParams,
+        body: UpdateMemberRequestSchema,
+        response: { 200: MemberSchema, ...errors },
+      },
+    },
+    async (request, reply) => {
+      const member = await service.updateMember(request.params.id, request.body);
+      request.log.info({ memberId: member.id, actorId: request.user!.id }, 'Member updated');
+      return reply.status(200).send(member);
+    }
   );
 
   fastify.get(

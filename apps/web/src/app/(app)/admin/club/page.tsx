@@ -7,11 +7,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { useOpsMutation, useOpsQuery } from '@/hooks/use-ops';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { Money } from '@/components/club/money';
-import { NoAccess, QueryState } from '@/components/club/ops-bits';
+import { NoAccess, QueryState, SelectBox } from '@/components/club/ops-bits';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -28,10 +28,9 @@ function WindowRow({ window: w, canEdit }: { window: SocialWindow; canEdit: bool
   return (
     <li className="space-y-2 rounded-lg border p-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-2"><Label htmlFor={`w-day-${w.id}`}>Day</Label>
-          <select id={`w-day-${w.id}`} disabled={!canEdit} className="h-9 w-40 rounded-md border border-input bg-background px-3 text-sm" value={form.weekday} onChange={(event) => setForm({ ...form, weekday: event.target.value })}>{WEEKDAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></div>
-        <div className="space-y-2"><Label htmlFor={`w-start-${w.id}`}>From</Label><Input id={`w-start-${w.id}`} type="time" disabled={!canEdit} className="w-32" value={form.startsTime} onChange={(event) => setForm({ ...form, startsTime: event.target.value })} /></div>
-        <div className="space-y-2"><Label htmlFor={`w-end-${w.id}`}>To</Label><Input id={`w-end-${w.id}`} type="time" disabled={!canEdit} className="w-32" value={form.endsTime} onChange={(event) => setForm({ ...form, endsTime: event.target.value })} /></div>
+        <SelectBox id={`w-day-${w.id}`} label="Day" className="w-44" disabled={!canEdit} value={form.weekday} onChange={(value) => setForm({ ...form, weekday: value })} options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))} />
+        <div className="space-y-2"><Label htmlFor={`w-start-${w.id}`}>From</Label><TimePicker id={`w-start-${w.id}`} label="From" disabled={!canEdit} value={form.startsTime} onChange={(value) => setForm({ ...form, startsTime: value })} /></div>
+        <div className="space-y-2"><Label htmlFor={`w-end-${w.id}`}>To</Label><TimePicker id={`w-end-${w.id}`} label="To" disabled={!canEdit} value={form.endsTime} onChange={(value) => setForm({ ...form, endsTime: value })} /></div>
         <Badge variant={w.isActive ? 'success' : 'outline'}>{w.isActive ? 'Active' : 'Paused'}</Badge>
         {canEdit && <>
           <Button size="sm" disabled={!dirty || save.isPending} onClick={() => { void run({ weekday: Number(form.weekday), startsTime: form.startsTime, endsTime: form.endsTime }, 'Social window saved'); }}>Save</Button>

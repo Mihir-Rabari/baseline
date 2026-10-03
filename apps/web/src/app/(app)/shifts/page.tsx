@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -72,9 +72,9 @@ function ScheduleDialog({ open, onClose }: { open: boolean; onClose: () => void 
         <DialogHeader><DialogTitle>Schedule a shift</DialogTitle><DialogDescription>Times are in your browser's time zone.</DialogDescription></DialogHeader>
         <SelectBox id="shift-employee" label="Employee" value={chosen} onChange={setEmployeeId} options={(employees.data ?? []).map((e) => ({ value: e.id, label: `${e.fullName} (${humanize(e.department)})` }))} />
         <SelectBox id="shift-role" label="Role" value={role} onChange={setRole} options={ROLE_LABELS.map((r) => ({ value: r, label: humanize(r) }))} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2"><Label htmlFor="shift-start">Starts</Label><Input id="shift-start" type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} /></div>
-          <div className="space-y-2"><Label htmlFor="shift-end">Ends</Label><Input id="shift-end" type="datetime-local" value={ends} onChange={(event) => setEnds(event.target.value)} /></div>
+        <div className="grid gap-4">
+          <div className="space-y-2"><Label htmlFor="shift-start">Starts</Label><DateTimePicker id="shift-start" value={starts} onChange={setStarts} /></div>
+          <div className="space-y-2"><Label htmlFor="shift-end">Ends</Label><DateTimePicker id="shift-end" value={ends} onChange={setEnds} /></div>
         </div>
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         <DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={create.isPending || !chosen} onClick={() => { void submit(); }}>Schedule</Button></DialogFooter>

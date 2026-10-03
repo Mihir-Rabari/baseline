@@ -16,6 +16,8 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
+import { MonthField } from '@/components/ui/month-field';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -100,8 +102,8 @@ function RequestDialog({ open, onClose }: { open: boolean; onClose: () => void }
         <DialogHeader><DialogTitle>Request leave</DialogTitle><DialogDescription>The owner is notified and will approve or reject it.</DialogDescription></DialogHeader>
         <SelectBox id="leave-type" label="Type" value={form.leaveType} onChange={(v) => setForm({ ...form, leaveType: v })} options={['CASUAL', 'SICK', 'PAID'].map((t) => ({ value: t, label: humanize(t) }))} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2"><Label htmlFor="leave-from">From</Label><Input id="leave-from" type="date" value={form.fromDate} onChange={(e) => setForm({ ...form, fromDate: e.target.value })} /></div>
-          <div className="space-y-2"><Label htmlFor="leave-to">To</Label><Input id="leave-to" type="date" value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} /></div>
+          <div className="space-y-2"><Label htmlFor="leave-from">From</Label><DatePicker id="leave-from" value={form.fromDate} onChange={(d) => setForm({ ...form, fromDate: d, toDate: form.toDate < d ? d : form.toDate })} /></div>
+          <div className="space-y-2"><Label htmlFor="leave-to">To</Label><DatePicker id="leave-to" value={form.toDate} min={form.fromDate} onChange={(d) => setForm({ ...form, toDate: d })} /></div>
         </div>
         <div className="space-y-2"><Label htmlFor="leave-reason">Reason (optional)</Label><Input id="leave-reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></div>
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
@@ -133,7 +135,7 @@ function Payroll() {
   const data = query.data;
   return (
     <div className="space-y-4">
-      <div className="space-y-2"><Label htmlFor="payroll-month">Month</Label><Input id="payroll-month" type="month" className="w-44" value={month} onChange={(e) => setMonth(e.target.value)} /></div>
+      <MonthField id="payroll-month" value={month} onChange={setMonth} />
       <QueryState query={query}>
         {data && <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3"><Stat label="Payroll for the month" value={<Money paise={data.totalPaise} />} /><Stat label="Headcount" value={data.headcount} /><Stat label="On leave" value={data.onLeave.length} /></div>

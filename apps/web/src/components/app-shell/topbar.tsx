@@ -83,7 +83,7 @@ export function Topbar({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/profile">Profile</Link>
+                <Link href="/dashboard?tab=profile">Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => logout()}>Sign out</DropdownMenuItem>

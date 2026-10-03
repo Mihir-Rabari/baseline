@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { TopProgress } from '@/components/app-shell/top-progress';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -29,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <TopProgress />
           {children}
           <Toaster richColors position="bottom-right" />
         </AuthProvider>
