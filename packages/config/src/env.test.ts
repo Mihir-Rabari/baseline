@@ -9,7 +9,7 @@ describe('Environment Configuration (@packages/config)', () => {
     });
 
     expect(valid.PORT).toBe(3001);
-    expect(valid.APP_NAME).toBe('production-starter');
+    expect(valid.APP_NAME).toBe('Baseline');
     expect(valid.DATABASE_URL).toBe('postgres://postgres:postgres@localhost:5432/app_db');
     expect(valid.REDIS_URL).toBe('redis://localhost:6379');
   });

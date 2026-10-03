@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { getOpenApiSpecification, ApiTags } from './index.js';
 
 describe('OpenAPI Specification Builder', () => {
+  it('uses the Baseline product name by default', () => {
+    expect(getOpenApiSpecification().info.title).toBe('Baseline API');
+  });
+
   it('should generate valid OpenAPI 3.0 configuration', () => {
     const doc = getOpenApiSpecification({
       title: 'Custom Test API',
