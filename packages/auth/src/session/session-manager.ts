@@ -155,10 +155,25 @@ export class SessionManager {
             return { valid: false, error: 'Account disabled', code: 'ACCOUNT_DISABLED' };
           }
 
+          // Redis stores JSON, so Date fields come back as ISO strings. Rehydrate them so
+          // cache hits and database reads yield identical shapes (callers use .toISOString()).
+          const { user: cu, session: cs } = cached;
+          const toDate = (v: Date | string | null) => (v === null ? null : new Date(v));
           return {
             valid: true,
-            user: cached.user,
-            session: cached.session,
+            user: {
+              ...cu,
+              lastLoginAt: toDate(cu.lastLoginAt),
+              createdAt: new Date(cu.createdAt),
+              updatedAt: new Date(cu.updatedAt),
+            },
+            session: {
+              ...cs,
+              expiresAt,
+              revokedAt: toDate(cs.revokedAt),
+              createdAt: new Date(cs.createdAt),
+              updatedAt: new Date(cs.updatedAt),
+            },
           };
         }
       } catch {
