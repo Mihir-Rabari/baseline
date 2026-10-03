@@ -32,6 +32,32 @@ Your root account credentials were generated during scaffolding and written to
 `.env` as `INITIAL_ROOT_EMAIL` / `INITIAL_ROOT_PASSWORD`. `pnpm db:seed` uses them to
 bootstrap the ROOT identity.
 
+Local storage uses `ghcr.io/coollabsio/minio:latest`, a community build of MinIO
+that includes the `mc` client. Both storage services use this image because the
+previous `minio/minio` and `minio/mc` images are no longer publicly pullable.
+The `minio-init` service creates the configured bucket idempotently and remains
+running with a bucket health check, so `docker compose up -d --wait` confirms
+storage readiness and reports initialization failures.
+
+To refresh the latest GHCR image without deleting your data:
+
+```bash
+docker compose pull minio minio-init
+docker compose up -d --wait
+```
+
+The publisher's source and build process are available at
+[coollabsio/minio](https://github.com/coollabsio/minio). The image checked for this
+change runs server `RELEASE.2025-10-15T17-29-55Z` and client
+`RELEASE.2025-08-13T08-35-41Z`; future pulls of `latest` may change these versions.
+The newer community console provides object browsing; administration uses `mc`.
+
+The opt-in storage regression creates its own disposable Docker network and
+volume, tests initialization, bad credentials and S3 operations, then cleans up:
+`RUN_STORAGE_SMOKE=true pnpm test packages/shared/src/storage/minio-compose.test.ts` on POSIX,
+or `$env:RUN_STORAGE_SMOKE='true'; pnpm test packages/shared/src/storage/minio-compose.test.ts`
+in PowerShell.
+
 ---
 
 ## 1a. Before Deploying
