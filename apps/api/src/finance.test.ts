@@ -326,25 +326,25 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
   describe('business clients', () => {
     it('creates, searches and updates a client; open balance follows sent invoices and payments', async (ctx) => {
       if (!ready) return ctx.skip();
-      const created = await call('POST', '/business-clients', desk, { companyName: 'S04 Globex', contactName: 'Ravi', email: ' Ops@GLOBEX.example ', gstin: '29ABCDE1234F1Z5' });
+      const created = await call('POST', '/business-clients', desk, { companyName: 'S04 Zephyr Unique', contactName: 'Ravi', email: ' Ops@GLOBEX.example ', gstin: '29ABCDE1234F1Z5' });
       expect(created.statusCode).toBe(201);
       const client = BusinessClientSchema.parse(created.json());
       clientIds.push(client.id);
-      expect(client).toMatchObject({ companyName: 'S04 Globex', email: 'ops@globex.example', openBalancePaise: 0 });
+      expect(client).toMatchObject({ companyName: 'S04 Zephyr Unique', email: 'ops@zephyr-s04.example', openBalancePaise: 0 });
 
-      const found = BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=globex', desk)).json());
+      const found = BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=zephyr', desk)).json());
       expect(found.data.map((c) => c.id)).toEqual([client.id]);
 
       const inv = await call('POST', '/invoices', desk, { businessClientId: client.id, lines: [line('Event', 1, 500_000)] });
       invoiceIds.push(inv.json().id);
-      expect(BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=globex', desk)).json()).data[0].openBalancePaise).toBe(0); // drafts are not owed yet
+      expect(BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=zephyr', desk)).json()).data[0].openBalancePaise).toBe(0); // drafts are not owed yet
       await call('POST', `/invoices/${inv.json().id}/send`, desk);
-      expect(BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=globex', desk)).json()).data[0].openBalancePaise).toBe(500_000);
+      expect(BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=zephyr', desk)).json()).data[0].openBalancePaise).toBe(500_000);
       await call('POST', `/invoices/${inv.json().id}/pay`, desk, { method: 'CASH', amountPaise: 200_000 });
-      expect(BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=globex', desk)).json()).data[0].openBalancePaise).toBe(300_000);
+      expect(BusinessClientPageSchema.parse((await call('GET', '/business-clients?q=zephyr', desk)).json()).data[0].openBalancePaise).toBe(300_000);
 
       const updated = await call('PUT', `/business-clients/${client.id}`, desk, { phone: '+919811122233', billingAddress: '1 Court Road' });
-      expect(BusinessClientSchema.parse(updated.json())).toMatchObject({ phone: '+919811122233', billingAddress: '1 Court Road', companyName: 'S04 Globex', openBalancePaise: 300_000 });
+      expect(BusinessClientSchema.parse(updated.json())).toMatchObject({ phone: '+919811122233', billingAddress: '1 Court Road', companyName: 'S04 Zephyr Unique', openBalancePaise: 300_000 });
       expect((await call('PUT', `/business-clients/${client.id}`, desk, {})).statusCode).toBe(200);
     });
 
