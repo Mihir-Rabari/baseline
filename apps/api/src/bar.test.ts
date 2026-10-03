@@ -20,6 +20,7 @@ import {
   TabSummaryPageSchema,
   TicketListSchema,
 } from '@packages/validation';
+import { IamConfig } from '@packages/config';
 import { buildApp } from './app.js';
 import { addDays, clubDateOf } from './lib/club-date.js';
 import { PaymentService } from './services/payment.service.js';
@@ -747,6 +748,22 @@ describe('Bar POS (M-12)', () => {
       expect(paths[`/api/v1${path}`]).toBeDefined();
     }
   });
+  it('keeps bar staff away from finance: no reports or payments permission, and no way in over HTTP', async (ctx) => {
+    const actionsOf = (policy: { statements: Array<{ actions: readonly string[] }> }) =>
+      policy.statements.flatMap((s) => [...s.actions]);
+    const barActions = actionsOf(IamConfig.policies.BarStaffPolicy);
+    expect(barActions.filter((a) => a.startsWith('reports:') || a.startsWith('payments:'))).toEqual([]);
+    expect(actionsOf(IamConfig.policies.OwnerPolicy)).toContain('reports:read');
+
+    if (!hasDatabase) return ctx.skip();
+    for (const url of ['/reports/dashboard', '/reports/export.csv', '/payments']) {
+      const res = await app.inject({ method: 'GET', url: `/api/v1${url}`, headers: as(bar) });
+      // 403 once those routes exist (guarded by reports:read / payments:read); 404 until then.
+      // Either way the bar role never receives data.
+      expect([403, 404], url).toContain(res.statusCode);
+    }
+  });
+
   it('never exposes stack traces or internals in bar error responses', async (ctx) => {
     if (!hasDatabase) return ctx.skip();
     const res = await app.inject({ method: 'GET', url: `/api/v1/bar/tabs/${randomUUID()}`, headers: as(bar) });

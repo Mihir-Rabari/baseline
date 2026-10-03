@@ -1,0 +1,47 @@
+[
+  {
+    "id": "a0000000-0000-4000-8000-000000000001",
+    "code": "GOLD",
+    "name": "Gold",
+    "description": "Full access, free court play",
+    "monthlyFeePaise": 300000,
+    "courtDiscountPct": 100,
+    "shopDiscountPct": 15,
+    "barDiscountPct": 10,
+    "maxBookingsPerDay": 2,
+    "bookingHorizonDays": 14,
+    "minAge": null,
+    "maxAge": null,
+    "isActive": true
+  },
+  {
+    "id": "a0000000-0000-4000-8000-000000000002",
+    "code": "SILVER",
+    "name": "Silver",
+    "description": "Standard access with discounted court play",
+    "monthlyFeePaise": 150000,
+    "courtDiscountPct": 30,
+    "shopDiscountPct": 8,
+    "barDiscountPct": 5,
+    "maxBookingsPerDay": 2,
+    "bookingHorizonDays": 7,
+    "minAge": null,
+    "maxAge": null,
+    "isActive": true
+  },
+  {
+    "id": "a0000000-0000-4000-8000-000000000003",
+    "code": "JUNIOR",
+    "name": "Junior",
+    "description": "Discounted access for members under 18",
+    "monthlyFeePaise": 80000,
+    "courtDiscountPct": 50,
+    "shopDiscountPct": 10,
+    "barDiscountPct": 5,
+    "maxBookingsPerDay": 2,
+    "bookingHorizonDays": 7,
+    "minAge": null,
+    "maxAge": 17,
+    "isActive": true
+  }
+]

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { systemSettings, type DatabaseInstance } from '@packages/db';
+import { systemSettings } from '@packages/db';
+import type { DbExecutor } from './db-types.js';
 import { parseTimeOfDay, type OpeningHours } from './time.js';
 
 /**
@@ -14,7 +15,7 @@ export const CANCEL_CUTOFF_HOURS_KEY = 'booking.cancel_cutoff_hours';
 export const DEFAULT_CLUB_HOURS: OpeningHours = { open: '06:00', close: '22:00' }; // BR-01
 export const DEFAULT_CANCEL_CUTOFF_HOURS = 2; // BR-08
 
-async function readSetting(db: DatabaseInstance, key: string): Promise<unknown> {
+async function readSetting(db: DbExecutor, key: string): Promise<unknown> {
   const [row] = await db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, key)).limit(1);
   return row?.value;
 }
@@ -31,11 +32,11 @@ export function parseClubHours(value: unknown): OpeningHours | null {
   }
 }
 
-export async function getClubHours(db: DatabaseInstance): Promise<OpeningHours> {
+export async function getClubHours(db: DbExecutor): Promise<OpeningHours> {
   return parseClubHours(await readSetting(db, CLUB_HOURS_KEY)) ?? DEFAULT_CLUB_HOURS;
 }
 
-export async function getCancelCutoffHours(db: DatabaseInstance): Promise<number> {
+export async function getCancelCutoffHours(db: DbExecutor): Promise<number> {
   const value = await readSetting(db, CANCEL_CUTOFF_HOURS_KEY);
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : DEFAULT_CANCEL_CUTOFF_HOURS;
 }

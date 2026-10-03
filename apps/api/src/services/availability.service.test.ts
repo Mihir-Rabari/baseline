@@ -21,8 +21,8 @@ import {
 import { getCancelCutoffHours, getClubHours, parseClubHours } from './club-settings.js';
 
 const IST = 'Asia/Kolkata';
-// Club zone used by the helpers below. Since migration 0004 (issue #9) the SOCIAL shape check
-// requires UTC minute 30, i.e. an on-the-hour start in IST, so social tests run in the real club zone.
+// The real club zone. Migration 0004 shapes SOCIAL occupancies to start at UTC minute 30, which is
+// exactly an on-the-hour IST session (18:00 IST = 12:30Z), so no zone override is needed.
 const zone = IST;
 const MONDAY = '2026-10-12'; // no social window unless a test creates one
 const WEDNESDAY = '2026-10-14';

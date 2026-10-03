@@ -1,4 +1,7 @@
 import type { ReadinessResponse, HealthSummaryResponse } from '@packages/shared';
+import type { Plan, PublicClub } from './club-types';
+import plansMock from '@/mocks/plans.json';
+import clubMock from '@/mocks/club.json';
 import type {
   SignupRequest,
   LoginRequest,
@@ -22,6 +25,10 @@ import type {
 } from '@packages/validation';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+
+export const mock = <T,>(data: T, ms = 300): Promise<T> =>
+  new Promise<T>((resolve) => setTimeout(() => resolve(data), ms));
 
 export class ApiError extends Error {
   public statusCode: number;
@@ -102,6 +109,13 @@ export async function fetchApi<T>(endpoint: string, options: RequestOptions = {}
  * Typed API Client
  */
 export const api = {
+  plans: {
+    list: (): Promise<Plan[]> => USE_MOCKS ? mock(plansMock) : fetchApi<Plan[]>('/api/v1/plans'),
+  },
+  public: {
+    plans: (): Promise<Plan[]> => USE_MOCKS ? mock(plansMock) : fetchApi<Plan[]>('/api/v1/public/plans'),
+    club: (): Promise<PublicClub> => USE_MOCKS ? mock(clubMock) : fetchApi<PublicClub>('/api/v1/public/club'),
+  },
   health: {
     getSummary: () => fetchApi<HealthSummaryResponse>('/health'),
     getLiveness: () => fetchApi<{ status: string; timestamp: string }>('/health/live'),
