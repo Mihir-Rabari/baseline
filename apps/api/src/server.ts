@@ -1,15 +1,18 @@
 import { buildApp } from './app.js';
 import { getEnv } from '@packages/config/env';
+import { JobService, startMembershipExpiryScheduler } from './services/job.service.js';
 
 async function start() {
   const env = getEnv();
   const app = buildApp();
+  let stopJobs: (() => void) | undefined;
 
   // Handle graceful shutdown
   const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
   for (const signal of signals) {
     process.on(signal, async () => {
       app.log.info(`Received ${signal}, initiating graceful shutdown...`);
+      stopJobs?.();
       try {
         await app.close();
         app.log.info('Server shutdown successfully.');
@@ -26,6 +29,8 @@ async function start() {
       port: env.PORT,
       host: env.HOST,
     });
+    // Background jobs: the timer is cleared by the shutdown handler above.
+    stopJobs = startMembershipExpiryScheduler(new JobService(app.db), app.log);
     app.log.info(`🚀 API Server running at: ${address}`);
     app.log.info(`📚 Swagger Documentation at: ${address}/api/docs`);
     app.log.info(`📊 Prometheus Metrics at: ${address}/metrics`);
