@@ -67,6 +67,30 @@ describe('CourtOS permission catalog', () => {
   });
 });
 
+describe('invoice and roster permissions (S-04, S-05)', () => {
+  it('members read only their own invoices and never the staff list or the roster', () => {
+    expect(can(memberA, 'MEMBER', 'invoices:read:self', memberA.id)).toBe(true);
+    expect(can(memberA, 'MEMBER', 'invoices:read:self', memberB.id)).toBe(false);
+    expect(can(memberA, 'MEMBER', 'invoices:read')).toBe(false);
+    expect(can(memberA, 'MEMBER', 'shifts:read:all')).toBe(false);
+  });
+
+  it('front desk and owner see the whole roster; bar staff do not', () => {
+    expect(can(frontDesk, 'FRONT_DESK', 'shifts:read:all')).toBe(true);
+    expect(can(owner, 'OWNER', 'shifts:read:all')).toBe(true);
+    expect(can(barStaff, 'BAR_STAFF', 'shifts:read:all')).toBe(false);
+    expect(can(barStaff, 'BAR_STAFF', 'shifts:read')).toBe(true);
+  });
+
+  it('only the owner voids invoices, reads the ledger and schedules shifts', () => {
+    for (const action of ['invoices:update', 'payments:read', 'shifts:manage']) {
+      expect(can(owner, 'OWNER', action), `owner ${action}`).toBe(true);
+      expect(can(frontDesk, 'FRONT_DESK', action), `desk ${action}`).toBe(false);
+      expect(can(barStaff, 'BAR_STAFF', action), `bar ${action}`).toBe(false);
+    }
+  });
+});
+
 describe('MEMBER role', () => {
   it('is denied bookings:read (all bookings) and allowed bookings:read:self only for their own resources', () => {
     expect(can(memberA, 'MEMBER', 'bookings:read')).toBe(false);
