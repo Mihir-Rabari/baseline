@@ -128,6 +128,10 @@ export const envSchema = z.object({
   INITIAL_ROOT_EMAIL: z.string().email().default('root@example.com'),
   INITIAL_ROOT_PASSWORD: z.string().min(8).default(DEV_PLACEHOLDERS.INITIAL_ROOT_PASSWORD),
 
+  // CourtOS demo seed: shared password for the seeded owner/desk/bar/member demo users.
+  // Optional; when unset the demo users are skipped. Never printed or committed.
+  SEED_DEMO_PASSWORD: z.string().optional(),
+
   // Observability
   PROMETHEUS_URL: z.string().default('http://localhost:9090'),
 });

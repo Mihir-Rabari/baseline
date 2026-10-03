@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 shrink-0 border-r bg-background p-4 transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 max-h-screen w-64 shrink-0 overflow-y-auto border-r bg-background p-4 transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >

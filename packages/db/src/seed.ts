@@ -11,6 +11,7 @@ import {
 } from './schema/index.js';
 import { eq, sql } from 'drizzle-orm';
 import { fileURLToPath } from 'node:url';
+import { seedCourtOs } from './seed-courtos.js';
 import { AppConfig, IamConfig, type PolicyDefinition, type RoleDefinition } from '@packages/config';
 import { getEnv } from '@packages/config/env';
 // Shared with the login path rather than reimplemented here. A local copy of the scrypt
@@ -303,6 +304,9 @@ export async function runSeeds(): Promise<void> {
 
     // 4b. Domain policies and roles from IamConfig (MEMBER, FRONT_DESK, BAR_STAFF, OWNER)
     await seedDomainIam(db);
+
+    // 4c. CourtOS demo data (plans, courts, products, menu, members, demo users)
+    await seedCourtOs(db, { demoPassword: env.SEED_DEMO_PASSWORD });
 
     // 5. ROOT Account Bootstrap (Idempotent)
     const [existingRoot] = await db
