@@ -1,14 +1,18 @@
 import {
   BarTableListSchema, MenuItemListSchema, TabSchema, TicketListSchema,
   OpenTabRequestSchema, AddTabItemRequestSchema, SettleTabRequestSchema,
+  BarTableBookingListSchema, CreateBarTableBookingRequestSchema,
+  UpdateBarTableBookingRequestSchema,
   type Tab, type Ticket, type OpenTabRequest, type AddTabItemRequest, type SettleTabRequest,
   type SettleTabResponse, type SendTabResponse, type UpdateTicketStatusRequest, type BarEarnings,
-  type UpdateMenuItemRequest,
+  type UpdateMenuItemRequest, type BarTableBooking, type BarTableBookingListQuery,
+  type CreateBarTableBookingRequest, type UpdateBarTableBookingRequest,
 } from '@packages/validation';
 import tablesFixture from '@/mocks/bar-tables.json';
 import menuFixture from '@/mocks/bar-menu.json';
 import tabFixture from '@/mocks/bar-tab.json';
 import ticketsFixture from '@/mocks/bar-tickets.json';
+import bookingsFixture from '@/mocks/bar-table-bookings.json';
 import { mockMemberStore } from '@/lib/mock-members';
 import plans from '@/mocks/plans.json';
 
@@ -25,9 +29,24 @@ export function createBarMock() {
   const menu = MenuItemListSchema.parse(menuFixture);
   const tabs = new Map<string, Tab>([[tabFixture.id, TabSchema.parse(tabFixture)]]);
   const tickets = TicketListSchema.parse(ticketsFixture);
+  const bookings = new Map<string, BarTableBooking>(
+    BarTableBookingListSchema.parse(bookingsFixture).map((b) => [b.id, b])
+  );
   const receipts: Array<{ tab: Tab; payments: SettleTabResponse['payments'] }> = [];
   let tabNumber = 42;
   let ticketNumber = 65;
+
+  const checkConflict = (tableId: string, startsAt: string, endsAt: string, excludeId?: string) => {
+    const startMs = new Date(startsAt).getTime();
+    const endMs = new Date(endsAt).getTime();
+    const conflicting = [...bookings.values()].find((b) => {
+      if (b.tableId !== tableId || b.status === 'CANCELLED' || b.id === excludeId) return false;
+      const bStart = new Date(b.startsAt).getTime();
+      const bEnd = new Date(b.endsAt).getTime();
+      return startMs < bEnd && endMs > bStart;
+    });
+    return conflicting ? copy(conflicting) : null;
+  };
   const get = (id: string) => {
     const tab = tabs.get(id);
     if (!tab) throw new BarMockError('NOT_FOUND', 'This tab was not found.');
@@ -158,6 +177,130 @@ export function createBarMock() {
         byMethod: (['CASH', 'CARD', 'UPI'] as const).map((method) => ({ method,
           amountPaise: rows.flatMap((row) => row.payments).filter((payment) => payment.method === method).reduce((sum, item) => sum + item.amountPaise, 0) })),
         byShift: [], topItems: [...items.values()].sort((a, b) => b.qty - a.qty) };
+    },
+    listBookings(query?: BarTableBookingListQuery) {
+      let list = [...bookings.values()];
+      if (query?.date) {
+        list = list.filter((b) => b.bookingDate === query.date);
+      }
+      if (query?.from) {
+        const fromMs = new Date(query.from).getTime();
+        list = list.filter((b) => new Date(b.endsAt).getTime() > fromMs);
+      }
+      if (query?.to) {
+        const toMs = new Date(query.to).getTime();
+        list = list.filter((b) => new Date(b.startsAt).getTime() < toMs);
+      }
+      if (query?.tableId) {
+        list = list.filter((b) => b.tableId === query.tableId);
+      }
+      if (query?.status) {
+        list = list.filter((b) => b.status === query.status);
+      }
+      list.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+      return copy(list);
+    },
+    getBooking(id: string) {
+      const booking = bookings.get(id);
+      if (!booking) throw new BarMockError('NOT_FOUND', 'This table booking was not found.');
+      return copy(booking);
+    },
+    checkBookingConflict(tableId: string, startsAt: string, endsAt: string, excludeId?: string) {
+      const conflicting = checkConflict(tableId, startsAt, endsAt, excludeId);
+      return {
+        conflict: Boolean(conflicting),
+        conflictingBooking: conflicting,
+        message: conflicting
+          ? `Conflicts with booking for ${conflicting.guestName} (${new Date(conflicting.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(conflicting.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
+          : undefined,
+      };
+    },
+    createBooking(input: CreateBarTableBookingRequest) {
+      const data = CreateBarTableBookingRequestSchema.parse(input);
+      const table = tables.find((t) => t.id === data.tableId);
+      if (!table) throw new BarMockError('NOT_FOUND', 'This table was not found.');
+      const conflict = checkConflict(data.tableId, data.startsAt, data.endsAt);
+      if (conflict) {
+        throw new BarMockError(
+          'TABLE_BOOKING_CONFLICT',
+          `Table ${table.name} already has a booking for ${conflict.guestName} between ${new Date(conflict.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} and ${new Date(conflict.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+        );
+      }
+      const member = data.memberId ? mockMemberStore.find((m) => m.id === data.memberId) : undefined;
+      const booking: BarTableBooking = {
+        id: crypto.randomUUID(),
+        tableId: table.id,
+        tableName: table.name,
+        bookingDate: data.bookingDate,
+        startsAt: data.startsAt,
+        endsAt: data.endsAt,
+        guestName: member ? member.fullName : data.guestName,
+        guestPhone: data.guestPhone ?? null,
+        memberId: member ? member.id : null,
+        memberName: member ? member.fullName : null,
+        partySize: data.partySize,
+        status: 'CONFIRMED',
+        notes: data.notes ?? null,
+        tabId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      bookings.set(booking.id, booking);
+      return copy(booking);
+    },
+    updateBooking(id: string, input: UpdateBarTableBookingRequest) {
+      const existing = bookings.get(id);
+      if (!existing) throw new BarMockError('NOT_FOUND', 'This table booking was not found.');
+      const data = UpdateBarTableBookingRequestSchema.parse(input);
+      const targetTableId = data.tableId ?? existing.tableId;
+      const targetStartsAt = data.startsAt ?? existing.startsAt;
+      const targetEndsAt = data.endsAt ?? existing.endsAt;
+      if (data.tableId || data.startsAt || data.endsAt) {
+        const conflict = checkConflict(targetTableId, targetStartsAt, targetEndsAt, id);
+        if (conflict) {
+          const table = tables.find((t) => t.id === targetTableId);
+          throw new BarMockError(
+            'TABLE_BOOKING_CONFLICT',
+            `Table ${table?.name ?? 'selected'} already has a booking for ${conflict.guestName} between ${new Date(conflict.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} and ${new Date(conflict.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+          );
+        }
+      }
+      const targetTable = tables.find((t) => t.id === targetTableId);
+      const updated: BarTableBooking = {
+        ...existing,
+        ...data,
+        tableId: targetTableId,
+        tableName: targetTable?.name ?? existing.tableName,
+        startsAt: targetStartsAt,
+        endsAt: targetEndsAt,
+        bookingDate: data.bookingDate ?? existing.bookingDate,
+        guestName: data.guestName ?? existing.guestName,
+        guestPhone: data.guestPhone !== undefined ? (data.guestPhone ?? null) : existing.guestPhone,
+        partySize: data.partySize ?? existing.partySize,
+        status: data.status ?? existing.status,
+        notes: data.notes !== undefined ? (data.notes ?? null) : existing.notes,
+        tabId: data.tabId !== undefined ? data.tabId : existing.tabId,
+        updatedAt: new Date().toISOString(),
+      };
+      bookings.set(id, updated);
+      return copy(updated);
+    },
+    cancelBooking(id: string, reason?: string) {
+      const existing = bookings.get(id);
+      if (!existing) throw new BarMockError('NOT_FOUND', 'This table booking was not found.');
+      existing.status = 'CANCELLED';
+      if (reason) {
+        existing.notes = existing.notes ? `${existing.notes} (Cancelled: ${reason})` : `Cancelled: ${reason}`;
+      }
+      existing.updatedAt = new Date().toISOString();
+      return copy(existing);
+    },
+    seatBooking(id: string) {
+      const existing = bookings.get(id);
+      if (!existing) throw new BarMockError('NOT_FOUND', 'This table booking was not found.');
+      existing.status = 'SEATED';
+      existing.updatedAt = new Date().toISOString();
+      return copy(existing);
     },
   };
 }

@@ -1,7 +1,10 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AddTabItemRequest, OpenTabRequest, SettleTabRequest, UpdateTicketStatusRequest } from '@packages/validation';
+import type {
+  AddTabItemRequest, OpenTabRequest, SettleTabRequest, UpdateTicketStatusRequest,
+  BarTableBookingListQuery, CreateBarTableBookingRequest, UpdateBarTableBookingRequest,
+} from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { barApi } from '@/lib/bar-api';
 
@@ -53,3 +56,43 @@ export function useBarEarnings(date: string) {
     enabled: canRead, staleTime: 10000, refetchInterval: 10000 });
   return { query, canRead, canChooseDate: hasPermission('reports:read') };
 }
+
+export function useBarTableBookings(query?: BarTableBookingListQuery) {
+  const { user, hasPermission } = useAuth();
+  const client = useQueryClient();
+  const canRead = Boolean(user) && hasPermission('bar:read');
+  const canManage = Boolean(user) && hasPermission('bar:manage');
+
+  const bookings = useQuery({
+    queryKey: ['bar', user?.id, 'bookings', query?.date, query?.from, query?.to, query?.tableId, query?.status],
+    queryFn: () => barApi.bookings(query),
+    enabled: canRead,
+    refetchInterval: 10000,
+    staleTime: 5000,
+  });
+
+  const refresh = () => client.invalidateQueries({ queryKey: ['bar'] });
+
+  const create = useMutation({
+    mutationFn: (data: CreateBarTableBookingRequest) => barApi.createBooking(data),
+    onSettled: refresh,
+  });
+
+  const update = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateBarTableBookingRequest }) => barApi.updateBooking(id, data),
+    onSettled: refresh,
+  });
+
+  const cancel = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => barApi.cancelBooking(id, reason),
+    onSettled: refresh,
+  });
+
+  const seat = useMutation({
+    mutationFn: (id: string) => barApi.seatBooking(id),
+    onSettled: refresh,
+  });
+
+  return { bookings, create, update, cancel, seat, canRead, canManage };
+}
+

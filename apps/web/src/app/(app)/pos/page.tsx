@@ -233,7 +233,7 @@ export default function PosPage() {
             onClick={() => setShowShortcuts(true)}
             aria-label="View keyboard shortcuts"
           >
-            <Keyboard className="h-4 w-4" />
+            <Keyboard className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Shortcuts</span>
           </Button>
         </div>
@@ -251,7 +251,7 @@ export default function PosPage() {
             {/* Search & Barcode Bar */}
             <form onSubmit={handleBarcodeSubmit} className="relative flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   ref={searchInputRef}
                   id={searchInputId}
@@ -273,7 +273,7 @@ export default function PosPage() {
                 className="gap-1.5 shrink-0"
                 title="Scan barcode or exact SKU match"
               >
-                <ScanBarcode className="h-4 w-4" />
+                <ScanBarcode className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Scan</span>
               </Button>
               {q && (
@@ -284,7 +284,7 @@ export default function PosPage() {
                   onClick={() => setQ('')}
                   aria-label="Clear search"
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}
             </form>
@@ -353,7 +353,7 @@ export default function PosPage() {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="rounded-xl border border-dashed p-8 text-center">
-                <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                <ShoppingBag className="mx-auto h-4 w-4 text-muted-foreground/50 mb-2" aria-hidden="true" />
                 <p className="font-medium text-sm">No products found</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Try adjusting your search query or selecting another category.
@@ -502,7 +502,7 @@ export default function PosPage() {
                   className="h-7 text-xs text-muted-foreground hover:text-destructive"
                   aria-label="Clear cart"
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
                   Clear
                 </Button>
               )}
@@ -511,7 +511,7 @@ export default function PosPage() {
             {/* Cart Items List */}
             {cart.lines.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-                <ShoppingBag className="mx-auto h-6 w-6 opacity-40 mb-1" />
+                <ShoppingBag className="mx-auto h-4 w-4 opacity-40 mb-1" aria-hidden="true" />
                 <p className="text-sm font-medium">Add products to start an order.</p>
                 <p className="text-xs mt-0.5">Click product cards or scan barcodes to add.</p>
               </div>
@@ -562,7 +562,7 @@ export default function PosPage() {
                             aria-label={`Decrease ${line.product.name}`}
                             onClick={() => cart.quantity(line.product.id, line.qty - 1)}
                           >
-                            <Minus className="h-3 w-3" />
+                            <Minus className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <span
                             className="w-7 text-center text-xs tabular font-medium"
@@ -578,7 +578,7 @@ export default function PosPage() {
                             aria-label={`Increase ${line.product.name}`}
                             onClick={() => cart.quantity(line.product.id, line.qty + 1)}
                           >
-                            <Plus className="h-3 w-3" />
+                            <Plus className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </div>
 
@@ -766,7 +766,7 @@ export default function PosPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Keyboard className="h-5 w-5 text-primary" />
+              <Keyboard className="h-4 w-4 text-primary" aria-hidden="true" />
               Keyboard Shortcuts
             </DialogTitle>
             <DialogDescription>

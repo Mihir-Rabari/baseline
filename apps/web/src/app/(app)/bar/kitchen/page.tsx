@@ -163,7 +163,7 @@ export default function KitchenPage() {
                     onClick={() => setFilters((prev) => ({ ...prev, query: '' }))}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -193,7 +193,7 @@ export default function KitchenPage() {
                             : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                         }`}
                       >
-                        {Icon && <Icon className="h-3 w-3" aria-hidden />}
+                        {Icon && <Icon className="h-4 w-4" aria-hidden="true" />}
                         {opt.label}
                       </button>
                     );
@@ -260,7 +260,7 @@ export default function KitchenPage() {
                   className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
                   aria-label="Reset all filters"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
                   Reset filters
                   <Badge variant="secondary" className="ml-0.5 px-1 py-0 text-[10px]">
                     {activeFilterCount}
@@ -276,7 +276,7 @@ export default function KitchenPage() {
               </span>
               {isFiltered && (
                 <span className="flex items-center gap-1 font-medium text-foreground">
-                  <SlidersHorizontal className="h-3 w-3" aria-hidden />
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                   Filters applied
                 </span>
               )}
@@ -344,8 +344,8 @@ export default function KitchenPage() {
 
                               <div className="flex items-center gap-1.5">
                                 <Clock
-                                  className={`h-3.5 w-3.5 ${isUrgent ? 'text-amber-500 animate-pulse' : 'text-muted-foreground'}`}
-                                  aria-hidden
+                                  className={`h-4 w-4 ${isUrgent ? 'text-amber-500 animate-pulse' : 'text-muted-foreground'}`}
+                                  aria-hidden="true"
                                 />
                                 <span
                                   className={`tabular text-xs font-medium ${

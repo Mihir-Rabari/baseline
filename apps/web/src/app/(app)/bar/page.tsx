@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { BarTableBookingsSection } from '@/components/club/bar-table-bookings-section';
 import { minutesSince } from '@/lib/mock-bar';
 
 export default function BarFloorPage() {
@@ -52,6 +53,28 @@ export default function BarFloorPage() {
         return table.openTab ? <Link key={table.id} className={className} href={`/bar/tabs/${table.openTab.id}`} aria-label={`Open ${table.name} tab`}>{content}</Link> :
           <button key={table.id} className={className} disabled={!canManage} onClick={() => { open.reset(); setSelected(table); }} aria-label={`Open tab for ${table.name}`}>{content}</button>;
       })}</div>}
+    {tables.data && tables.data.length > 0 && (
+      <BarTableBookingsSection
+        tables={tables.data}
+        onOpenTabForBooking={(table, name, memberId) => {
+          setSelected(table);
+          if (memberId) {
+            setMember({
+              id: memberId,
+              fullName: name,
+              memberCode: '',
+              phone: '',
+              planCode: null,
+              expiryState: 'NONE',
+              barDiscountPct: 0,
+              shopDiscountPct: 0,
+            });
+          } else {
+            setGuestName(name);
+          }
+        }}
+      />
+    )}
     <Dialog open={Boolean(selected)} onOpenChange={(value) => { if (!value && !open.isPending) close(); }}>
       <DialogContent><DialogHeader><DialogTitle>Open tab · {selected?.name}</DialogTitle><DialogDescription>Choose a member for their discount, or enter a guest name.</DialogDescription></DialogHeader>
         <form onSubmit={openTab} className="space-y-4">

@@ -17,6 +17,9 @@ import {
   TabSchema,
   SettleTabRequestSchema,
   SettleTabResponseSchema,
+  BarTableBookingSchema,
+  CreateBarTableBookingRequestSchema,
+  BarTableBookingListQuerySchema,
   LeadSchema,
   QuoteSchema,
   CreateLeadRequestSchema,
@@ -648,5 +651,37 @@ describe('contract schema behaviour', () => {
     expect(TicketListQuerySchema.parse({}).status).toEqual(['NEW', 'PREPARING', 'READY']);
     expect(TicketListQuerySchema.parse({ status: 'READY,SERVED' }).status).toEqual(['READY', 'SERVED']);
     expect(TicketListQuerySchema.safeParse({ status: 'NEW,BOGUS' }).success).toBe(false);
+  });
+
+  it('bar table booking contract: enforces date ordering and validates schema', () => {
+    const validBooking = {
+      id: 'c0000000-0000-4000-8000-000000000001',
+      tableId: 'b0000000-0000-4000-8000-000000000001',
+      tableName: 'T1',
+      bookingDate: '2026-10-04',
+      startsAt: '2026-10-04T12:00:00.000Z',
+      endsAt: '2026-10-04T14:00:00.000Z',
+      guestName: 'Riya',
+      partySize: 3,
+      status: 'CONFIRMED',
+    };
+    expect(BarTableBookingSchema.safeParse(validBooking).success).toBe(true);
+
+    // End time before start time should fail
+    expect(
+      CreateBarTableBookingRequestSchema.safeParse({
+        tableId: validBooking.tableId,
+        bookingDate: '2026-10-04',
+        startsAt: '2026-10-04T14:00:00.000Z',
+        endsAt: '2026-10-04T12:00:00.000Z',
+        guestName: 'Riya',
+        partySize: 2,
+      }).success
+    ).toBe(false);
+
+    // Range query validation
+    expect(BarTableBookingListQuerySchema.safeParse({ date: '2026-10-04' }).success).toBe(true);
+    expect(BarTableBookingListQuerySchema.safeParse({ status: 'CONFIRMED' }).success).toBe(true);
+    expect(BarTableBookingListQuerySchema.safeParse({ status: 'INVALID' }).success).toBe(false);
   });
 });
