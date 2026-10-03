@@ -57,6 +57,41 @@
       "when": 1740800700000,
       "tag": "0007_password_setup_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1740800800000,
+      "tag": "0008_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1740800900000,
+      "tag": "0009_bar_table_bookings",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1740801000000,
+      "tag": "0010_payroll_and_bank_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1740801100000,
+      "tag": "0011_menu_item_image",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1740801200000,
+      "tag": "0012_report_share_custom_range",
+      "breakpoints": true
     }
   ]
 }
