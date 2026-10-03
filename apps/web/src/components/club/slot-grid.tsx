@@ -20,9 +20,11 @@ export function slotLabel(slot: AvailabilitySlot) {
   return { BOOKED: 'Booked', BLOCKED: 'Blocked', SOCIAL_FULL: 'Full', PAST: 'Past' }[slot.status];
 }
 
-export function SlotGrid({ data, selected, onSelect, disabled = false }: {
+export function SlotGrid({ data, selected, onSelect, disabled = false, canSelect = canSelectSlot }: {
   data: Availability; selected: SlotSelection | null;
   onSelect: (courtId: string, slot: AvailabilitySlot) => void; disabled?: boolean;
+  /** Which cells can be chosen. Defaults to free and open-social cells; the public page passes free cells only. */
+  canSelect?: (slot: AvailabilitySlot) => boolean;
 }) {
   const starts = [...new Set(data.courts.flatMap((court) => court.slots.map((slot) => slot.startsAt)))].sort();
   const chosen = data.courts.find((court) => court.courtId === selected?.courtId)?.slots.find((slot) => slot.startsAt === selected?.startsAt);
@@ -42,7 +44,7 @@ export function SlotGrid({ data, selected, onSelect, disabled = false }: {
           const label = slotLabel(slot);
           return <div role="cell" key={court.courtId} className="bg-background p-1">
             <button type="button" aria-pressed={active} aria-label={`${court.name}, ${slotTime(start, data.timezone)}, ${label}`}
-              disabled={disabled || !canSelectSlot(slot) || Boolean(overlap)} title={slot.reason ?? slot.holder}
+              disabled={disabled || !canSelect(slot) || Boolean(overlap)} title={slot.reason ?? slot.holder}
               onClick={() => onSelect(court.courtId, slot)}
               className={cn('min-h-12 w-full rounded-md px-2 py-2 text-sm tabular transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed', styles[slot.status],
                 overlap && 'opacity-40', active && 'border-primary bg-primary text-primary-foreground hover:bg-primary')}>
