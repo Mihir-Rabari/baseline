@@ -5,7 +5,7 @@ import clubMock from '@/mocks/club.json';
 import enquiryMock from '@/mocks/enquiry.json';
 import { listMockMembers } from '@/lib/mock-members';
 import { mockGetMember, mockCreateMember, mockMemberTimeline, mockCheckinMember, mockRenewMember } from '@/lib/mock-member-operations';
-import { mockAvailability, mockCreateBooking, MockBookingError } from '@/lib/mock-bookings';
+import { mockAvailability, mockCreateBooking, mockListBookings, mockCancelBooking, mockMyMember, MockBookingError } from '@/lib/mock-bookings';
 import type {
   SignupRequest,
   LoginRequest,
@@ -36,7 +36,7 @@ import type {
   CheckinResponse,
   RenewMembershipRequest,
   RenewMembershipResponse,
-  Availability, AvailabilityQuery, Booking, CreateBookingRequest, JoinSocialRequest, JoinSocialResponse, MemberLookupItem,
+  Availability, AvailabilityQuery, Booking, BookingPage, BookingListQuery, MyBookingsQuery, CancelBookingRequest, CancelBookingResponse, CreateBookingRequest, JoinSocialRequest, JoinSocialResponse, MemberLookupItem,
 } from '@packages/validation';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -132,6 +132,16 @@ async function mockBookingAction(data: CreateBookingRequest, social: boolean): P
   }
 }
 
+async function mockBookingCall<T>(run: () => T): Promise<T> {
+  await mock(null, 300);
+  try { return run(); }
+  catch (error) {
+    if (error instanceof MockBookingError) throw new ApiError(error.message, error.statusCode, error.code);
+    throw error;
+  }
+}
+const queryString = (params: object) => new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined) as [string, string][]).toString();
+
 export const api = {
   courts: {
     availability: (params: AvailabilityQuery): Promise<Availability> => USE_MOCKS
@@ -142,6 +152,12 @@ export const api = {
       ? mockBookingAction(data, false) : fetchApi<Booking>('/api/v1/bookings', { method: 'POST', body: JSON.stringify(data) }),
     joinSocial: (data: JoinSocialRequest): Promise<JoinSocialResponse> => USE_MOCKS
       ? mockBookingAction(data, true) as Promise<JoinSocialResponse> : fetchApi<JoinSocialResponse>('/api/v1/bookings/social/join', { method: 'POST', body: JSON.stringify(data) }),
+    mine: (params: Partial<MyBookingsQuery> = {}): Promise<BookingPage> => USE_MOCKS
+      ? mockBookingCall(() => mockListBookings({ scope: params.scope ?? 'upcoming', memberId: mockMyMember().id })) : fetchApi<BookingPage>(`/api/v1/me/bookings?${queryString(params)}`),
+    list: (params: Partial<BookingListQuery> = {}): Promise<BookingPage> => USE_MOCKS
+      ? mockBookingCall(() => mockListBookings({ date: params.date })) : fetchApi<BookingPage>(`/api/v1/bookings?${queryString(params)}`),
+    cancel: (id: string, data: CancelBookingRequest = {}): Promise<CancelBookingResponse> => USE_MOCKS
+      ? mockBookingCall(() => mockCancelBooking(id, data.override)) : fetchApi<CancelBookingResponse>(`/api/v1/bookings/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: JSON.stringify(data) }),
   },
   plans: {
     list: (): Promise<Plan[]> => USE_MOCKS ? mock(plansMock) : fetchApi<Plan[]>('/api/v1/plans'),
@@ -161,6 +177,7 @@ export const api = {
         planCode: member.membership?.plan.code ?? null, expiryState: member.membership?.expiryState ?? 'NONE',
         shopDiscountPct: member.entitlements.shopDiscountPct, barDiscountPct: member.entitlements.barDiscountPct })));
     },
+    me: (): Promise<Member> => USE_MOCKS ? mock(mockMyMember()) : fetchApi<Member>('/api/v1/me/member'),
     get: async (id: string): Promise<Member> => {
       if (!USE_MOCKS) return fetchApi<Member>(`/api/v1/members/${encodeURIComponent(id)}`);
       const member = await mock(mockGetMember(id));
