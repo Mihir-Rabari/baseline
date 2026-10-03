@@ -515,6 +515,9 @@ export class BarService {
     if (!TICKET_TRANSITIONS[current.status].includes(next)) throw invalid();
 
     await this.db.transaction(async (tx) => {
+      // Use the same tab-first lock order as settlement and voiding, so cancellation
+      // cannot change bill items while another transaction freezes the totals.
+      const tab = await this.lockTab(tx, current.tabId);
       // Guarded on the status we validated against, so two racing moves cannot both win.
       const moved = await tx
         .update(kitchenTickets)
@@ -524,7 +527,7 @@ export class BarService {
       if (moved.length === 0) throw invalid();
       if (next === 'CANCELLED') {
         // Cancelled food must not be billed. A settled tab's bill is history, so it is left alone.
-        const [tab] = await tx.select({ status: tabs.status }).from(tabs).where(eq(tabs.id, current.tabId));
+
         if (tab?.status === 'OPEN') {
           await tx
             .update(tabItems)
