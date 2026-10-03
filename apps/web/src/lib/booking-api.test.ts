@@ -47,3 +47,43 @@ describe('calendar API bindings and mocks', () => {
     expect(() => mockCreateBooking(payload, true)).toThrow('no longer available');
   });
 });
+
+describe('booking history API bindings and mocks', () => {
+  it('uses the self, staff and cancel endpoints with credentials', async () => {
+    vi.stubEnv('NEXT_PUBLIC_USE_MOCKS', 'false'); vi.stubEnv('NEXT_PUBLIC_API_URL', 'https://club.example');
+    const fetch = vi.fn().mockImplementation(async () => new Response('{}', { headers: { 'content-type': 'application/json' } })); vi.stubGlobal('fetch', fetch);
+    const { api } = await import('./api-client');
+    await api.bookings.mine({ scope: 'past', limit: 100 }); await api.bookings.list({ date: '2026-10-09' });
+    await api.bookings.cancel('b0000000-0000-4000-8000-000000000009', { reason: 'Sick' }); await api.members.me();
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      'https://club.example/api/v1/me/bookings?scope=past&limit=100', 'https://club.example/api/v1/bookings?date=2026-10-09',
+      'https://club.example/api/v1/bookings/b0000000-0000-4000-8000-000000000009/cancel', 'https://club.example/api/v1/me/member',
+    ]);
+    expect(fetch.mock.calls[2][1]).toMatchObject({ method: 'POST', body: JSON.stringify({ reason: 'Sick' }) });
+    for (const [, options] of fetch.mock.calls) expect(options.credentials).toBe('include');
+  });
+  it('mock history splits upcoming from past and cancelling moves a booking across', async () => {
+    vi.setSystemTime(new Date('2031-05-13T04:00:00Z'));
+    const { mockListBookings, mockCancelBooking, mockMyMember } = await import('./mock-bookings');
+    const me = mockMyMember().id;
+    const upcoming = mockListBookings({ scope: 'upcoming', memberId: me }).data;
+    expect(upcoming).toHaveLength(3); expect(mockListBookings({ scope: 'past', memberId: me }).data).toHaveLength(3);
+    const far = upcoming[1]; const result = mockCancelBooking(far.id);
+    expect(result).toMatchObject({ late: false, quotaFreed: true }); expect(result.booking.status).toBe('CANCELLED');
+    expect(mockListBookings({ scope: 'past', memberId: me }).data.map((item) => item.id)).toContain(far.id);
+    expect(() => mockCancelBooking(far.id)).toThrow('Only confirmed');
+    expect(() => mockCancelBooking('missing')).toThrow('not found');
+  });
+  it('mock late cancellation keeps the quota and a cancelled slot becomes free again', async () => {
+    vi.setSystemTime(new Date('2031-05-13T04:00:00Z'));
+    const { mockListBookings, mockCancelBooking, mockMyMember, mockAvailability, mockCreateBooking } = await import('./mock-bookings');
+    const soon = mockListBookings({ scope: 'upcoming', memberId: mockMyMember().id }).data[0];
+    expect(mockCancelBooking(soon.id)).toMatchObject({ late: true, quotaFreed: false });
+    vi.setSystemTime(new Date('2031-05-14T00:00:00Z'));
+    const data = mockAvailability({ date: '2031-05-15' }); const court = data.courts[0];
+    const booking = mockCreateBooking({ courtId: court.courtId, startsAt: court.slots[0].startsAt });
+    expect('member' in booking && booking.member?.id).toBe(mockMyMember().id);
+    mockCancelBooking(booking.id);
+    expect(mockAvailability({ date: '2031-05-15' }).courts[0].slots[0].status).toBe('FREE');
+  });
+});

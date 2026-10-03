@@ -260,6 +260,8 @@ export default function MembersPage() {
 
 ### K-13: My bookings `/bookings` and My membership `/membership` · Tier 2 · depends on: K-10
 
+**Status (2026-10-03): Implemented, not yet test-run.** `/bookings` has Upcoming/Past tabs and a cancel dialog showing the 2-hour rule (member view via `GET /me/bookings`; staff with `bookings:read` get a per-date view via `GET /bookings`). `/membership` reads `GET /me/member` with a "See plans" empty state for 404 NOT_A_MEMBER. Mutable mocks cover list, cancel and re-freeing the slot. Added unit tests, typecheck and lint pass; Mihir still needs to run `pnpm verify` and a real-backend pass (M-15).
+
 - **Build:** the member's own area (Scenes 1 and 2).
 - **Where:** `app/(app)/bookings/page.tsx`, `app/(app)/membership/page.tsx`, `hooks/use-bookings.ts`.
 - **Steps:** Bookings: `Tabs` Upcoming/Past; `Table` (When, Court, Price, `StatusBadge kind="booking"`, "Cancel" `Button size="sm" variant="outline"`). The cancel `Dialog` explains the rule in plain words: "Free to cancel until 2 hours before. After that there is no refund and it still counts toward your 2 bookings a day." (Use the `late` hint: calculate `new Date(startsAt) - Date.now() < 2*60*60*1000`.) Staff variant: if `hasPermission('bookings:read')` show all bookings for a chosen date (`DateField`). Membership page: `dl` with plan, status, ends on, days left, then entitlements; `EmptyState` with a "See plans" link if none.
