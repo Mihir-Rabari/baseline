@@ -57,6 +57,7 @@ const MEMBER_ACTIONS = [
   'bookings:read:self',
   'bookings:create:self',
   'bookings:cancel:self',
+  'invoices:read:self',
   'orders:read:self',
   'orders:create:self',
   'orders:cancel:self',
@@ -84,6 +85,7 @@ const FRONT_DESK_ACTIONS = [
   'invoices:read',
   'invoices:create',
   'payments:create',
+  'shifts:read:all',
   ...STAFF_SELF_SERVICE,
 ];
 

@@ -4,6 +4,11 @@ import { PaginationQuerySchema, createPaginatedResponseSchema } from './paginati
 import { DateOnlySchema, PaiseSchema, NonNegativePaiseSchema, PersonRefSchema } from './domain-common.js';
 import { PhoneSchema } from './members.js';
 
+export const DepartmentEnum = z.enum(['FRONT_DESK', 'BAR', 'MAINTENANCE', 'COACHING', 'MANAGEMENT']);
+export type DepartmentCode = z.infer<typeof DepartmentEnum>;
+export const EmployeeStatusEnum = z.enum(['ACTIVE', 'INACTIVE']);
+export type EmployeeStatus = z.infer<typeof EmployeeStatusEnum>;
+
 // ---- Shifts (API_CONTRACT 8) ----
 
 export const ShiftStatusEnum = z.enum(['SCHEDULED', 'ON_SHIFT', 'DONE', 'MISSED']);
@@ -37,7 +42,8 @@ export type ShiftListQuery = z.infer<typeof ShiftListQuerySchema>;
 export const CreateShiftRequestSchema = z
   .object({
     employeeId: UuidSchema,
-    roleLabel: z.string().trim().min(1).max(100),
+    // `staff_shifts.role_label` is varchar(24): a longer label would be a database error, not a 400.
+    roleLabel: z.string().trim().min(1).max(24),
     startsAt: IsoDateTimeSchema,
     endsAt: IsoDateTimeSchema,
   })
@@ -64,8 +70,8 @@ export const EmployeeListSchema = z.array(EmployeeSchema);
 
 /** GET /hr/employees */
 export const EmployeeListQuerySchema = z.object({
-  department: z.string().trim().min(1).optional(),
-  status: z.string().trim().min(1).optional(),
+  department: DepartmentEnum.optional(),
+  status: EmployeeStatusEnum.optional(),
   q: z.string().trim().optional(),
 });
 export type EmployeeListQuery = z.infer<typeof EmployeeListQuerySchema>;
@@ -75,8 +81,8 @@ export const CreateEmployeeRequestSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
   email: EmailSchema.optional(),
   phone: PhoneSchema.optional(),
-  position: z.string().trim().min(1).max(100),
-  department: z.string().trim().min(1).max(100),
+  position: z.string().trim().min(1).max(64),
+  department: DepartmentEnum,
   monthlySalaryPaise: NonNegativePaiseSchema,
   hiredOn: DateOnlySchema,
   userId: UuidSchema.optional(),
@@ -85,7 +91,7 @@ export type CreateEmployeeRequest = z.infer<typeof CreateEmployeeRequestSchema>;
 
 /** PUT /hr/employees/:id: any subset, plus status. */
 export const UpdateEmployeeRequestSchema = CreateEmployeeRequestSchema.partial().extend({
-  status: z.string().trim().min(1).optional(),
+  status: EmployeeStatusEnum.optional(),
 });
 export type UpdateEmployeeRequest = z.infer<typeof UpdateEmployeeRequestSchema>;
 

@@ -591,6 +591,15 @@ Side effects of any successful sale: a `stock_movements` row per line; when the 
 
 Payments recorded by a user with an open shift get that `shiftId` automatically.
 
+**Implementation notes (S-05):**
+
+- Roster visibility needs `shifts:read`. Owner and front desk also hold `shifts:read:all` and see every employee (optionally filtered by `employeeId`); bar staff see only the employee record linked to their login, and asking for someone else's `employeeId` returns `[]`.
+- `status` is derived: `DONE` once clocked out, `ON_SHIFT` once clocked in, `MISSED` when unclocked and past `endsAt`, else `SCHEDULED`. `roleLabel` is at most 24 characters.
+- `409 SHIFT_OVERLAP` for an overlapping shift of the same employee, `409 EMPLOYEE_INACTIVE`, `404` for an unknown employee. Back-to-back shifts are allowed.
+- `DELETE /shifts/:id` is `409 SHIFT_STARTED` once anyone has clocked in (payments point at the shift).
+- Clocking needs `shifts:clock:self` and your own shift (another employee's shift, or an account with no employee record, is `403`). Clock-in opens 30 minutes before `startsAt` and closes at `endsAt`. Errors: `409 TOO_EARLY`, `SHIFT_ENDED`, `ALREADY_CLOCKED_IN`, `ALREADY_ON_SHIFT`, `NOT_CLOCKED_IN`, `ALREADY_CLOCKED_OUT`.
+- `GET /me/shift/current` returns the shift being worked, else the one that can be clocked into now, else `null`.
+
 ---
 
 ## 9. CRM (Scene 5)
@@ -618,6 +627,14 @@ Side effects: new leads (from the public endpoints or manual) always create `NEW
 
 ### 10.1 Invoices and clients
 
+**Implementation notes (S-04):**
+
+- Prices are tax-inclusive. `subtotalPaise = totalPaise = sum of lines`; `taxPaise` is the inclusive portion at the `INVOICE` rate in `tax.rates` (default 1800 bp). `issueDate` defaults to today (club time), `dueDate` to +15 days. Totals above 2,000,000,000 paise are `422 AMOUNT_TOO_LARGE`.
+- Permissions: list and read `invoices:read`; create, send and client edits `invoices:create`; pay `payments:create`; void `invoices:update` (owner). A member holds `invoices:read:self` and may `GET /invoices/:id` for their own invoices only; another member's or a business client's invoice is `404`.
+- Lifecycle: `DRAFT -> SENT -> PAID`, or `DRAFT/SENT -> VOID`. Send is `409 INVALID_INVOICE_STATE` unless `DRAFT` (email delivery is not connected; the call only marks it sent). Pay needs `SENT`: `409 INVOICE_NOT_SENT`, `ALREADY_PAID`, `INVOICE_VOID`, `NOTHING_TO_PAY`; an amount above the balance is `422 AMOUNT_EXCEEDS_BALANCE`. Payments take a row lock, so concurrent payments settle an invoice once. Each payment is a ledger row with `source: "INVOICE"`, the receiver and their open shift.
+- Void only when nothing was paid (`409 INVOICE_HAS_PAYMENTS` for paid or part-paid, `409 ALREADY_VOID`); the reason is written to the audit log as `INVOICE_VOIDED`.
+- `overdue=true` means `SENT` and `dueDate` before today, the same definition as the owner dashboard. `openBalancePaise` of a client is what is still owed on its `SENT` invoices.
+
 | Method | Path | Roles | Request | Response | Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/invoices` | FD, OWN | query `status`, `memberId`, `businessClientId`, `from`, `to`, `overdue=true`, `page`, `limit` | paginated `Invoice` | 400, 401, 403 |
@@ -631,6 +648,8 @@ Side effects: new leads (from the public endpoints or manual) always create `NEW
 | PUT | `/business-clients/:id` | FD, OWN | same fields, all optional | client | 400, 401, 403, 404 |
 
 ### 10.2 Payments ledger and tax
+
+`from`/`to` are club dates (inclusive, club-timezone day boundaries). `/finance/tax-summary` allows at most 366 days (`400`) and lists only sources with a non-zero net amount; `grossPaise` is net of refunds.
 
 | Method | Path | Roles | Request | Response | Errors |
 | --- | --- | --- | --- | --- | --- |
@@ -652,6 +671,13 @@ Side effects: new leads (from the public endpoints or manual) always create `NEW
 ```
 
 ### 10.3 Employees, leave, payroll
+
+**Implementation notes (S-05):**
+
+- `department` is one of `FRONT_DESK | BAR | MAINTENANCE | COACHING | MANAGEMENT` and `status` is `ACTIVE | INACTIVE` (anything else is `400`). Linking `userId`: `404` if the user does not exist, `409 USER_ALREADY_LINKED` if another employee has it.
+- `leaveDaysThisYear` is approved leave days clipped to the club's calendar year.
+- Leave days are inclusive calendar days. A new request may not overlap the employee's own pending or approved leave (`409 LEAVE_OVERLAP`). Approving may not overlap other approved leave (`409 LEAVE_OVERLAP`); a decided request is `409 ALREADY_DECIDED`. Owners are notified `LEAVE_REQUEST` on a new request and the employee `LEAVE_DECIDED` on a decision. `/me/leave` for an account with no employee record: `GET` is empty, `POST` is `404 NOT_AN_EMPLOYEE`.
+- Payroll: active employees hired on or before the last day of `month`; `onLeave` lists approved leave overlapping the month.
 
 | Method | Path | Roles | Request | Response | Errors |
 | --- | --- | --- | --- | --- | --- |
