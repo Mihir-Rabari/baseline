@@ -85,6 +85,44 @@
     font-feature-settings: 'cv11', 'ss01';
   }
 
+  /* Reserve classic scrollbar space before content overflows. Keep scrolling
+     available on pages, dialogs, lists and tables in both themes. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--background));
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: hsl(var(--background));
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground));
+    border: 3px solid hsl(var(--background));
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--foreground));
+  }
+
+  @media (forced-colors: active) {
+    * {
+      scrollbar-color: auto;
+      scrollbar-width: auto;
+    }
+  }
+
   /* Motion is decoration: people who ask their system for less of it get none. */
   @media (prefers-reduced-motion: reduce) {
     *,
