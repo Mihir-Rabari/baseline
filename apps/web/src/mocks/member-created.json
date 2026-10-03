@@ -1,0 +1,8 @@
+{
+  "member": { "id": "b0000000-0000-4000-8000-000000000001", "memberCode": "CC-000123", "fullName": "Aarav Mehta", "phone": "+919876543210", "email": "aarav@example.com", "dateOfBirth": "1994-05-17", "photoUrl": null, "hasLogin": false,
+    "membership": { "id": "b1000000-0000-4000-8000-000000000001", "status": "ACTIVE", "plan": { "id": "a0000000-0000-4000-8000-000000000002", "code": "SILVER", "name": "Silver" }, "startsOn": "2026-10-09", "endsOn": "2026-11-07", "daysLeft": 29, "expiryState": "OK", "cancelAtPeriodEnd": false, "pendingPlan": null },
+    "entitlements": { "courtDiscountPct": 30, "shopDiscountPct": 8, "barDiscountPct": 5, "maxBookingsPerDay": 2, "bookingHorizonDays": 7 },
+    "createdAt": "2026-10-09T09:14:00.000Z" },
+  "invoice": { "id": "16000000-0000-4000-8000-000000000010", "invoiceNumber": "INV-2026-0043", "status": "PAID", "billTo": { "type": "MEMBER", "id": "b0000000-0000-4000-8000-000000000001", "name": "Aarav Mehta" }, "issueDate": "2026-10-09", "dueDate": "2026-10-09", "lines": [{ "description": "Silver membership, 30 days", "qty": 1, "unitPricePaise": 150000, "lineTotalPaise": 150000 }], "subtotalPaise": 150000, "taxPaise": 22881, "totalPaise": 150000, "paidPaise": 150000, "balancePaise": 0, "notes": null },
+  "payment": { "id": "19000000-0000-4000-8000-000000000001", "amountPaise": 150000, "method": "UPI" }
+}

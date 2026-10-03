@@ -2,6 +2,9 @@ import type { ReadinessResponse, HealthSummaryResponse } from '@packages/shared'
 import type { Plan, PublicClub } from './club-types';
 import plansMock from '@/mocks/plans.json';
 import clubMock from '@/mocks/club.json';
+import enquiryMock from '@/mocks/enquiry.json';
+import { listMockMembers } from '@/lib/mock-members';
+import { mockGetMember, mockCreateMember, mockMemberTimeline, mockCheckinMember, mockRenewMember } from '@/lib/mock-member-operations';
 import type {
   SignupRequest,
   LoginRequest,
@@ -22,6 +25,16 @@ import type {
   Group,
   Policy,
   Permission,
+  CreateEnquiryRequest,
+  CreateEnquiryResponse,
+  MemberListQuery,
+  MemberPage,
+  Member,
+  CreateMemberRequest,
+  CreateMemberResponse,
+  CheckinResponse,
+  RenewMembershipRequest,
+  RenewMembershipResponse,
 } from '@packages/validation';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -115,6 +128,51 @@ export const api = {
   public: {
     plans: (): Promise<Plan[]> => USE_MOCKS ? mock(plansMock) : fetchApi<Plan[]>('/api/v1/public/plans'),
     club: (): Promise<PublicClub> => USE_MOCKS ? mock(clubMock) : fetchApi<PublicClub>('/api/v1/public/club'),
+    createEnquiry: (data: CreateEnquiryRequest): Promise<CreateEnquiryResponse> => USE_MOCKS
+      ? mock(enquiryMock, 500)
+      : fetchApi<CreateEnquiryResponse>('/api/v1/public/enquiries', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  members: {
+    get: async (id: string): Promise<Member> => {
+      if (!USE_MOCKS) return fetchApi<Member>(`/api/v1/members/${encodeURIComponent(id)}`);
+      const member = await mock(mockGetMember(id));
+      if (!member) throw new ApiError('Member not found', 404, 'MEMBER_NOT_FOUND');
+      return member;
+    },
+    create: async (data: CreateMemberRequest): Promise<CreateMemberResponse> => {
+      if (!USE_MOCKS) return fetchApi<CreateMemberResponse>('/api/v1/members', { method: 'POST', body: JSON.stringify(data) });
+      await mock(null, 500);
+      const response = mockCreateMember(data);
+      if (!response) throw new ApiError('Plan not found', 404, 'PLAN_NOT_FOUND');
+      return response;
+    },
+    timeline: async (id: string) => {
+      if (!USE_MOCKS) return fetchApi<ReturnType<typeof mockMemberTimeline>>(`/api/v1/members/${encodeURIComponent(id)}/timeline`);
+      if (!mockGetMember(id)) throw new ApiError('Member not found', 404, 'MEMBER_NOT_FOUND');
+      return mock(mockMemberTimeline(id));
+    },
+    checkin: async (id: string): Promise<CheckinResponse> => {
+      if (!USE_MOCKS) return fetchApi<CheckinResponse>(`/api/v1/members/${encodeURIComponent(id)}/checkin`, { method: 'POST', body: '{}' });
+      await mock(null);
+      const response = mockCheckinMember(id);
+      if (!response) throw new ApiError('Member not found', 404, 'MEMBER_NOT_FOUND');
+      return response;
+    },
+    renew: async (id: string, data: RenewMembershipRequest): Promise<RenewMembershipResponse> => {
+      if (!USE_MOCKS) return fetchApi<RenewMembershipResponse>(`/api/v1/members/${encodeURIComponent(id)}/membership/renew`, { method: 'POST', body: JSON.stringify(data) });
+      await mock(null, 500);
+      const response = mockRenewMember(id, data);
+      if (!response) throw new ApiError('Membership not found', 404, 'MEMBERSHIP_NOT_FOUND');
+      return response;
+    },
+    list: (params: Partial<MemberListQuery> = {}): Promise<MemberPage> => {
+      if (USE_MOCKS) return mock(listMockMembers(params));
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== '') query.set(key, String(value));
+      }
+      return fetchApi<MemberPage>(`/api/v1/members${query.size ? `?${query}` : ''}`);
+    },
   },
   health: {
     getSummary: () => fetchApi<HealthSummaryResponse>('/health'),

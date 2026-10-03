@@ -1,0 +1,33 @@
+{
+  "fullName": "Diya Shah",
+  "hasLogin": false,
+  "dateOfBirth": "1995-03-21",
+  "photoUrl": null,
+  "id": "b0000000-0000-4000-8000-000000000002",
+  "membership": {
+    "startsOn": "2026-09-01",
+    "daysLeft": 5,
+    "endsOn": "2026-10-08",
+    "status": "ACTIVE",
+    "id": "b1000000-0000-4000-8000-000000000002",
+    "plan": {
+      "name": "Silver",
+      "code": "SILVER",
+      "id": "a0000000-0000-4000-8000-000000000002"
+    },
+    "expiryState": "EXPIRING_SOON",
+    "pendingPlan": null,
+    "cancelAtPeriodEnd": false
+  },
+  "email": "diya.shah@example.com",
+  "memberCode": "CC-000002",
+  "entitlements": {
+    "shopDiscountPct": 8,
+    "maxBookingsPerDay": 2,
+    "bookingHorizonDays": 7,
+    "courtDiscountPct": 30,
+    "barDiscountPct": 5
+  },
+  "phone": "9876543202",
+  "createdAt": "2026-09-01T09:00:00Z"
+}
