@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, X, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Order, OrderStatus, UpdateOrderStatusRequest } from '@packages/validation';
+import type { OrderStatus, UpdateOrderStatusRequest } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { shopApi } from '@/lib/shop-api';
 import { PageHeader } from '@/components/app-shell/page-header';
