@@ -20,7 +20,7 @@ export type BookingStatus = z.infer<typeof BookingStatusEnum>;
 export const BookingChannelEnum = z.enum(['DESK', 'PHONE', 'ONLINE', 'WEBSITE_TRIAL']);
 export type BookingChannel = z.infer<typeof BookingChannelEnum>;
 
-export const BookingPaymentStatusEnum = z.enum(['UNPAID', 'PAID', 'WAIVED', 'REFUNDED']);
+export const BookingPaymentStatusEnum = z.enum(['UNPAID', 'PARTIAL', 'PAID', 'WAIVED', 'REFUNDED']);
 export type BookingPaymentStatus = z.infer<typeof BookingPaymentStatusEnum>;
 
 export const BookingGuestSchema = z.object({

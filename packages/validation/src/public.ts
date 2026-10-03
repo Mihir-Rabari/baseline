@@ -81,3 +81,33 @@ export const CreateTrialBookingResponseSchema = z.object({
   message: z.string(),
 });
 export type CreateTrialBookingResponse = z.infer<typeof CreateTrialBookingResponseSchema>;
+
+/** Share of the price a guest pays up-front when they choose cash. */
+export const PROMISE_FEE_PCT = 20;
+
+/** The promise fee for a price: 20% rounded up to a whole paisa, at least 1 and never above the price. */
+export const promiseFeePaise = (pricePaise: number): number =>
+  Math.min(pricePaise, Math.max(1, Math.ceil((pricePaise * PROMISE_FEE_PCT) / 100)));
+
+/** The payment choices on the checkout dialog. UPI and card pay in full; cash pays the promise fee. */
+export const CheckoutMethodEnum = z.enum(['UPI', 'CARD', 'CASH']);
+export type CheckoutMethod = z.infer<typeof CheckoutMethodEnum>;
+
+/** POST /public/bookings: a guest books and pays in one step. */
+export const CreatePublicBookingRequestSchema = z.object({
+  courtId: UuidSchema,
+  startsAt: IsoDateTimeSchema,
+  name: z.string().trim().min(1).max(200),
+  phone: PhoneSchema,
+  email: EmailSchema.optional(),
+  method: CheckoutMethodEnum,
+});
+export type CreatePublicBookingRequest = z.infer<typeof CreatePublicBookingRequestSchema>;
+
+export const CreatePublicBookingResponseSchema = z.object({
+  booking: BookingSchema,
+  paidPaise: z.number().int().min(0),
+  duePaise: z.number().int().min(0),
+  message: z.string(),
+});
+export type CreatePublicBookingResponse = z.infer<typeof CreatePublicBookingResponseSchema>;
