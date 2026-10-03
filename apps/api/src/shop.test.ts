@@ -800,7 +800,11 @@ describe('Shop and inventory (M-11)', () => {
         .select()
         .from(notifications)
         .where(and(eq(notifications.type, 'ONLINE_ORDER'), sql`${notifications.data}->>'orderId' = ${o.id}`));
-      expect(notes.map((n) => n.userId).sort()).toEqual([desk.id, owner.id].sort());
+      // Every FRONT_DESK and OWNER user is notified, so seeded demo users may be recipients too:
+      // assert our desk and owner are included and the ordering member is not.
+      const recipients = notes.map((n) => n.userId);
+      expect(recipients).toEqual(expect.arrayContaining([desk.id, owner.id]));
+      expect(recipients).not.toContain(memberA.id);
     });
 
     it('delivery adds the fee and requires the address; payNow records a UPI payment', async (ctx) => {

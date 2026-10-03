@@ -40,7 +40,9 @@ export default defineConfig({
       LOG_LEVEL: process.env.LOG_LEVEL ?? 'silent',
     },
     include: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/.claude/**', '**/worktrees/**'],
+    // Database suites share seeded state and must not mutate it concurrently.
+    fileParallelism: !hasDatabaseUrl,
     // Vitest defaults to 5s, which is too tight for the suites that copy the whole
     // template tree or pack 14 skill bundles. Those comfortably fit on Linux and on a
     // developer machine, then intermittently blow the budget on a Windows CI runner,
