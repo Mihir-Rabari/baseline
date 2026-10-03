@@ -28,7 +28,7 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
       expect(before).toHaveLength(0);
       await migrate(db, options);
       const firstJournal = await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`;
-      expect(firstJournal).toHaveLength(6);
+      expect(firstJournal).toHaveLength(7);
       const firstTables = await isolated`SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`;
       expect(firstTables).toHaveLength(47);
       expect(firstTables.map((row) => row.tablename)).toEqual(expect.arrayContaining([

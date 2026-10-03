@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, uuid, integer, date, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, uuid, integer, smallint, date, index } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { members } from './members.js';
 import { pk, tstz, createdAt, paise } from './_columns.js';
@@ -78,6 +78,8 @@ export const invoiceLines = pgTable(
     invoiceId: uuid('invoice_id')
       .references(() => invoices.id, { onDelete: 'cascade' })
       .notNull(),
+    /** Order of the line on the invoice (migration 0006); ids are random, so they cannot carry order. */
+    position: smallint('position').notNull().default(0),
     description: varchar('description', { length: 255 }).notNull(),
     qty: integer('qty').notNull().default(1),
     unitPricePaise: paise('unit_price_paise').notNull(),

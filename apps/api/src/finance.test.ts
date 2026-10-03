@@ -148,6 +148,15 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
       expect(second.invoiceNumber).not.toBe(invoice.invoiceNumber);
     });
 
+    it('keeps the order the lines were sent in, even with many lines', async (ctx) => {
+      if (!ready) return ctx.skip();
+      const sent = Array.from({ length: 12 }, (_, i) => line(`Item ${String(i + 1).padStart(2, '0')}`, 1, 100 + i));
+      const created = await draft({}, sent);
+      expect(created.lines.map((l) => l.description)).toEqual(sent.map((l) => l.description));
+      const read = InvoiceDetailSchema.parse((await call('GET', `/invoices/${created.id}`, owner)).json());
+      expect(read.lines.map((l) => l.description)).toEqual(sent.map((l) => l.description));
+    });
+
     it('bills a business client and 404s for an unknown member or client', async (ctx) => {
       if (!ready) return ctx.skip();
       const res = await call('POST', '/invoices', owner, { businessClientId: clientId, lines: [line('Corporate day', 1, 1_000_000)] });
@@ -292,8 +301,9 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
 
     it('lists with status, member and overdue filters and paginates', async (ctx) => {
       if (!ready) return ctx.skip();
-      const overdue = await sent({ memberId: otherMemberId, issueDate: '2033-05-01', dueDate: '2033-05-02' });
-      const future = await sent({ memberId: otherMemberId, issueDate: '2033-05-01', dueDate: '2099-01-01' });
+      // The due date must be in the real past for "overdue"; the far future is never overdue.
+      const overdue = await sent({ memberId: otherMemberId, issueDate: '2020-05-01', dueDate: '2020-05-02' });
+      const future = await sent({ memberId: otherMemberId, issueDate: '2020-05-01', dueDate: '2099-01-01' });
       const draftOne = await draft({ memberId: otherMemberId });
       const byMember = InvoicePageSchema.parse((await call('GET', `/invoices?memberId=${otherMemberId}&limit=100`, desk)).json());
       expect(byMember.data.map((i) => i.id)).toEqual(expect.arrayContaining([overdue.id, future.id, draftOne.id]));
@@ -350,7 +360,11 @@ describe('Invoices, business clients, ledger and tax (S-04)', () => {
 
   // ============================================================= ledger and tax
   describe('GET /payments and GET /finance/tax-summary', () => {
+    let seeded = false;
+    // Seeded once: both ledger tests read the same fixed 2033 rows, and a second insert would double the totals.
     const seedLedger = async () => {
+      if (seeded) return;
+      seeded = true;
       const at = (iso: string) => new Date(`${iso}+05:30`);
       await db.insert(payments).values([
         { source: 'COURT', kind: 'PAYMENT', amountPaise: 118_000, method: 'UPI', paidAt: at('2033-05-10T10:00:00') },

@@ -43,6 +43,13 @@
       "when": 1740800500000,
       "tag": "0005_kitchen_ticket_number",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1740800600000,
+      "tag": "0006_invoice_line_position",
+      "breakpoints": true
     }
   ]
 }
