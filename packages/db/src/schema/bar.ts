@@ -74,6 +74,7 @@ export const kitchenTickets = pgTable(
   'kitchen_tickets',
   {
     id: pk(),
+    ticketNumber: integer('ticket_number').generatedAlwaysAsIdentity().notNull().unique(),
     tabId: uuid('tab_id')
       .references(() => tabs.id, { onDelete: 'cascade' })
       .notNull(),

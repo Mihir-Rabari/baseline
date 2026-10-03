@@ -845,6 +845,7 @@ export const kitchenTickets = pgTable(
   'kitchen_tickets',
   {
     id: pk(),
+    ticketNumber: integer('ticket_number').generatedAlwaysAsIdentity().notNull().unique(), // migration 0005
     tabId: uuid('tab_id').references(() => tabs.id, { onDelete: 'cascade' }).notNull(),
     station: varchar('station', { length: 16 }).$type<'BAR' | 'KITCHEN'>().notNull().default('KITCHEN'),
     status: varchar('status', { length: 12 }).$type<TicketStatus>().notNull().default('NEW'),
