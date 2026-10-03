@@ -274,6 +274,8 @@ export default function MembersPage() {
 
 ### K-14: Booking calendar `/courts` with the slot grid · Tier 1 · depends on: K-13 · pair with Mihir at the start
 
+**Status (2026-10-03): Implemented.** Real API and mutable mock flows support member self-booking, staff member/walk-in booking and social sessions. Includes reusable `SlotGrid`, `DateField` and `MemberSearch`, 10-second refresh, selection reset, quota and conflict handling. Verified with 22 focused tests, the full `pnpm verify` gate (880 tests), real backend bookings, light/dark themes and a 390px viewport. K-13 booking history/cancellation and membership pages remain separate work.
+
 - **Build:** the most important screen in the product (Scene 2).
 - **Where:** `components/club/slot-grid.tsx`, `components/club/date-field.tsx`, `app/(app)/courts/page.tsx`, `hooks/use-availability.ts`.
 - **Steps:**
