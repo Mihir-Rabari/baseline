@@ -35,7 +35,25 @@ export default function BarTabPage() {
     catch (error) { const message = error instanceof Error ? error.message : 'The tab could not be updated. Try again.'; setActionError(message); toast.error(message); }
   };
   return <div className="space-y-6">
-    <PageHeader title={tab ? `Tab #${tab.tabNumber}` : 'Bar tab'} description={tab ? `${tab.table?.name ?? 'Walk-in'} · ${tab.member?.fullName ?? tab.guestName ?? 'Guest'}` : 'Add items, send them and settle the bill.'} actions={<Button asChild variant="outline"><Link href="/bar">Back to floor</Link></Button>} />
+    <div className="print:hidden">
+      <PageHeader
+        title={tab ? `Tab #${tab.tabNumber}` : 'Bar tab'}
+        description={tab ? `${tab.table?.name ?? 'Walk-in'} · ${tab.member?.fullName ?? tab.guestName ?? 'Guest'}` : 'Add items, send them and settle the bill.'}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline"><Link href="/bar">Back to floor</Link></Button>
+            {tab?.status === 'SETTLED' && <Button variant="outline" onClick={() => window.print()}>Print receipt</Button>}
+          </div>
+        }
+      />
+    </div>
+    {tab?.status === 'SETTLED' && (
+      <header className="hidden print:block border-b pb-4">
+        <h1 className="text-2xl font-bold">Receipt · Tab #{tab.tabNumber}</h1>
+        <p className="text-sm">{tab.table?.name ?? 'Walk-in'} · {tab.member?.fullName ?? tab.guestName ?? 'Guest'}</p>
+        <p className="text-xs text-muted-foreground">Opened {formatDateTime(tab.openedAt)}{tab.settledAt ? ` · Paid ${formatDateTime(tab.settledAt)}` : ''}</p>
+      </header>
+    )}
     {!state.canRead ? <EmptyState title="Bar access required" description="Ask the owner for access to this tab." /> :
       state.tab.isPending ? <Skeleton className="h-96" /> : state.tab.isError ? <PageError error={state.tab.error} onRetry={() => state.tab.refetch()} /> : tab && <>
         <div className="flex items-center gap-3"><Badge variant={tab.status === 'SETTLED' ? 'success' : tab.status === 'VOID' ? 'destructive' : 'outline'}>{tab.status === 'OPEN' ? 'Open' : tab.status === 'SETTLED' ? 'Settled' : 'Void'}</Badge><span className="text-sm text-muted-foreground">Opened {formatDateTime(tab.openedAt)}</span></div>
