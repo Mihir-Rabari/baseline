@@ -78,7 +78,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestOptions = {}
       ...fetchOptions,
       signal: controller.signal,
       headers: {
-        'Content-Type': 'application/json',
+        ...(fetchOptions.body != null ? { 'Content-Type': 'application/json' } : {}),
         ...fetchOptions.headers,
       },
     });

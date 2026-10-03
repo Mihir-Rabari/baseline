@@ -77,6 +77,20 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
     reply.header('x-request-id', request.id);
   });
 
+  // Browsers send `Content-Type: application/json` on body-less POSTs (e.g. /bar/tabs/:id/send);
+  // Fastify rejects that with 400 by default, so treat an empty JSON body as no body.
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_request, body, done) => {
+    const text = typeof body === 'string' ? body : body.toString('utf8');
+    if (text.trim() === '') return done(null, undefined);
+    try {
+      done(null, JSON.parse(text));
+    } catch {
+      const error = new Error('Body is not valid JSON') as Error & { statusCode: number };
+      error.statusCode = 400;
+      done(error, undefined);
+    }
+  });
+
   // Configure Zod validation & serialization compilers
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
