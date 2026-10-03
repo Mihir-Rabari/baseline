@@ -121,3 +121,33 @@ export const permissionCatalog = PermissionCatalog.getInstance();
 export function registerPermissions(params: RegisterNamespaceParams): PermissionDefinition[] {
   return permissionCatalog.registerPermissions(params);
 }
+
+/**
+ * CourtOS domain permission namespaces (docs/hackathon/ARCHITECTURE_AND_DATABASE.md section 6).
+ *
+ * MIRROR: this list is duplicated in `BASELINE_PERMISSIONS` in packages/db/src/seed.ts
+ * (the seed writes the `permissions` table; this catalog is the in-process registry).
+ * A parity test in this package fails if the two drift apart.
+ */
+export const COURTOS_PERMISSION_NAMESPACES: RegisterNamespaceParams[] = [
+  { namespace: 'members', permissions: ['read', 'create', 'update'] },
+  { namespace: 'plans', permissions: ['read', 'update'] },
+  { namespace: 'memberships', permissions: ['create', 'update'] },
+  { namespace: 'courts', permissions: ['read', 'update'] },
+  { namespace: 'bookings', permissions: ['read', 'create', 'cancel', 'override', 'read:self', 'create:self', 'cancel:self'] },
+  { namespace: 'products', permissions: ['read', 'create', 'update'] },
+  { namespace: 'inventory', permissions: ['read', 'adjust'] },
+  { namespace: 'orders', permissions: ['read', 'create', 'update', 'read:self', 'create:self', 'cancel:self'] },
+  { namespace: 'bar', permissions: ['read', 'manage', 'kitchen', 'settle'] },
+  { namespace: 'shifts', permissions: ['read', 'manage', 'clock:self'] },
+  { namespace: 'crm', permissions: ['read', 'manage'] },
+  { namespace: 'invoices', permissions: ['read', 'create', 'update'] },
+  { namespace: 'payments', permissions: ['read', 'create'] },
+  { namespace: 'hr', permissions: ['read', 'manage'] },
+  { namespace: 'leave', permissions: ['read', 'decide', 'read:self', 'create:self'] },
+  { namespace: 'reports', permissions: ['read', 'share'] },
+];
+
+for (const ns of COURTOS_PERMISSION_NAMESPACES) {
+  registerPermissions(ns);
+}

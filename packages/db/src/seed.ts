@@ -1,4 +1,4 @@
-import { getDb, closeDatabase } from './client.js';
+import { getDb, closeDatabase, type DatabaseInstance } from './client.js';
 import {
   systemSettings,
   systemAuditLogs,
@@ -11,14 +11,14 @@ import {
 } from './schema/index.js';
 import { eq, sql } from 'drizzle-orm';
 import { fileURLToPath } from 'node:url';
-import { AppConfig } from '@packages/config';
+import { AppConfig, IamConfig, type PolicyDefinition, type RoleDefinition } from '@packages/config';
 import { getEnv } from '@packages/config/env';
 // Shared with the login path rather than reimplemented here. A local copy of the scrypt
 // parameters would drift the moment they are tuned, and the seeded ROOT account would
 // silently stop being able to authenticate.
 import { hashPassword } from '@packages/shared/crypto';
 
-const BASELINE_PERMISSIONS = [
+export const BASELINE_PERMISSIONS = [
   // Users
   { id: 'users:read', namespace: 'users', action: 'read', description: 'View user accounts and profiles', isSystem: true },
   { id: 'users:create', namespace: 'users', action: 'create', description: 'Create new user accounts', isSystem: true },
@@ -54,7 +54,107 @@ const BASELINE_PERMISSIONS = [
   { id: 'profile:update:self', namespace: 'profile', action: 'update:self', description: 'Update own profile information', isSystem: true },
   { id: 'notifications:read:self', namespace: 'notifications', action: 'read:self', description: 'View own notifications', isSystem: true },
   { id: 'notifications:update:self', namespace: 'notifications', action: 'update:self', description: 'Manage own notifications', isSystem: true },
+
+  // CourtOS domain permissions.
+  // MIRROR of COURTOS_PERMISSION_NAMESPACES in packages/iam/src/catalog/permission-catalog.ts
+  // (a parity test in packages/iam fails if they drift).
+  ...(
+    [
+      ['members', ['read', 'create', 'update']],
+      ['plans', ['read', 'update']],
+      ['memberships', ['create', 'update']],
+      ['courts', ['read', 'update']],
+      ['bookings', ['read', 'create', 'cancel', 'override', 'read:self', 'create:self', 'cancel:self']],
+      ['products', ['read', 'create', 'update']],
+      ['inventory', ['read', 'adjust']],
+      ['orders', ['read', 'create', 'update', 'read:self', 'create:self', 'cancel:self']],
+      ['bar', ['read', 'manage', 'kitchen', 'settle']],
+      ['shifts', ['read', 'manage', 'clock:self']],
+      ['crm', ['read', 'manage']],
+      ['invoices', ['read', 'create', 'update']],
+      ['payments', ['read', 'create']],
+      ['hr', ['read', 'manage']],
+      ['leave', ['read', 'decide', 'read:self', 'create:self']],
+      ['reports', ['read', 'share']],
+    ] as Array<[string, string[]]>
+  ).flatMap(([namespace, actions]) =>
+    actions.map((action) => ({
+      id: `${namespace}:${action}`,
+      namespace,
+      action,
+      description: `Permission to ${action} ${namespace}`,
+      isSystem: false,
+    }))
+  ),
 ];
+
+/**
+ * Domain (CourtOS) policies and roles declared in `IamConfig`.
+ *
+ * Idempotent: the config is the source of truth, so statements of each declared policy
+ * are replaced inside one transaction (a re-run yields identical row counts), and role
+ * to policy links use `onConflictDoNothing`. ADMIN, AdministratorPolicy and
+ * ExternalUserPolicy are handled by `runSeeds` above and skipped here.
+ */
+export async function seedDomainIam(db: DatabaseInstance): Promise<void> {
+  const handledPolicies = new Set<string>([AppConfig.iam.administratorPolicy, AppConfig.iam.defaultExternalUserPolicy]);
+  const handledRoles = new Set<string>([AppConfig.iam.adminRoleName, 'USER']);
+
+  await db.transaction(async (tx) => {
+    const policyIds = new Map<string, string>();
+
+    for (const [name, def] of Object.entries(IamConfig.policies as Record<string, PolicyDefinition>)) {
+      if (handledPolicies.has(name)) continue;
+
+      let [policy] = await tx.select().from(policies).where(eq(policies.name, name)).limit(1);
+      if (!policy) {
+        [policy] = await tx
+          .insert(policies)
+          .values({ name, description: def.description, isSystem: def.isSystem ?? true })
+          .returning();
+      } else {
+        await tx.update(policies).set({ description: def.description }).where(eq(policies.id, policy.id));
+        await tx.delete(policyStatements).where(eq(policyStatements.policyId, policy.id));
+      }
+
+      for (const statement of def.statements) {
+        await tx.insert(policyStatements).values({
+          policyId: policy.id,
+          effect: statement.effect,
+          actions: statement.actions,
+          resources: statement.resources ?? ['*'],
+          conditions: statement.conditions ?? null,
+        });
+      }
+      policyIds.set(name, policy.id);
+    }
+
+    for (const [name, def] of Object.entries(IamConfig.roles as Record<string, RoleDefinition>)) {
+      if (handledRoles.has(name)) continue;
+
+      let [role] = await tx.select().from(roles).where(eq(roles.name, name)).limit(1);
+      if (!role) {
+        [role] = await tx
+          .insert(roles)
+          .values({ name, description: def.description, isSystem: def.isSystem ?? true })
+          .returning();
+      }
+
+      for (const policyName of def.policies) {
+        let policyId = policyIds.get(policyName);
+        if (!policyId) {
+          const [existing] = await tx.select().from(policies).where(eq(policies.name, policyName)).limit(1);
+          policyId = existing?.id;
+        }
+        if (!policyId) {
+          throw new Error(`[DB] Role ${name} references unknown policy ${policyName}`);
+        }
+        await tx.insert(rolePolicies).values({ roleId: role.id, policyId }).onConflictDoNothing();
+      }
+    }
+  });
+  console.log('[DB] ✅ Synced CourtOS domain policies and roles.');
+}
 
 export async function runSeeds(): Promise<void> {
   console.log('[DB] Seeding foundational system records & IAM bootstrap...');
@@ -200,6 +300,9 @@ export async function runSeeds(): Promise<void> {
       }
       console.log('[DB] ✅ Created baseline ADMIN role with AdministratorPolicy attached.');
     }
+
+    // 4b. Domain policies and roles from IamConfig (MEMBER, FRONT_DESK, BAR_STAFF, OWNER)
+    await seedDomainIam(db);
 
     // 5. ROOT Account Bootstrap (Idempotent)
     const [existingRoot] = await db
