@@ -25,7 +25,7 @@ describe('Bar real transport', () => {
     expect(transport).toHaveBeenLastCalledWith('/api/v1/bar/tabs', { method: 'POST', body: JSON.stringify(opened) });
     transport.mockResolvedValue({ tab, tickets: [] });
     await barApi.send(id);
-    expect(transport).toHaveBeenLastCalledWith('/api/v1/bar/tabs/tab%2Fwith%3Fcharacters/send', { method: 'POST' });
+    expect(transport).toHaveBeenLastCalledWith('/api/v1/bar/tabs/tab%2Fwith%3Fcharacters/send', { method: 'POST', body: '{}' });
   });
   it('reads tables, menu, kitchen and earnings through the same versioned gateway', async () => {
     const state = createBarMock();
