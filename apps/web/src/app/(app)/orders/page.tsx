@@ -1,0 +1,22 @@
+'use client';
+import React, { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import type { OrderStatus, UpdateOrderStatusRequest } from '@packages/validation';
+import { useAuth } from '@/hooks/use-auth';
+import { shopApi } from '@/lib/shop-api';
+import { PageHeader } from '@/components/app-shell/page-header';
+import { EmptyState } from '@/components/app-shell/empty-state';
+import { PageError } from '@/components/club/page-error';
+import { StatusBadge } from '@/components/club/status-badge';
+import { Money } from '@/components/club/money';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+export default function OrdersPage() {
+  const { user, hasPermission } = useAuth(); const staff = hasPermission('orders:read'); const allowed = staff || hasPermission('orders:read:self'); const [status, setStatus] = useState('ALL'); const [page, setPage] = useState(1); const client = useQueryClient();
+  const query = useQuery({ queryKey: ['orders', staff, status, page], queryFn: () => shopApi.orders({ page, limit: 20, status: status === 'ALL' ? undefined : status as OrderStatus }, !staff), enabled: allowed, refetchInterval: 10000 });
+  const update = useMutation({ mutationFn: ({ id, next }: { id: string; next: UpdateOrderStatusRequest['status'] }) => shopApi.status(id, { status: next }), onSuccess: () => client.invalidateQueries({ queryKey: ['orders'] }), onError: (error) => toast.error(error.message) });
+  if (!user) return null;
+  return <div className="space-y-6"><PageHeader title={staff ? 'Orders' : 'My orders'} description="Track shop orders and their fulfilment." />{!allowed ? <EmptyState title="Orders are unavailable" description="Ask the front desk for order information." /> : <>{staff && <Tabs value={status} onValueChange={(value) => { setStatus(value); setPage(1); }}><TabsList className="h-auto flex-wrap justify-start">{[['ALL','All'],['PLACED','Placed'],['READY','Ready'],['OUT_FOR_DELIVERY','Out for delivery'],['COLLECTED','Collected'],['DELIVERED','Delivered'],['COMPLETED','Completed']].map(([value,label]) => <TabsTrigger key={value} value={value}>{label}</TabsTrigger>)}</TabsList></Tabs>}{query.error ? <PageError error={query.error} onRetry={() => { query.refetch(); }} /> : query.isPending ? <div role="status" aria-label="Loading orders"><Skeleton className="h-64" /></div> : !query.data?.data.length ? <EmptyState title="No orders match" description="Placed shop orders will appear here." /> : <ul className="divide-y">{query.data.data.map((order) => { const next = order.status === 'PLACED' ? order.fulfilment === 'DELIVERY' ? 'OUT_FOR_DELIVERY' : 'READY' : order.status === 'READY' ? 'COLLECTED' : order.status === 'OUT_FOR_DELIVERY' ? 'DELIVERED' : undefined; return <li key={order.id} className="flex flex-wrap items-center justify-between gap-4 py-4"><div className="space-y-2"><p className="font-mono text-xs">{order.orderNumber}</p><p>{order.member?.fullName ?? order.customerName ?? 'Counter customer'} · {order.fulfilment.toLowerCase()}</p><StatusBadge kind="order" value={order.status} /><p className="text-sm text-muted-foreground">{order.items.map((item) => `${item.qty} × ${item.name}`).join(', ')}</p></div><div className="flex items-center gap-4"><Money paise={order.totalPaise} />{next && hasPermission('orders:update') && <Button variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: order.id, next })}>{next === 'READY' ? 'Mark ready' : next === 'COLLECTED' ? 'Mark collected' : next === 'OUT_FOR_DELIVERY' ? 'Dispatch' : 'Mark delivered'}</Button>}</div></li>; })}</ul>}{query.data && <div className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{query.data.meta.totalItems} orders</p><div className="flex gap-2"><Button variant="outline" disabled={!query.data.meta.hasPrevPage} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button variant="outline" disabled={!query.data.meta.hasNextPage} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div>}</>}</div>;
+}

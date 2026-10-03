@@ -19,7 +19,7 @@ export function MemberSearch({ value, onChange, disabled }: {
   const result = useMemberLookup(q, !value && !disabled);
   return <div className="space-y-2"><Label htmlFor={id}>Member</Label>
     {value ? <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-      <div><p className="text-sm font-medium">{value.fullName}</p><p className="text-xs text-muted-foreground">{value.memberCode} · {value.planCode ?? 'No active plan'}</p></div>
+      <div><p className="text-sm font-medium">{value.fullName}</p><p className="text-xs text-muted-foreground">{value.memberCode} · {value.planCode ?? 'No active plan'} · shop {value.shopDiscountPct}%</p></div>
       <Button variant="ghost" disabled={disabled} onClick={() => { setText(''); onChange(null); }}>Change member</Button>
     </div> : <>
       <Input id={id} value={text} disabled={disabled} autoComplete="off" placeholder="Name, phone or member code"
