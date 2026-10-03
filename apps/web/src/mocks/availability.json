@@ -1,0 +1,343 @@
+{
+  "date": "2026-10-09",
+  "timezone": "Asia/Kolkata",
+  "generatedAt": "2026-10-09T02:00:00.000Z",
+  "priceFor": {
+    "type": "GUEST",
+    "label": "Walk-in"
+  },
+  "courts": [
+    {
+      "courtId": "d0000000-0000-4000-8000-000000000001",
+      "name": "Tennis Court 1",
+      "type": "TENNIS",
+      "mode": "STANDARD",
+      "slots": [
+        {
+          "startsAt": "2026-10-09T03:00:00.000Z",
+          "endsAt": "2026-10-09T04:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T03:30:00.000Z",
+          "endsAt": "2026-10-09T04:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T04:00:00.000Z",
+          "endsAt": "2026-10-09T05:00:00.000Z",
+          "status": "BOOKED",
+          "pricePaise": 60000,
+          "holder": "Demo player",
+          "bookingId": "c0000000-0000-4000-8000-000000000020"
+        },
+        {
+          "startsAt": "2026-10-09T04:30:00.000Z",
+          "endsAt": "2026-10-09T05:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:00:00.000Z",
+          "endsAt": "2026-10-09T06:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:30:00.000Z",
+          "endsAt": "2026-10-09T06:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:00:00.000Z",
+          "endsAt": "2026-10-09T07:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:30:00.000Z",
+          "endsAt": "2026-10-09T07:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T07:00:00.000Z",
+          "endsAt": "2026-10-09T08:00:00.000Z",
+          "status": "BLOCKED",
+          "pricePaise": 60000,
+          "reason": "Maintenance"
+        },
+        {
+          "startsAt": "2026-10-09T07:30:00.000Z",
+          "endsAt": "2026-10-09T08:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:00:00.000Z",
+          "endsAt": "2026-10-09T09:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:30:00.000Z",
+          "endsAt": "2026-10-09T09:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        }
+      ]
+    },
+    {
+      "courtId": "d0000000-0000-4000-8000-000000000002",
+      "name": "Padel Court 1",
+      "type": "PADEL",
+      "mode": "STANDARD",
+      "slots": [
+        {
+          "startsAt": "2026-10-09T03:00:00.000Z",
+          "endsAt": "2026-10-09T04:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T03:30:00.000Z",
+          "endsAt": "2026-10-09T04:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T04:00:00.000Z",
+          "endsAt": "2026-10-09T05:00:00.000Z",
+          "status": "BOOKED",
+          "pricePaise": 60000,
+          "holder": "Demo player",
+          "bookingId": "c0000000-0000-4000-8000-000000000020"
+        },
+        {
+          "startsAt": "2026-10-09T04:30:00.000Z",
+          "endsAt": "2026-10-09T05:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:00:00.000Z",
+          "endsAt": "2026-10-09T06:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:30:00.000Z",
+          "endsAt": "2026-10-09T06:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:00:00.000Z",
+          "endsAt": "2026-10-09T07:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:30:00.000Z",
+          "endsAt": "2026-10-09T07:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T07:00:00.000Z",
+          "endsAt": "2026-10-09T08:00:00.000Z",
+          "status": "BLOCKED",
+          "pricePaise": 60000,
+          "reason": "Maintenance"
+        },
+        {
+          "startsAt": "2026-10-09T07:30:00.000Z",
+          "endsAt": "2026-10-09T08:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:00:00.000Z",
+          "endsAt": "2026-10-09T09:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:30:00.000Z",
+          "endsAt": "2026-10-09T09:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        }
+      ]
+    },
+    {
+      "courtId": "d0000000-0000-4000-8000-000000000003",
+      "name": "Badminton Court 1",
+      "type": "BADMINTON",
+      "mode": "STANDARD",
+      "slots": [
+        {
+          "startsAt": "2026-10-09T03:00:00.000Z",
+          "endsAt": "2026-10-09T04:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T03:30:00.000Z",
+          "endsAt": "2026-10-09T04:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T04:00:00.000Z",
+          "endsAt": "2026-10-09T05:00:00.000Z",
+          "status": "BOOKED",
+          "pricePaise": 60000,
+          "holder": "Demo player",
+          "bookingId": "c0000000-0000-4000-8000-000000000020"
+        },
+        {
+          "startsAt": "2026-10-09T04:30:00.000Z",
+          "endsAt": "2026-10-09T05:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:00:00.000Z",
+          "endsAt": "2026-10-09T06:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:30:00.000Z",
+          "endsAt": "2026-10-09T06:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:00:00.000Z",
+          "endsAt": "2026-10-09T07:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:30:00.000Z",
+          "endsAt": "2026-10-09T07:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T07:00:00.000Z",
+          "endsAt": "2026-10-09T08:00:00.000Z",
+          "status": "BLOCKED",
+          "pricePaise": 60000,
+          "reason": "Maintenance"
+        },
+        {
+          "startsAt": "2026-10-09T07:30:00.000Z",
+          "endsAt": "2026-10-09T08:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:00:00.000Z",
+          "endsAt": "2026-10-09T09:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:30:00.000Z",
+          "endsAt": "2026-10-09T09:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        }
+      ]
+    },
+    {
+      "courtId": "d0000000-0000-4000-8000-000000000004",
+      "name": "Cricket Nets 1",
+      "type": "CRICKET_NETS",
+      "mode": "STANDARD",
+      "slots": [
+        {
+          "startsAt": "2026-10-09T03:00:00.000Z",
+          "endsAt": "2026-10-09T04:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T03:30:00.000Z",
+          "endsAt": "2026-10-09T04:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T04:00:00.000Z",
+          "endsAt": "2026-10-09T05:00:00.000Z",
+          "status": "BOOKED",
+          "pricePaise": 60000,
+          "holder": "Demo player",
+          "bookingId": "c0000000-0000-4000-8000-000000000020"
+        },
+        {
+          "startsAt": "2026-10-09T04:30:00.000Z",
+          "endsAt": "2026-10-09T05:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:00:00.000Z",
+          "endsAt": "2026-10-09T06:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T05:30:00.000Z",
+          "endsAt": "2026-10-09T06:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:00:00.000Z",
+          "endsAt": "2026-10-09T07:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T06:30:00.000Z",
+          "endsAt": "2026-10-09T07:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T07:00:00.000Z",
+          "endsAt": "2026-10-09T08:00:00.000Z",
+          "status": "BLOCKED",
+          "pricePaise": 60000,
+          "reason": "Maintenance"
+        },
+        {
+          "startsAt": "2026-10-09T07:30:00.000Z",
+          "endsAt": "2026-10-09T08:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:00:00.000Z",
+          "endsAt": "2026-10-09T09:00:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        },
+        {
+          "startsAt": "2026-10-09T08:30:00.000Z",
+          "endsAt": "2026-10-09T09:30:00.000Z",
+          "status": "FREE",
+          "pricePaise": 60000
+        }
+      ]
+    }
+  ]
+}
