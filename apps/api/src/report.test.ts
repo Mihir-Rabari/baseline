@@ -93,10 +93,10 @@ describe('report ranges and helpers (unit)', () => {
   });
 
   it('names export files', () => {
-    expect(exportFilename({ label: 'month', from: '2026-10-01', to: '2026-10-31' }, 'summary')).toBe('courtos-month-2026-10.csv');
-    expect(exportFilename({ label: 'today', from: '2026-10-09', to: '2026-10-09' }, 'summary')).toBe('courtos-today-2026-10-09.csv');
+    expect(exportFilename({ label: 'month', from: '2026-10-01', to: '2026-10-31' }, 'summary')).toBe('baseline-month-2026-10.csv');
+    expect(exportFilename({ label: 'today', from: '2026-10-09', to: '2026-10-09' }, 'summary')).toBe('baseline-today-2026-10-09.csv');
     expect(exportFilename({ label: 'custom', from: '2026-10-01', to: '2026-10-09' }, 'payments')).toBe(
-      'courtos-payments-2026-10-01_to_2026-10-09.csv'
+      'baseline-payments-2026-10-01_to_2026-10-09.csv'
     );
   });
 });
@@ -528,17 +528,17 @@ describe('Owner dashboard (M-14)', () => {
       const res = await call(owner, '/reports/export.csv?from=2031-05-12&to=2031-05-14');
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toContain('text/csv');
-      expect(res.headers['content-disposition']).toBe('attachment; filename="courtos-2031-05-12_to_2031-05-14.csv"');
+      expect(res.headers['content-disposition']).toBe('attachment; filename="baseline-2031-05-12_to_2031-05-14.csv"');
       const lines = res.body.split('\r\n');
       expect(lines[0]).toBe('Section,Label,Value');
       expect(lines).toContain('KPI,Revenue (INR),3500');
       expect(lines).toContain('Revenue by source (INR),COURT,1500');
     });
 
-    it('range=month names the file courtos-month-YYYY-MM', async () => {
+    it('range=month names the file baseline-month-YYYY-MM', async () => {
       if (!hasDatabase) return;
       const res = await call(owner, '/reports/export.csv?range=month');
-      expect(res.headers['content-disposition']).toMatch(/^attachment; filename="courtos-month-\d{4}-\d{2}\.csv"$/);
+      expect(res.headers['content-disposition']).toMatch(/^attachment; filename="baseline-month-\d{4}-\d{2}\.csv"$/);
     });
 
     it('payments: refunds stay numeric and attacker-controlled cells are neutralised', async () => {
@@ -552,7 +552,7 @@ describe('Owner dashboard (M-14)', () => {
       await pay('2031-06-02T11:00:00', 'SHOP', 'UPI', -2_000, { reference: '-2+3' });
       const res = await call(owner, '/reports/export.csv?type=payments&from=2031-06-02&to=2031-06-02');
       expect(res.statusCode).toBe(200);
-      expect(res.headers['content-disposition']).toBe('attachment; filename="courtos-payments-2031-06-02_to_2031-06-02.csv"');
+      expect(res.headers['content-disposition']).toBe('attachment; filename="baseline-payments-2031-06-02_to_2031-06-02.csv"');
       const lines = res.body.trim().split('\r\n');
       expect(lines[0]).toBe('Paid at (club time),Source,Kind,Method,Amount (INR),Member,Reference,Received by');
       expect(lines).toHaveLength(3);
