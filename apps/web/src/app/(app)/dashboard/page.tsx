@@ -26,12 +26,12 @@ function DashboardTabs() {
   const [tab, setTab] = useState(params.get('tab') === 'profile' ? 'profile' : 'overview');
   if (!user) return null;
   return (
-    <div className="space-y-6">
-      <PageHeader title={user.name || user.email} description="Your club workspace and your account." />
+    <div className="space-y-8">
+      <PageHeader title="Dashboard" description="Club activity, quick actions and your account." />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList aria-label="Dashboard sections"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="profile">Profile</TabsTrigger></TabsList>
       </Tabs>
-      <div key={tab} className="animate-rise space-y-6">
+      <div key={tab} className="motion-safe:animate-rise space-y-8">
         {tab === 'overview' ? <DashboardWorkspace /> : (
           <>
             <ProfilePanel />
