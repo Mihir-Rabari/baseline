@@ -34,7 +34,7 @@ export default function BarTabPage() {
     try { await action(); if (success) toast.success(success); }
     catch (error) { const message = error instanceof Error ? error.message : 'The tab could not be updated. Try again.'; setActionError(message); toast.error(message); }
   };
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <div className="print:hidden">
       <PageHeader
         title={tab ? `Tab #${tab.tabNumber}` : 'Bar tab'}

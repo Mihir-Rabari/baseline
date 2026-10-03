@@ -62,7 +62,7 @@ export default function BarMenuPage() {
   if (!allowed) return <NoAccess what="the bar menu" />;
   const rows = (menu.data ?? []).filter((m) => !category || m.category === category);
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Bar menu" description={canEdit ? 'What the bar and kitchen sell. Switch an item off when it runs out.' : 'What the bar and kitchen sell. Only the owner can change the menu.'} actions={canEdit ? <Button onClick={() => setCreating(true)}>New item</Button> : undefined} />
       <SelectBox id="menu-filter" label="Category" className="max-w-xs" value={category} onChange={setCategory} options={[{ value: '', label: 'All categories' }, ...CATEGORIES.map((c) => ({ value: c, label: humanize(c) }))]} />
       <QueryState query={{ ...menu, isEmpty: rows.length === 0 }} empty={{ title: 'Nothing on the menu', description: canEdit ? 'Add the first item.' : 'The owner has not added items yet.' }}>

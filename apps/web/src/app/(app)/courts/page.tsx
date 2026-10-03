@@ -70,7 +70,7 @@ export default function CourtsPage() {
     }
   }
 
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <PageHeader title="Courts" description="Choose a court and time. Prices include the selected member’s benefits." />
     {!canRead ? <EmptyState title="Court booking is unavailable" description="Ask the front desk to help with a booking." /> : <>
       <div className="flex flex-wrap items-end justify-between gap-4">

@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 export function Pager({ meta, onPage }: { meta?: PaginatedResponseMeta; onPage: (page: number) => void }) {
   if (!meta || meta.totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between gap-3 pt-2 text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-4 pt-4 text-sm text-muted-foreground">
       <span>Page {meta.page} of {meta.totalPages} · {meta.totalItems} items</span>
       <div className="flex gap-2">
         <Button size="sm" variant="outline" disabled={!meta.hasPrevPage} onClick={() => onPage(meta.page - 1)}>Previous</Button>
@@ -54,7 +54,7 @@ export function BarList({ rows, money = true }: { rows: Array<{ label: string; v
     <ul className="space-y-2">
       {rows.map((row) => (
         <li key={row.label} className="space-y-1">
-          <div className="flex justify-between text-sm"><span>{row.label}</span><span className="tabular">{money ? <Money paise={row.value} /> : row.value}</span></div>
+          <div className="flex flex-wrap justify-between gap-2 break-words text-sm"><span className="min-w-0 max-w-full">{row.label}</span><span className="tabular">{money ? <Money paise={row.value} /> : row.value}</span></div>
           <div className="h-2 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }} /></div>
         </li>
       ))}
