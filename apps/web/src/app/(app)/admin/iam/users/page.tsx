@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/app-shell/empty-state';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Table,
@@ -24,16 +25,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import {
-  Users,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Ban,
-  CheckCircle2,
-  AlertTriangle,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Ban, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { UserStatus } from '@packages/validation';
 
 export default function UsersManagementPage() {
@@ -75,9 +67,10 @@ export default function UsersManagementPage() {
       <Card className="border-border shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="flex-1">
+              <label htmlFor="iam-user-search" className="sr-only">Search users</label>
               <Input
+                id="iam-user-search"
                 type="text"
                 placeholder="Search by email or name..."
                 value={search}
@@ -85,7 +78,6 @@ export default function UsersManagementPage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="pl-9"
               />
             </div>
 
@@ -120,10 +112,7 @@ export default function UsersManagementPage() {
               Loading user accounts...
             </div>
           ) : !data || data.data.length === 0 ? (
-            <div className="p-12 text-center text-sm text-muted-foreground space-y-2">
-              <Users className="h-8 w-8 mx-auto text-muted-foreground/50" />
-              <p>No user accounts found matching your criteria.</p>
-            </div>
+            <EmptyState title="No users found" description="Try a different name, email or status." />
           ) : (
             <Table>
               <TableHeader>
@@ -189,12 +178,9 @@ export default function UsersManagementPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <Link href={`/admin/iam/users/${u.id}`}>
-                            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-                              <Eye className="h-3.5 w-3.5 mr-1" />
-                              Inspect
-                            </Button>
-                          </Link>
+                          <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-xs">
+                            <Link href={`/admin/iam/users/${u.id}`}>Inspect</Link>
+                          </Button>
 
                           {!isRoot && (
                             <>
@@ -204,9 +190,10 @@ export default function UsersManagementPage() {
                                   size="sm"
                                   onClick={() => handleStatusChange(u.id, 'SUSPENDED')}
                                   className="h-8 px-2 text-xs text-warning hover:text-warning hover:bg-warning/10"
+                                  aria-label={`Suspend ${u.name || u.email}`}
                                   title="Suspend User"
                                 >
-                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                  <AlertTriangle className="h-4 w-4" aria-hidden />
                                 </Button>
                               ) : (
                                 <Button
@@ -214,9 +201,10 @@ export default function UsersManagementPage() {
                                   size="sm"
                                   onClick={() => handleStatusChange(u.id, 'ACTIVE')}
                                   className="h-8 px-2 text-xs text-success hover:text-success hover:bg-success/10"
+                                  aria-label={`Activate ${u.name || u.email}`}
                                   title="Activate User"
                                 >
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <CheckCircle2 className="h-4 w-4" aria-hidden />
                                 </Button>
                               )}
 
@@ -226,9 +214,10 @@ export default function UsersManagementPage() {
                                   size="sm"
                                   onClick={() => handleStatusChange(u.id, 'DISABLED')}
                                   className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10"
+                                  aria-label={`Disable ${u.name || u.email}`}
                                   title="Disable User"
                                 >
-                                  <Ban className="h-3.5 w-3.5" />
+                                  <Ban className="h-4 w-4" aria-hidden />
                                 </Button>
                               )}
                             </>
@@ -256,9 +245,10 @@ export default function UsersManagementPage() {
                   size="sm"
                   disabled={!data.meta.hasPrevPage}
                   onClick={() => setPage((p) => p - 1)}
+                  aria-label="Previous page"
                   className="h-7 px-2"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-4 w-4" aria-hidden />
                 </Button>
                 <span className="px-2 font-medium">
                   Page {data.meta.page} of {data.meta.totalPages}
@@ -268,9 +258,10 @@ export default function UsersManagementPage() {
                   size="sm"
                   disabled={!data.meta.hasNextPage}
                   onClick={() => setPage((p) => p + 1)}
+                  aria-label="Next page"
                   className="h-7 px-2"
                 >
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-4 w-4" aria-hidden />
                 </Button>
               </div>
             </div>

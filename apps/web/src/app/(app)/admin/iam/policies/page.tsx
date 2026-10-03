@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Trash2, AlertCircle, Eye, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { PolicyStatement } from '@packages/validation';
 import { SUPPORTED_CONDITION_OPERATORS } from '@packages/validation';
 import { getErrorMessage } from '@/lib/errors';
@@ -111,7 +111,6 @@ export default function PoliciesManagementPage() {
         </div>
 
         <Button onClick={() => setShowCreate(!showCreate)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
           {showCreate ? 'Cancel' : 'Create Policy'}
         </Button>
       </div>
@@ -128,8 +127,7 @@ export default function PoliciesManagementPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
+                <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
                   <span>{error}</span>
                 </div>
               )}
@@ -163,7 +161,7 @@ export default function PoliciesManagementPage() {
                 <div className="flex items-center justify-between">
                   <Label>Policy Statements (Allow / Deny)</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addStatement} className="h-7 text-xs">
-                    <Plus className="h-3 w-3 mr-1" /> Add Statement
+                    Add Statement
                   </Button>
                 </div>
 
@@ -189,9 +187,10 @@ export default function PoliciesManagementPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => removeStatement(idx)}
+                            aria-label={`Remove statement ${idx + 1}`}
                             className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-4 w-4" aria-hidden />
                           </Button>
                         )}
                       </div>
@@ -267,9 +266,10 @@ export default function PoliciesManagementPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedPolicyId(null)}
+                aria-label="Close policy details"
                 className="h-7 w-7 p-0"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden />
               </Button>
             </div>
           </CardHeader>
@@ -335,7 +335,6 @@ export default function PoliciesManagementPage() {
                       onClick={() => setSelectedPolicyId(policy.id)}
                       className="h-8 px-2 text-xs"
                     >
-                      <Eye className="h-3.5 w-3.5 mr-1" />
                       View Statements
                     </Button>
                     {!policy.isSystem && (
@@ -345,7 +344,6 @@ export default function PoliciesManagementPage() {
                         onClick={() => handleDelete(policy.id, policy.name)}
                         className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
                     )}

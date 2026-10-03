@@ -5,7 +5,7 @@ import { useIamPermissions } from '@/hooks/use-iam';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Shield } from 'lucide-react';
+
 import type { Permission } from '@packages/validation';
 
 export default function PermissionsCatalogPage() {
@@ -48,7 +48,6 @@ export default function PermissionsCatalogPage() {
               <CardHeader className="p-4 pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base uppercase tracking-wider font-mono text-primary flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
                     <span>{namespace}</span>
                   </CardTitle>
                   <Badge variant="outline" className="text-xs font-mono">
