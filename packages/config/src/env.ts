@@ -52,6 +52,22 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   HOST: z.string().default('0.0.0.0'),
 
+  // Club (CourtOS): IANA timezone used for opening hours, slot dates and reports.
+  CLUB_TIMEZONE: z
+    .string()
+    .default('Asia/Kolkata')
+    .refine(
+      (tz) => {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: tz });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'CLUB_TIMEZONE must be a valid IANA timezone (e.g. Asia/Kolkata)' }
+    ),
+
   // Reverse proxy trust.
   //
   // Set this when the API sits behind nginx, a cloud load balancer, or Docker's

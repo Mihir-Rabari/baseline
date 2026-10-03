@@ -49,6 +49,7 @@ export const AppConfig = {
   iam: {
     rootEnabled: IamConfig.root.enabled,
     defaultExternalUserPolicy: IamConfig.registration.defaultPolicy,
+    defaultRole: IamConfig.registration.defaultRole,
     administratorPolicy: 'AdministratorPolicy',
     adminRoleName: 'ADMIN',
   },

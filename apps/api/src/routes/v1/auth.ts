@@ -5,7 +5,7 @@ import {
   SessionResponseSchema,
   HttpErrorResponseSchema,
 } from '@packages/validation';
-import { users, policies, userPolicies } from '@packages/db';
+import { users, policies, userPolicies, roles, userRoles } from '@packages/db';
 import { eq } from 'drizzle-orm';
 import {
   hashPassword,
@@ -153,6 +153,28 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
             { policy: defaultPolicyName },
             'Default external-user policy is missing; new accounts will have no permissions'
           );
+        }
+
+        // Public signups also receive the configured default role (MEMBER for CourtOS).
+        // A missing role is logged, not fatal: the baseline policy above still applies.
+        const defaultRoleName = fastify.appConfig.iam.defaultRole;
+        if (defaultRoleName) {
+          const [defaultRole] = await tx
+            .select({ id: roles.id })
+            .from(roles)
+            .where(eq(roles.name, defaultRoleName))
+            .limit(1);
+          if (defaultRole) {
+            await tx
+              .insert(userRoles)
+              .values({ userId: created.id, roleId: defaultRole.id })
+              .onConflictDoNothing();
+          } else {
+            request.log.error(
+              { role: defaultRoleName },
+              'Default registration role is missing; run the database seed'
+            );
+          }
         }
 
         return created;
