@@ -78,7 +78,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input
-                  id="name"
+                  id="name" placeholder="Your full name"
                   type="text"
                   autoComplete="name"
                   required
@@ -90,7 +90,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
-                  id="email"
+                  id="email" placeholder="you@club.com"
                   type="email"
                   autoComplete="email"
                   required
@@ -102,7 +102,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
-                  id="password"
+                  id="password" placeholder="At least 8 characters"
                   type="password"
                   autoComplete="new-password"
                   required

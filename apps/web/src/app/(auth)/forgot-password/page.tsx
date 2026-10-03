@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
         <CardHeader><CardTitle>Forgot your password?</CardTitle><CardDescription>Enter your email and we will send you a link to choose a new one.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
-          <div className="space-y-2"><Label htmlFor="forgot-email">Email</Label><Input id="forgot-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+          <div className="space-y-2"><Label htmlFor="forgot-email">Email</Label><Input id="forgot-email" placeholder="you@club.com" aria-required="true" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
         </CardContent>
         <CardFooter className="flex flex-col items-stretch gap-3">
           <Button type="submit" loading={sending}>{sending ? 'Sending…' : 'Send reset link'}</Button>

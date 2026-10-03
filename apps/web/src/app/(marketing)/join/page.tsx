@@ -86,10 +86,10 @@ function JoinForm() {
       <form onSubmit={(event) => { void submit(event); }} noValidate className="animate-rise space-y-5">
         <fieldset disabled={saving} className="space-y-5">
           {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}{exists && <> <Link href="/login" className="underline underline-offset-4">Sign in</Link> or <Link href="/forgot-password" className="underline underline-offset-4">reset your password</Link>.</>}</AlertDescription></Alert>}
-          <Field id="join-name" label="Full name" autoComplete="name" value={form.name} onChange={set('name')} />
+          <Field id="join-name" placeholder="Your full name" required label="Full name" autoComplete="name" value={form.name} onChange={set('name')} />
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field id="join-phone" label="Phone" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} />
-            <Field id="join-email" label="Email" type="email" autoComplete="email" value={form.email} onChange={set('email')} hint="You sign in with this." />
+            <Field id="join-phone" placeholder="98765 43210" required label="Phone" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} />
+            <Field id="join-email" placeholder="you@club.com" required label="Email" type="email" autoComplete="email" value={form.email} onChange={set('email')} hint="You sign in with this." />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="join-password">Password</Label><PasswordInput id="join-password" autoComplete="new-password" value={form.password} onChange={set('password')} /><p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p></div>

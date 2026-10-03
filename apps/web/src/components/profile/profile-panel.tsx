@@ -127,7 +127,7 @@ export function ProfilePanel() {
               <div className="space-y-2">
                 <Label htmlFor="prof-name">Name</Label>
                 <Input
-                  id="prof-name"
+                  id="prof-name" placeholder="Your full name"
                   type="text"
                   autoComplete="name"
                   required
@@ -139,7 +139,7 @@ export function ProfilePanel() {
               <div className="space-y-2">
                 <Label htmlFor="prof-email">Email</Label>
                 <Input
-                  id="prof-email"
+                  id="prof-email" placeholder="you@club.com"
                   type="email"
                   autoComplete="email"
                   required
@@ -182,7 +182,7 @@ export function ProfilePanel() {
               <div className="space-y-2">
                 <Label htmlFor="current-pwd">Current password</Label>
                 <Input
-                  id="current-pwd"
+                  id="current-pwd" placeholder="Current password"
                   type="password"
                   autoComplete="current-password"
                   required
@@ -194,7 +194,7 @@ export function ProfilePanel() {
               <div className="space-y-2">
                 <Label htmlFor="new-pwd">New password</Label>
                 <Input
-                  id="new-pwd"
+                  id="new-pwd" placeholder="At least 8 characters"
                   type="password"
                   autoComplete="new-password"
                   required

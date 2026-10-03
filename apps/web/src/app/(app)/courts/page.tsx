@@ -80,8 +80,8 @@ export default function CourtsPage() {
       {staff && <fieldset disabled={create.isPending} className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
         <SelectBox id="booking-for" label="Booking for" value={mode} onChange={(value) => { setMode(value as 'MEMBER' | 'GUEST'); resetSelection(); }} options={[{ value: 'GUEST', label: 'Walk-in' }, { value: 'MEMBER', label: 'Member' }]} />
         {mode === 'MEMBER' ? <MemberSearch value={member} disabled={create.isPending} onChange={(value) => { setMember(value); resetSelection(); }} />
-          : <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="guest-name">Guest name</Label><Input id="guest-name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} /></div>
-            <div className="space-y-2"><Label htmlFor="guest-phone">Guest phone</Label><Input id="guest-phone" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div></div>}
+          : <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="guest-name">Guest name</Label><Input id="guest-name" placeholder="Guest name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="guest-phone">Guest phone</Label><Input id="guest-phone" placeholder="98765 43210" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div></div>}
       </fieldset>}
       <Tabs value={sport} onValueChange={(value) => { setSport(value); resetSelection(); }}>
         <TabsList className="flex h-auto flex-wrap justify-start" aria-label="Sport">{Object.entries(sports).map(([code, label]) => <TabsTrigger key={code} value={code} disabled={create.isPending}>{label}</TabsTrigger>)}</TabsList>

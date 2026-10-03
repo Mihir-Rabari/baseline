@@ -198,7 +198,7 @@ export default function PoliciesManagementPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                         <div>
-                          <Label className="text-[11px] text-muted-foreground block mb-1">Effect</Label>
+                          <Label required className="text-[11px] text-muted-foreground block mb-1">Effect</Label>
                           <select
                             value={stmt.effect}
                             onChange={(e) =>

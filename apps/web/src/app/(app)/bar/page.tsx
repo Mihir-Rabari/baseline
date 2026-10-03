@@ -57,7 +57,7 @@ export default function BarFloorPage() {
         <form onSubmit={openTab} className="space-y-4">
           {hasPermission('members:read') && <MemberSearch value={member} onChange={setMember} disabled={open.isPending} />}
           {member && <p className="text-sm text-muted-foreground">Bar discount {member.barDiscountPct}%</p>}
-          {!member && <div className="space-y-2"><Label htmlFor="bar-guest">Guest name</Label><Input id="bar-guest" autoComplete="name" value={guestName} maxLength={200} onChange={(event) => setGuestName(event.target.value)} disabled={open.isPending} required /></div>}
+          {!member && <div className="space-y-2"><Label htmlFor="bar-guest">Guest name</Label><Input id="bar-guest" placeholder="Guest name" autoComplete="name" value={guestName} maxLength={200} onChange={(event) => setGuestName(event.target.value)} disabled={open.isPending} required /></div>}
           {open.isError && <p role="alert" className="text-sm text-destructive">{open.error.message}</p>}
           <Button className="w-full" type="submit" disabled={open.isPending || !canManage || (!member && !guestName.trim())}>{open.isPending ? 'Opening…' : 'Open tab'}</Button>
         </form>

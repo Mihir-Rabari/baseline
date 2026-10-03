@@ -37,11 +37,11 @@ function MenuItemDialog({ item, open, onClose }: { item: MenuItem | null; open: 
   }
   return (
     <FormDialog open={open} onClose={onClose} title={editing ? `Edit ${item?.name}` : 'New menu item'} description="Prices are what the guest pays. The station decides whether it goes to the bar or the kitchen." onSubmit={submit} submitLabel={editing ? 'Save changes' : 'Add to menu'} pending={create.isPending || update.isPending} error={error}>
-      <Field id="menu-name" label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="off" />
+      <Field id="menu-name" placeholder="e.g. Masala chai" required label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="off" />
       <div className="grid gap-4 sm:grid-cols-3">
         <SelectBox id="menu-category" label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} options={CATEGORIES.map((c) => ({ value: c, label: humanize(c) }))} />
         <SelectBox id="menu-station" label="Made at" value={form.station} onChange={(v) => setForm({ ...form, station: v })} options={STATIONS.map((s) => ({ value: s, label: humanize(s) }))} />
-        <Field id="menu-price" label="Price (₹)" inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+        <Field id="menu-price" placeholder="e.g. 120" required label="Price (₹)" inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
       </div>
       <CheckField id="menu-discountable" label="Members get their bar discount on this" checked={form.discountable} onChange={(v) => setForm({ ...form, discountable: v })} />
       {editing && <CheckField id="menu-available" label="Available to order" checked={form.isAvailable} onChange={(v) => setForm({ ...form, isAvailable: v })} hint="Switch off when it has run out." />}

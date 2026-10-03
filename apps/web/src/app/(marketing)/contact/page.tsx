@@ -47,7 +47,7 @@ function ContactForm() {
         {(['name', 'phone', 'email'] as const).map((field) => (
           <div className="space-y-2" key={field}>
             <Label htmlFor={field}>{field === 'name' ? 'Name' : field === 'phone' ? 'Phone' : 'Email'}</Label>
-            <Input id={field} type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} autoComplete={field === 'phone' ? 'tel' : field} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `${field}-error` : undefined} {...register(field)} />
+            <Input id={field} placeholder={({ name: 'Your full name', phone: '98765 43210 (phone or email)', email: 'you@club.com (phone or email)' })[field]} aria-required={field === 'name'} type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} autoComplete={field === 'phone' ? 'tel' : field} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `${field}-error` : undefined} {...register(field)} />
             {errors[field] && <p id={`${field}-error`} role="alert" className="text-sm text-destructive">{errors[field].message}</p>}
           </div>
         ))}
@@ -69,7 +69,7 @@ function ContactForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="message">Message</Label>
-          <textarea id="message" rows={5} className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? 'message-error' : undefined} {...register('message')} />
+          <textarea id="message" rows={5} placeholder="Tell us what you are looking for" aria-required="true" className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? 'message-error' : undefined} {...register('message')} />
           {errors.message && <p id="message-error" role="alert" className="text-sm text-destructive">{errors.message.message}</p>}
         </div>
         <Button type="submit" disabled={enquiry.isPending}>{enquiry.isPending ? 'Sending enquiry…' : 'Send enquiry'}</Button>
