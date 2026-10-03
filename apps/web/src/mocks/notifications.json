@@ -1,0 +1,38 @@
+[
+  {
+    "id": "b0000000-0000-4000-8000-000000000400",
+    "type": "LOW_STOCK",
+    "title": "Tennis balls are running low",
+    "body": "Review inventory and restock.",
+    "link": "/inventory",
+    "readAt": null,
+    "createdAt": "2026-10-03T09:26:29.039Z"
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000401",
+    "type": "NEW_LEAD",
+    "title": "New enquiry from Riya",
+    "body": "Follow up with the new lead.",
+    "link": "/crm",
+    "readAt": null,
+    "createdAt": "2026-10-03T08:26:29.039Z"
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000402",
+    "type": "MEMBERSHIP_EXPIRING",
+    "title": "Membership renewal due",
+    "body": "A member needs a renewal reminder.",
+    "link": "/members",
+    "readAt": null,
+    "createdAt": "2026-10-03T07:26:29.039Z"
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000403",
+    "type": "ONLINE_ORDER",
+    "title": "New online order",
+    "body": "Prepare the order for collection.",
+    "link": "/orders",
+    "readAt": null,
+    "createdAt": "2026-10-03T06:26:29.039Z"
+  }
+]

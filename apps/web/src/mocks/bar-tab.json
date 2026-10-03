@@ -1,0 +1,17 @@
+{
+  "id": "b0000000-0000-4000-8000-000000000200",
+  "tabNumber": 42,
+  "status": "OPEN",
+  "table": {
+    "id": "b0000000-0000-4000-8000-000000000001",
+    "name": "T1"
+  },
+  "member": null,
+  "guestName": "Riya",
+  "openedAt": "2026-10-03T09:26:29.027Z",
+  "items": [],
+  "subtotalPaise": 0,
+  "discountPaise": 0,
+  "totalPaise": 0,
+  "settledAt": null
+}
