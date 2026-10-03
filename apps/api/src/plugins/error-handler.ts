@@ -2,6 +2,38 @@ import type { FastifyInstance, FastifyError, FastifyRequest, FastifyReply } from
 import fp from 'fastify-plugin';
 import { ZodError } from 'zod';
 import type { HttpErrorResponse, ErrorDetail } from '@packages/validation';
+import { DomainError } from '../lib/domain-error.js';
+
+const STATUS_NAMES: Record<number, string> = {
+  400: 'Bad Request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not Found',
+  409: 'Conflict',
+  422: 'Unprocessable Entity',
+  429: 'Too Many Requests',
+};
+
+/**
+ * Postgres SQLSTATE fallbacks for constraint violations that slipped past the service layer.
+ * Raw driver text (constraint names, column values) is never forwarded to the client.
+ */
+const PG_ERROR_MAP: Record<string, { statusCode: number; code: string; message: string }> = {
+  '23P01': { statusCode: 409, code: 'CONFLICT', message: 'That time is already taken.' },
+  '23505': { statusCode: 409, code: 'CONFLICT', message: 'A record with these details already exists.' },
+  '23514': { statusCode: 400, code: 'VALIDATION_ERROR', message: 'The submitted values violate a data rule.' },
+};
+
+/** Finds a mapped Postgres SQLSTATE on the error or its `cause` chain (Drizzle wraps driver errors). */
+function findPgError(error: unknown): { statusCode: number; code: string; message: string } | undefined {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current && typeof current === 'object'; depth += 1) {
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === 'string' && PG_ERROR_MAP[code]) return PG_ERROR_MAP[code];
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
 
 async function errorHandlerPlugin(fastify: FastifyInstance) {
   fastify.setErrorHandler((error: FastifyError | Error, request: FastifyRequest, reply: FastifyReply) => {
@@ -58,7 +90,35 @@ async function errorHandlerPlugin(fastify: FastifyInstance) {
       return reply.status(400).send(response);
     }
 
-    // 3. Handle HTTP status code errors (Sensible / domain errors / custom codes)
+    // 3. Domain errors thrown by services: explicit code, status and optional details
+    if (error instanceof DomainError) {
+      const response: HttpErrorResponse = {
+        statusCode: error.statusCode,
+        error: STATUS_NAMES[error.statusCode] ?? 'Request Error',
+        message: error.message,
+        code: error.code,
+        requestId,
+        ...(error.details && error.details.length > 0 ? { details: error.details } : {}),
+        timestamp: new Date().toISOString(),
+      };
+      return reply.status(error.statusCode).send(response);
+    }
+
+    // 4. Postgres constraint violations (exclusion 23P01, unique 23505, check 23514)
+    const pgMapping = findPgError(error);
+    if (pgMapping) {
+      const response: HttpErrorResponse = {
+        statusCode: pgMapping.statusCode,
+        error: STATUS_NAMES[pgMapping.statusCode] ?? 'Request Error',
+        message: pgMapping.message,
+        code: pgMapping.code,
+        requestId,
+        timestamp: new Date().toISOString(),
+      };
+      return reply.status(pgMapping.statusCode).send(response);
+    }
+
+    // 5. Handle HTTP status code errors (Sensible / domain errors / custom codes)
     const statusCode = typeof (error as FastifyError).statusCode === 'number' ? (error as FastifyError).statusCode! : 500;
 
     // Canonical name and fallback code per status. Any 4xx not listed here is still
