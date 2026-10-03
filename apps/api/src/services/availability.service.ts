@@ -26,13 +26,14 @@ import {
   clubWallTimeToInstant,
   daysBetween,
   dayRange,
+  TRIAL_HORIZON_DAYS,
   isoWeekdayOf,
   parseTimeOfDay,
 } from './time.js';
 
 /**
  * Who is asking. It decides the price the grid is quoted in and whether holder details are shown.
- *  - PUBLIC: no login, walk-in price, no booking details, guest horizon (BR-06).
+ *  - PUBLIC: no login, walk-in price, no booking details, trial horizon, 7 days (BR-06).
  *  - MEMBER: a logged-in member; always priced as themselves, no holder details.
  *  - STAFF:  front desk / owner; may price for `memberId`, otherwise walk-in; sees holders.
  */
@@ -121,6 +122,9 @@ export class AvailabilityService {
     const entitlements: Entitlements = pricedMemberId
       ? await this.pricing.resolveEntitlements(pricedMemberId, date)
       : walkInEntitlements();
+    // The public grid exists to pick a trial slot, so it reaches as far as a trial booking does (BR-06).
+    // A walk-in guest booked by staff keeps the shorter guest horizon in BookingService.
+    if (viewer.kind === 'PUBLIC') entitlements.bookingHorizonDays = TRIAL_HORIZON_DAYS;
 
     // ---- 2. Booking horizon (BR-06) ---------------------------------------------------------
     // Staff pricing for an anonymous walk-in are not limited: the desk books same-week phone enquiries.

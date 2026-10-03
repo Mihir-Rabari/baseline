@@ -366,11 +366,11 @@ describe('AvailabilityService (database, rolled back per test)', () => {
   });
 
   describe('booking horizon (BR-06)', () => {
-    it('guests may look 2 days ahead, not 3', async (ctx) => {
+    it('the public grid looks 7 days ahead, not 8', async (ctx) => {
       await scenario(ctx, async ({ service, typeId }) => {
         const now = at('2026-10-10', '10:00');
-        await expect(service.getAvailability({ date: '2026-10-12', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).resolves.toMatchObject({ date: '2026-10-12' });
-        await expect(service.getAvailability({ date: '2026-10-13', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).rejects.toMatchObject({
+        await expect(service.getAvailability({ date: '2026-10-17', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).resolves.toMatchObject({ date: '2026-10-17' });
+        await expect(service.getAvailability({ date: '2026-10-18', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).rejects.toMatchObject({
           code: 'BEYOND_BOOKING_HORIZON',
           statusCode: 422,
         });
@@ -380,8 +380,8 @@ describe('AvailabilityService (database, rolled back per test)', () => {
     it('measures the horizon in club days, not UTC days (00:30 IST is still yesterday in UTC)', async (ctx) => {
       await scenario(ctx, async ({ service, typeId }) => {
         const now = new Date('2026-10-09T19:00:00.000Z'); // 00:30 IST on 10 Oct
-        await expect(service.getAvailability({ date: '2026-10-12', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).resolves.toBeDefined();
-        await expect(service.getAvailability({ date: '2026-10-13', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).rejects.toMatchObject({ code: 'BEYOND_BOOKING_HORIZON' });
+        await expect(service.getAvailability({ date: '2026-10-17', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).resolves.toBeDefined();
+        await expect(service.getAvailability({ date: '2026-10-18', courtTypeId: typeId, viewer: { kind: 'PUBLIC' }, now })).rejects.toMatchObject({ code: 'BEYOND_BOOKING_HORIZON' });
       });
     });
 

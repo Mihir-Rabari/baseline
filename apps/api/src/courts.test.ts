@@ -256,16 +256,16 @@ describe('Court & availability routes', () => {
       }
     });
 
-    it('422 BEYOND_BOOKING_HORIZON beyond the 2-day guest horizon', async (ctx) => {
+    it('422 BEYOND_BOOKING_HORIZON beyond the 7-day trial horizon', async (ctx) => {
       if (!hasDatabase) return ctx.skip();
-      const res = await get(url('', addDays(today, 3)));
+      const res = await get(url('', addDays(today, 8)));
       expect(res.statusCode).toBe(422);
       expect(res.json()).toMatchObject({ code: 'BEYOND_BOOKING_HORIZON', statusCode: 422, requestId: expect.any(String) });
     });
 
     it('200 without a cookie: contract shape, walk-in price, no booking details', async (ctx) => {
       if (!hasDatabase) return ctx.skip();
-      const res = await get(url('', addDays(today, 2)));
+      const res = await get(url('', addDays(today, 7)));
       expect(res.statusCode).toBe(200);
       const body = AvailabilitySchema.parse(res.json());
       expect(body).toMatchObject({ timezone: IST, priceFor: { type: 'WALK_IN', label: 'Walk-in' } });

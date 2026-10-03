@@ -26,6 +26,8 @@ import {
   clubDateOf,
   clubMinutesOfDay,
   daysBetween,
+  GUEST_HORIZON_DAYS,
+  TRIAL_HORIZON_DAYS,
   isInOpeningHours,
   isInSocialWindow,
   isSlotStart,
@@ -46,8 +48,7 @@ import {
  * translated to domain errors OUTSIDE the transaction because a failed statement aborts it.
  */
 
-export const GUEST_HORIZON_DAYS = 2;
-export const TRIAL_HORIZON_DAYS = 7;
+export { GUEST_HORIZON_DAYS, TRIAL_HORIZON_DAYS };
 
 export interface GuestInput {
   name: string;

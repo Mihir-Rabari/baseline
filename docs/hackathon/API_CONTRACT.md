@@ -312,11 +312,11 @@ Rate limit **30 requests/minute/IP** for GETs, **5/minute/IP** for POSTs (use th
 | --- | --- | --- | --- | --- | --- |
 | GET | `/public/club` | PUB | none | `{ name, tagline, phone, address, hours: {open, close}, timezone, courtTypes: [{ id, code, name, baseRatePaise, trialFeePaise, courtCount }], socialPlay: { weekday: 5, startsTime: "18:00", endsTime: "22:00" } }` | none |
 | GET | `/public/plans` | PUB | none | `Plan[]` (active only, ordered) | none |
-| GET | `/public/availability` | PUB | query `date` (YYYY-MM-DD, required), `courtTypeId` (optional) | **Availability** (section 5.1) with `pricePaise` = walk-in price and no booking details | `400`, `422 BEYOND_BOOKING_HORIZON` (guests: 2 days; trials: 7 days) |
+| GET | `/public/availability` | PUB | query `date` (YYYY-MM-DD, required), `courtTypeId` (optional) | **Availability** (section 5.1) with `pricePaise` = walk-in price and no booking details | `400`, `422 BEYOND_BOOKING_HORIZON` (public grid: 7 days, matching the trial horizon; walk-in guests booked by staff: 2 days) |
 | GET | `/public/products` | PUB | query `category`, `q`, `page`, `limit` | paginated `Product` with only `id, sku, name, category, imageUrl, pricePaise, inStock` | `400` |
 | POST | `/public/enquiries` | PUB | `{ name, phone?, email?, message, interestedPlanId? }` (phone or email required) | `201 { id, message: "Thanks, we'll be in touch within one working day." }` | `400`, `429` |
 | POST | `/public/trial-bookings` | PUB | `{ courtId, startsAt, name, phone, email? }` | `201 { booking: Booking, leadId: uuid, message }` | `400`, `409 SLOT_TAKEN`, `409 TRIAL_ALREADY_USED`, `422 INVALID_SLOT_START`, `422 BEYOND_BOOKING_HORIZON`, `429` |
-| GET | `/public/reports/shared/:token` | PUB | none | **DashboardReport** (section 11.1, summary only, no names) | `404 SHARE_LINK_INVALID` |
+| GET | `/public/reports/shared/:token` | PUB | optional query `range` (defaults to the link's `defaultRange`) | **DashboardReport** (section 11.1, summary only: no `owed`, no `alerts`, no names) plus `expiresAt` | `400`, `404 SHARE_LINK_INVALID` (unknown, revoked or expired), `429` |
 
 Side effects: an enquiry creates a `leads` row (`WEBSITE_ENQUIRY`) and a `NEW_LEAD` notification for every `FRONT_DESK` and `OWNER` user. A trial creates a `STANDARD`-style booking of kind `TRIAL` (price `trialFeePaise`, `paymentStatus: UNPAID`, pay at the club), a lead (`WEBSITE_TRIAL`) and the same notification.
 
@@ -491,7 +491,7 @@ Staff additionally see who holds a slot (`holder`, `bookingId`); members and pub
 | POST | `/courts/blocks` | OWN | `{ courtId, startsAt, endsAt, reason }` (30-minute aligned, `endsAt > startsAt`) | `201 { id, courtId, startsAt, endsAt, reason }` | 400, 401, 403, `409 SLOT_TAKEN` (`details` lists conflicting bookings) |
 | DELETE | `/courts/blocks/:id` | OWN | none | `{ success: true, message }` | 401, 403, 404 |
 | GET | `/social-windows` | ANY | none | `{ id, weekday, startsTime, endsTime, isActive }[]` | 401 |
-| PUT | `/social-windows/:id` | OWN | `{ weekday?, startsTime?, endsTime?, isActive? }` | the window | 400, 401, 403, 404 |
+| PUT | `/social-windows/:id` | OWN | `{ weekday?, startsTime?, endsTime?, isActive? }` (`weekday` 0 = Sunday ... 6 = Saturday; a one-sided time edit is checked against the stored time) | the window | 400, 401, 403, 404, `422 VALIDATION_ERROR` (end not after start) |
 | POST | `/demo/booking-race` **(ADDITION, disabled when `NODE_ENV=production`)** | OWN, ADMIN | `{ courtId, startsAt, attempts: 20 }` (max 50) | `{ attempts: 20, confirmed: 1, slotTaken: 19, other: 0, durationMs: 143, bookingId: "…" }` (the endpoint creates one throwaway test member per attempt and deletes everything afterwards) | 400, 401, 403, `404` in production |
 
 ---
@@ -541,6 +541,7 @@ Side effects of any successful sale: a `stock_movements` row per line; when the 
 | GET | `/bar/tabs` | BAR, OWN | query `status` (default `OPEN`), `date`, `page`, `limit` | paginated `Tab` (without items; `itemCount`) | 401, 403 |
 | GET | `/bar/tabs/:id` | BAR, OWN | none | `Tab` | 401, 403, 404 |
 | POST | `/bar/tabs/:id/items` | BAR, OWN | `{ menuItemId, qty (1–20), note? }` | `Tab` (discount applied automatically for members) | 400, 401, 403, 404, 409 (tab not open, or item unavailable) |
+| PATCH | `/bar/tabs/:id/items/:itemId` | BAR, OWN | `{ qty (1–20) }` (only `PENDING` lines; the price and discount snapshotted when the line was added are kept) | `Tab` | 400, 401, 403, 404, `409 ITEM_ALREADY_SENT`, `409 ITEM_ALREADY_VOID`, 409 (tab not open) |
 | DELETE | `/bar/tabs/:id/items/:itemId` | BAR (while `PENDING`), OWN (any status) | none | `Tab` | 401, 403, 404, 409 |
 | POST | `/bar/tabs/:id/send` | BAR, OWN | none | `{ tab: Tab, tickets: [{ id, station, status: "NEW", itemCount }] }` (all `PENDING` items become `SENT` and grouped into one ticket per station) | 401, 403, 404, `422 TAB_EMPTY` |
 | POST | `/bar/tabs/:id/settle` | BAR, OWN | `{ payments: [{ method: "CASH"\|"CARD"\|"UPI", amountPaise?, reference? }] }`. One entry settles the full total; several entries must sum exactly to `totalPaise` (split payment is NICE, accepted by the same shape). | `{ tab: Tab (status SETTLED), payments: [{ id, method, amountPaise }], receipt: { tabNumber, totalPaise, discountPaise, paidAt } }` | 400, 401, 403, 404, `409 ALREADY_SETTLED`, `422 TAB_EMPTY` |
