@@ -23,17 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import {
-  ChevronLeft,
-  ShieldCheck,
-  FolderTree,
-  FileCode2,
-  CheckCircle2,
-  AlertTriangle,
-  Ban,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import { ChevronLeft, Trash2 } from 'lucide-react';
 import type { UserStatus } from '@packages/validation';
 
 export default function UserInspectorPage() {
@@ -190,7 +180,7 @@ export default function UserInspectorPage() {
           href="/admin/iam/users"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" aria-hidden />
           <span>Back to Users</span>
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -235,7 +225,6 @@ export default function UserInspectorPage() {
                   onClick={() => handleStatusChange('SUSPENDED')}
                   className="text-xs text-warning border-warning/30 hover:bg-warning/10 hover:text-warning"
                 >
-                  <AlertTriangle className="h-3.5 w-3.5 mr-1" />
                   Suspend Account
                 </Button>
               ) : (
@@ -245,7 +234,6 @@ export default function UserInspectorPage() {
                   onClick={() => handleStatusChange('ACTIVE')}
                   className="text-xs text-success border-success/30 hover:bg-success/10 hover:text-success"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                   Activate Account
                 </Button>
               )}
@@ -257,7 +245,6 @@ export default function UserInspectorPage() {
                   onClick={() => handleStatusChange('DISABLED')}
                   className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
                 >
-                  <Ban className="h-3.5 w-3.5 mr-1" />
                   Disable Account
                 </Button>
               )}
@@ -310,7 +297,6 @@ export default function UserInspectorPage() {
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-primary" />
               <span>Assigned Roles</span>
             </CardTitle>
             <CardDescription className="text-xs">
@@ -338,9 +324,10 @@ export default function UserInspectorPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveRole(r.id)}
+                        aria-label={`Remove role ${r.name}`}
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" aria-hidden />
                       </Button>
                     )}
                   </div>
@@ -363,7 +350,7 @@ export default function UserInspectorPage() {
                   ))}
                 </select>
                 <Button size="sm" onClick={handleAssignRole} disabled={!selectedRole} className="h-7 text-xs px-2">
-                  <Plus className="h-3 w-3 mr-1" /> Add
+                  Add
                 </Button>
               </div>
             )}
@@ -374,7 +361,6 @@ export default function UserInspectorPage() {
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <FolderTree className="h-4 w-4 text-primary" />
               <span>Group Memberships</span>
             </CardTitle>
             <CardDescription className="text-xs">
@@ -402,9 +388,10 @@ export default function UserInspectorPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveGroup(g.id)}
+                        aria-label={`Remove group ${g.name}`}
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" aria-hidden />
                       </Button>
                     )}
                   </div>
@@ -427,7 +414,7 @@ export default function UserInspectorPage() {
                   ))}
                 </select>
                 <Button size="sm" onClick={handleAddGroup} disabled={!selectedGroup} className="h-7 text-xs px-2">
-                  <Plus className="h-3 w-3 mr-1" /> Add
+                  Add
                 </Button>
               </div>
             )}
@@ -438,7 +425,6 @@ export default function UserInspectorPage() {
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <FileCode2 className="h-4 w-4 text-primary" />
               <span>Direct Policies</span>
             </CardTitle>
             <CardDescription className="text-xs">
@@ -466,9 +452,10 @@ export default function UserInspectorPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDetachPolicy(p.id)}
+                        aria-label={`Detach policy ${p.name}`}
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" aria-hidden />
                       </Button>
                     )}
                   </div>
@@ -491,7 +478,7 @@ export default function UserInspectorPage() {
                   ))}
                 </select>
                 <Button size="sm" onClick={handleAttachPolicy} disabled={!selectedPolicy} className="h-7 text-xs px-2">
-                  <Plus className="h-3 w-3 mr-1" /> Add
+                  Add
                 </Button>
               </div>
             )}
