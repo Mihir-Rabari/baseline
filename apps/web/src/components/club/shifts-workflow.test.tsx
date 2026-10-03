@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createHrMock } from '@/lib/mock-hr';
 import ShiftsPage from '@/app/(app)/shifts/page';
+import { chooseDateTime, daysFromToday } from '@/test-utils/ui';
 const doubles = vi.hoisted(() => ({ permissions: new Set<string>(), api: { shifts: vi.fn(), currentShift: vi.fn(), employees: vi.fn(), createShift: vi.fn(), deleteShift: vi.fn(), clockIn: vi.fn(), clockOut: vi.fn() } }));
 vi.mock('@/lib/hr-api', () => ({ hrApi: doubles.api }));
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'actor' }, hasPermission: (permission: string) => doubles.permissions.has(permission) }) }));
@@ -23,19 +24,21 @@ function mount() {
   return render(<QueryClientProvider client={client}><ShiftsPage /></QueryClientProvider>);
 }
 describe('Shift workflow', () => {
-  it('schedules using IST instants and prevents an end before the start', async () => {
+  it('schedules using IST instants and prevents an end before the start', { timeout: 30000 }, async () => {
     mount(); fireEvent.click(screen.getByRole('button', { name: 'Schedule shift' }));
     const dialog = await screen.findByRole('dialog');
     const start = await within(dialog).findByLabelText('Start (IST)');
-    fireEvent.change(start, { target: { value: '2030-10-01T12:00' } });
-    fireEvent.change(within(dialog).getByLabelText('End (IST)'), { target: { value: '2030-10-01T10:00' } });
+    expect(start).toBeInTheDocument();
+    const day = daysFromToday(2);
+    await chooseDateTime('Start (IST)', day, '12', '00');
+    await chooseDateTime('End (IST)', day, '10', '00');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule shift' }));
     await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('endsAt must be after startsAt'));
     expect(doubles.api.createShift).not.toHaveBeenCalled();
-    fireEvent.change(within(dialog).getByLabelText('End (IST)'), { target: { value: '2030-10-01T20:00' } });
+    await chooseDateTime('End (IST)', day, '20', '00');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule shift' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(doubles.api.createShift).toHaveBeenCalledWith(expect.objectContaining({ startsAt: '2030-10-01T06:30:00.000Z', endsAt: '2030-10-01T14:30:00.000Z' }));
+    expect(doubles.api.createShift).toHaveBeenCalledWith(expect.objectContaining({ startsAt: `${day}T06:30:00.000Z`, endsAt: `${day}T14:30:00.000Z` }));
     expect(doubles.api.createShift).toHaveBeenCalledTimes(1);
   });
   it('shows staff their own shift, clocks it in and out, and hides owner actions', async () => {

@@ -8,15 +8,18 @@ const HOURS = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0'));
 const MINUTES = ['00', '15', '30', '45'];
 
 /** `2026-10-03T18:30` split into a calendar date and a time chosen in 15-minute steps. */
-export function DateTimePicker({ id, value, onChange, min, max, disabled }: {
-  id?: string; value: string; onChange: (value: string) => void; min?: string; max?: string; disabled?: boolean;
+export function DateTimePicker({ id, value: controlled, defaultValue = '', name, onChange, min, max, disabled }: {
+  id?: string; value?: string; defaultValue?: string; name?: string; onChange?: (value: string) => void; min?: string; max?: string; disabled?: boolean;
 }) {
+  const [own, setOwn] = React.useState(defaultValue);
+  const value = controlled ?? own;
   const [date = '', time = '09:00'] = value.split('T');
   const [hour, minute] = time.split(':');
   const roundedMinute = MINUTES.includes(minute) ? minute : MINUTES[Math.floor(Number(minute) / 15)] ?? '00';
-  const set = (d: string, h: string, m: string) => onChange(d ? `${d}T${h}:${m}` : '');
+  const set = (d: string, h: string, m: string) => { const next = d ? `${d}T${h}:${m}` : ''; setOwn(next); onChange?.(next); };
   return (
     <div className="flex items-center gap-2">
+      {name && <input type="hidden" name={name} value={value} />}
       <DatePicker id={id} className="flex-1" value={date} min={min} max={max} disabled={disabled} onChange={(d) => set(d, hour, roundedMinute)} shortcuts />
       <Select value={hour} disabled={disabled || !date} onValueChange={(h) => set(date, h, roundedMinute)}>
         <SelectTrigger aria-label="Hour" className="w-[4.5rem]"><SelectValue /></SelectTrigger>

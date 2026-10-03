@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
+import React, { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ProfilePanel } from '@/components/profile/profile-panel';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { DashboardWorkspace } from '@/components/club/dashboard-workspace';
@@ -18,29 +20,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default function DashboardPage() {
-  // The (app) layout has already established that there is a signed-in user, so
-  // this screen renders content only.
+function DashboardTabs() {
   const { user, session, effectivePermissions, isRoot } = useAuth();
-
+  const params = useSearchParams();
+  const [tab, setTab] = useState(params.get('tab') === 'profile' ? 'profile' : 'overview');
   if (!user) return null;
-
   return (
-    <>
-      <PageHeader
-        title={user.name || user.email}
-        description="Your club workspace and account."
-        actions={
-          <Link href="/profile">
-            <Button variant="outline" size="sm">
-              Edit profile
-            </Button>
-          </Link>
-        }
-      />
-
-      <DashboardWorkspace />
-
+    <div className="space-y-6">
+      <PageHeader title={user.name || user.email} description="Your club workspace and your account." />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList aria-label="Dashboard sections"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="profile">Profile</TabsTrigger></TabsList>
+      </Tabs>
+      <div key={tab} className="animate-rise space-y-6">
+        {tab === 'overview' ? <DashboardWorkspace /> : (
+          <>
+            <ProfilePanel />
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
@@ -108,6 +102,13 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
-    </>
+          </>
+        )}
+      </div>
+    </div>
   );
+}
+
+export default function DashboardPage() {
+  return <Suspense fallback={<div className="space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-64 w-full" /></div>}><DashboardTabs /></Suspense>;
 }

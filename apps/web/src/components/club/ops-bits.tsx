@@ -3,7 +3,7 @@
 import React from 'react';
 import type { PaginatedResponseMeta } from '@packages/validation';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownSelect } from '@/components/ui/dropdown-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageError } from '@/components/club/page-error';
 import { EmptyState } from '@/components/app-shell/empty-state';
@@ -62,9 +62,6 @@ export function BarList({ rows, money = true }: { rows: Array<{ label: string; v
   );
 }
 
-/** Radix cannot hold an empty-string value, so "no value" options travel as this token. */
-const EMPTY = '__none__';
-
 /**
  * A labelled dropdown for a short list of options: keyboard and type-ahead friendly, animated, and
  * readable on a phone. `value` may be an empty string for a "no filter" option.
@@ -76,12 +73,7 @@ export function SelectBox({ id, label, value, onChange, options, className, disa
   return (
     <div className={cn('space-y-2', className)}>
       <label htmlFor={id} className="text-sm font-medium">{label}</label>
-      <Select value={value === '' ? EMPTY : value} onValueChange={(next) => onChange(next === EMPTY ? '' : next)} disabled={disabled}>
-        <SelectTrigger id={id}><SelectValue placeholder={placeholder} /></SelectTrigger>
-        <SelectContent>
-          {options.map((option) => <SelectItem key={option.value || EMPTY} value={option.value === '' ? EMPTY : option.value}>{option.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <DropdownSelect id={id} value={value} onValueChange={onChange} disabled={disabled} placeholder={placeholder} options={options} />
     </div>
   );
 }

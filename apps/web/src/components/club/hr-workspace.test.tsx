@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createHrMock } from '@/lib/mock-hr';
 import { HrWorkspace } from './hr-workspace';
+import { chooseDate, daysFromToday } from '@/test-utils/ui';
 const doubles = vi.hoisted(() => ({ permissions: new Set<string>(), api: { employees: vi.fn(), leave: vi.fn(), payroll: vi.fn(), createEmployee: vi.fn(), updateEmployee: vi.fn(), requestLeave: vi.fn(), decide: vi.fn() } }));
 vi.mock('@/lib/hr-api', () => ({ hrApi: doubles.api }));
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'actor' }, hasPermission: (permission: string) => doubles.permissions.has(permission) }) }));
@@ -45,12 +46,12 @@ describe('Staff workspace', () => {
     expect(doubles.api.leave).toHaveBeenCalledWith(1, true, undefined);
     fireEvent.click(screen.getByRole('button', { name: 'Request leave' }));
     const dialog = await screen.findByRole('dialog');
-    fireEvent.change(within(dialog).getByLabelText('From'), { target: { value: '2030-11-05' } });
-    fireEvent.change(within(dialog).getByLabelText('To'), { target: { value: '2030-11-03' } });
+    await chooseDate('From', daysFromToday(5));
+    await chooseDate('To', daysFromToday(3));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Request leave' }));
     await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('toDate must not be before fromDate'));
     expect(doubles.api.requestLeave).not.toHaveBeenCalled();
-    fireEvent.change(within(dialog).getByLabelText('To'), { target: { value: '2030-11-06' } });
+    await chooseDate('To', daysFromToday(8));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Request leave' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(doubles.api.requestLeave).toHaveBeenCalledTimes(1);
