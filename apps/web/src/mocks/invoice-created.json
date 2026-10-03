@@ -1,0 +1,7 @@
+{
+  "id":"d0000000-0000-4000-8000-000000000001","invoiceNumber":"INV-2026-0001","status":"DRAFT",
+  "billTo":{"type":"MEMBER","id":"b0000000-0000-4000-8000-000000000001","name":"Aarav Mehta"},
+  "issueDate":"2026-10-03","dueDate":"2026-10-18",
+  "lines":[{"description":"Court coaching session","qty":2,"unitPricePaise":75000,"lineTotalPaise":150000}],
+  "subtotalPaise":150000,"taxPaise":22881,"totalPaise":150000,"paidPaise":0,"balancePaise":150000,"notes":"Pay at the front desk."
+}
