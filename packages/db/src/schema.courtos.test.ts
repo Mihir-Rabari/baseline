@@ -160,6 +160,21 @@ describe.skipIf(!url)('CourtOS schema constraints (M-01)', () => {
     });
   });
 
+  describe('kitchen_tickets', () => {
+    it('numbers tickets automatically and rejects an explicit duplicate number (migration 0005)', async () => {
+      const err = await violation(async (tx) => {
+        const [tab] = await tx`
+          INSERT INTO tabs (tab_number, guest_name) VALUES (nextval('tab_number_seq'), 'Ticket test') RETURNING id`;
+        const [a] = await tx`INSERT INTO kitchen_tickets (tab_id) VALUES (${tab.id}) RETURNING ticket_number`;
+        const [b] = await tx`INSERT INTO kitchen_tickets (tab_id) VALUES (${tab.id}) RETURNING ticket_number`;
+        expect(Number(b.ticket_number)).toBeGreaterThan(Number(a.ticket_number));
+        // GENERATED ALWAYS: callers cannot choose the number.
+        await tx`INSERT INTO kitchen_tickets (tab_id, ticket_number) VALUES (${tab.id}, ${a.ticket_number})`;
+      });
+      expect(err.code).toBe('428C9');
+    });
+  });
+
   describe('bookings', () => {
     async function insertBooking(tx: Tx, courtId: string, memberId: string | null, startsAt: string, endsAt: string) {
       await tx`
