@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '@/lib/api-client';
 import type { AuthUser, AuthSessionInfo, LoginRequest, SignupRequest } from '@packages/validation';
 
@@ -26,62 +26,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [effectivePermissions, setEffectivePermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Every auth request takes a ticket. Only the newest request may write state, and nothing writes
+  // after unmount, so a slow session lookup (or a Fast Refresh remount in development) cannot land
+  // on a discarded provider or overwrite the result of a later login or logout.
+  const latestRequest = useRef(0);
+  const mounted = useRef(false);
+  const takeTicket = () => ++latestRequest.current;
+  const isCurrent = (ticket: number) => mounted.current && ticket === latestRequest.current;
+
   const refreshSession = useCallback(async () => {
+    const ticket = ++latestRequest.current;
     try {
       setIsLoading(true);
       const res = await api.auth.getSession();
+      if (!mounted.current || ticket !== latestRequest.current) return;
       setUser(res.user);
       setSession(res.session);
       setEffectivePermissions(res.effectivePermissions);
     } catch {
+      if (!mounted.current || ticket !== latestRequest.current) return;
       // Unauthenticated
       setUser(null);
       setSession(null);
       setEffectivePermissions([]);
     } finally {
-      setIsLoading(false);
+      if (mounted.current && ticket === latestRequest.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshSession();
+    mounted.current = true;
+    void refreshSession();
+    return () => {
+      mounted.current = false;
+    };
   }, [refreshSession]);
 
   const login = async (data: LoginRequest) => {
+    const ticket = takeTicket();
     setIsLoading(true);
     try {
       const res = await api.auth.login(data);
+      if (!isCurrent(ticket)) return;
       setUser(res.user);
       setSession(res.session);
       setEffectivePermissions(res.effectivePermissions);
     } finally {
-      setIsLoading(false);
+      if (isCurrent(ticket)) setIsLoading(false);
     }
   };
 
   const signup = async (data: SignupRequest) => {
+    const ticket = takeTicket();
     setIsLoading(true);
     try {
       const res = await api.auth.signup(data);
+      if (!isCurrent(ticket)) return;
       setUser(res.user);
       setSession(res.session);
       setEffectivePermissions(res.effectivePermissions);
     } finally {
-      setIsLoading(false);
+      if (isCurrent(ticket)) setIsLoading(false);
     }
   };
 
   const logout = async () => {
+    const ticket = takeTicket();
     setIsLoading(true);
     try {
       await api.auth.logout();
     } catch {
       // Continue clearing client state even if logout request fails
     } finally {
-      setUser(null);
-      setSession(null);
-      setEffectivePermissions([]);
-      setIsLoading(false);
+      if (mounted.current) {
+        // Logout always wins over an older in-flight request, but not over a newer login.
+        if (ticket === latestRequest.current) {
+          setUser(null);
+          setSession(null);
+          setEffectivePermissions([]);
+          setIsLoading(false);
+        }
+      }
     }
   };
 

@@ -157,4 +157,49 @@ describe('AuthProvider (@app/web)', () => {
     expect(() => render(<Consumer />)).toThrow('useAuth must be used within an AuthProvider');
     spy.mockRestore();
   });
+
+  // Regression tests for issue #37 (state-update warning on /dashboard during hot reload).
+  describe('late and superseded requests', () => {
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((r) => { resolve = r; });
+      return { promise, resolve };
+    }
+
+    it('does not touch state, or log React warnings, when the session lookup resolves after unmount', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const pending = deferred<SessionResponse>();
+      vi.mocked(api.auth.getSession).mockReturnValue(pending.promise);
+      const { unmount } = render(<AuthProvider><Consumer /></AuthProvider>);
+      unmount();
+      await act(async () => { pending.resolve(mockSessionResponse(mockUser)); await pending.promise; });
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('ignores a slow session response that arrives after a newer login', async () => {
+      const slow = deferred<SessionResponse>();
+      vi.mocked(api.auth.getSession).mockReturnValue(slow.promise);
+      vi.mocked(api.auth.login).mockResolvedValue(mockSessionResponse(mockRootUser, ['users:read']));
+      render(<AuthProvider><Consumer /></AuthProvider>);
+      await act(async () => { screen.getByText('login').click(); });
+      await waitFor(() => expect(screen.getByTestId('user-email')).toHaveTextContent('user@example.com'));
+      expect(screen.getByTestId('is-root')).toHaveTextContent('true');
+      await act(async () => { slow.resolve({ ...mockSessionResponse(mockUser), user: { ...mockUser, email: 'stale@example.com' } }); await slow.promise; });
+      expect(screen.getByTestId('user-email')).toHaveTextContent('user@example.com');
+      expect(screen.getByTestId('is-root')).toHaveTextContent('true');
+      expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    });
+
+    it('settles to the authenticated user under React StrictMode, which runs the mount effect twice', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.mocked(api.auth.getSession).mockResolvedValue(mockSessionResponse(mockUser, ['users:read']));
+      render(<React.StrictMode><AuthProvider><Consumer /></AuthProvider></React.StrictMode>);
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+  });
+
 });
