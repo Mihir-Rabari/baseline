@@ -1,4 +1,4 @@
-import { LeadDetailSchema, LeadPageSchema, CrmSummarySchema, LeadListQuerySchema, UpdateLeadRequestSchema, CreateLeadActivityRequestSchema, CreateQuoteRequestSchema, ConvertLeadRequestSchema, type LeadStatus, type LeadListQuery, type LeadDetail, type UpdateLeadRequest, type CreateLeadActivityRequest, type CreateQuoteRequest, type ConvertLeadRequest, type ConvertLeadResponse, type Quote } from '@packages/validation';
+import { LeadDetailSchema, LeadPageSchema, CrmSummarySchema, LeadListQuerySchema, UpdateLeadRequestSchema, CreateLeadActivityRequestSchema, CreateQuoteRequestSchema, ConvertLeadRequestSchema, CreateLeadRequestSchema, type Lead, type CreateLeadRequest, type LeadStatus, type LeadListQuery, type LeadDetail, type UpdateLeadRequest, type CreateLeadActivityRequest, type CreateQuoteRequest, type ConvertLeadRequest, type ConvertLeadResponse, type Quote } from '@packages/validation';
 import { ApiError, fetchApi, mock, USE_MOCKS } from './api-client';
 import plans from '@/mocks/plans.json';
 import { mockCreateMember } from './mock-member-operations';
@@ -13,6 +13,27 @@ const store: LeadDetail[] = Array.from({ length: 8 }, (_, i) => LeadDetailSchema
 function detail(id: string) { const item = store.find(item => item.lead.id === id); if (!item) throw new ApiError('Lead not found', 404, 'LEAD_NOT_FOUND'); return item; }
 function queryString(query: Record<string, unknown>) { const search = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined) search.set(key, String(value)); return search.toString(); }
 export const crmApi = {
+  create: async (data: CreateLeadRequest) => {
+    data = CreateLeadRequestSchema.parse(data);
+    if (!USE_MOCKS) return fetchApi<Lead>('/api/v1/crm/leads', { method: 'POST', body: JSON.stringify(data) });
+    const plan = data.interestedPlanId ? plans.find(p => p.id === data.interestedPlanId) : null;
+    const newLead: Lead = {
+      id: crypto.randomUUID(),
+      name: data.name,
+      phone: data.phone ?? null,
+      email: data.email ?? null,
+      source: data.source,
+      status: 'NEW',
+      interestedPlan: plan ? { id: plan.id, code: plan.code, name: plan.name } : null,
+      message: data.message ?? null,
+      assignedTo: null,
+      nextFollowUpAt: `${clubToday()}T09:00:00+05:30`,
+      memberId: null,
+      createdAt: new Date().toISOString(),
+    };
+    store.unshift({ lead: newLead, activities: [{ id: crypto.randomUUID(), type: 'NOTE', body: 'Lead created', actor: null, createdAt: new Date().toISOString() }], quotes: [] });
+    return mock(structuredClone(newLead));
+  },
   list: (query: Partial<LeadListQuery>) => {
     query = LeadListQuerySchema.parse(query);
     if (!USE_MOCKS) return fetchApi<ReturnType<typeof LeadPageSchema.parse>>(`/api/v1/crm/leads?${queryString(query)}`);
