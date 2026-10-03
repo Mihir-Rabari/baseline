@@ -40,7 +40,8 @@ const API = '/api/v1';
 const TZ = 'Asia/Kolkata';
 const ist = (iso: string) => new Date(`${iso}+05:30`);
 
-// All fixtures live in May 2031 (a Wednesday on the 14th) so no other suite's data can leak in.
+// Time-scoped fixtures live in May 2031. Global counts (such as active courts)
+// still include shared database fixtures, so compare them within one snapshot.
 const NOW = ist('2031-05-14T15:30:00');
 
 describe('report ranges and helpers (unit)', () => {
@@ -352,13 +353,43 @@ describe('Owner dashboard (M-14)', () => {
   describe('kpis, owed and alerts', () => {
     it('counts non-cancelled bookings and computes utilisation from court occupancies', async () => {
       if (!hasDatabase) return;
-      const r = await service.dashboard({ range: 'today' });
-      expect(r.kpis.bookingsCount).toBe(2); // the cancelled one is excluded
-      const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(courts).where(eq(courts.isActive, true));
-      // 2 booked hours over (06:00 to 15:30 = 9.5 h) x active courts; maintenance/cancelled excluded.
-      expect(r.kpis.utilisationPct).toBe(Math.round((2 / (9.5 * n)) * 100));
-      expect(r.kpis.utilisationPct).toBeGreaterThan(0);
-      expect(r.kpis.utilisationPct).toBeLessThanOrEqual(100);
+      await db.transaction(async (tx) => {
+        const r = await new ReportService(tx, TZ, () => NOW).dashboard({ range: 'today' });
+        expect(r.kpis.bookingsCount).toBe(2); // the cancelled one is excluded
+        const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(courts).where(eq(courts.isActive, true));
+        // 2 booked hours over (06:00 to 15:30 = 9.5 h) x active courts; maintenance/cancelled excluded.
+        // Whole-percent rounding can legitimately yield zero when the denominator is large.
+        expect(r.kpis.utilisationPct).toBe(Math.round((2 / (9.5 * n)) * 100));
+        expect(Number.isInteger(r.kpis.utilisationPct)).toBe(true);
+        expect(r.kpis.utilisationPct).toBeGreaterThanOrEqual(0);
+        expect(r.kpis.utilisationPct).toBeLessThanOrEqual(100);
+      }, { isolationLevel: 'repeatable read', readOnly: true });
+    });
+
+    it('rounds positive utilisation below half a percent to zero for many active courts', async () => {
+      if (!hasDatabase) return;
+      const rollback = new Error('Roll back large-court regression fixtures');
+      try {
+        await db.transaction(async (tx) => {
+          const [existing] = await tx.select({ courtTypeId: courts.courtTypeId }).from(courts).limit(1);
+          await tx.insert(courts).values(Array.from({ length: 50 }, () => ({
+            courtTypeId: existing.courtTypeId,
+            name: `M14 rounding ${randomUUID()}`,
+            isActive: true,
+          })));
+          const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(courts).where(eq(courts.isActive, true));
+          const unroundedPct = (2 / (9.5 * n)) * 100;
+          expect(unroundedPct).toBeGreaterThan(0);
+          expect(unroundedPct).toBeLessThan(0.5);
+          const r = await new ReportService(tx, TZ, () => NOW).dashboard({ range: 'today' });
+          expect(r.kpis.bookingsCount).toBe(2);
+          expect(r.kpis.utilisationPct).toBe(0);
+          expect(DashboardReportSchema.safeParse(r).success).toBe(true);
+          throw rollback;
+        }, { isolationLevel: 'repeatable read' });
+      } catch (error) {
+        if (error !== rollback) throw error;
+      }
     });
 
     it('reflects new employees, invoices, leads, leave, stock and expiring memberships', async () => {
