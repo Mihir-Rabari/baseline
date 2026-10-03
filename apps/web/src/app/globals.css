@@ -101,4 +101,55 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /*
+   * Print Styling (Issue #78):
+   * Guarantee crisp, high-contrast dark text on white paper regardless of whether
+   * the user is currently viewing the app in dark or light mode.
+   */
+  @media print {
+    :root,
+    .dark {
+      --background: 0 0% 100% !important;
+      --foreground: 240 10% 4% !important;
+      --card: 0 0% 100% !important;
+      --card-foreground: 240 10% 4% !important;
+      --popover: 0 0% 100% !important;
+      --popover-foreground: 240 10% 4% !important;
+      --muted: 240 5% 96% !important;
+      --muted-foreground: 240 4% 30% !important;
+      --border: 240 6% 80% !important;
+      --input: 240 6% 80% !important;
+      --primary: 240 10% 4% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --secondary: 240 5% 96% !important;
+      --secondary-foreground: 240 6% 10% !important;
+      color-scheme: light !important;
+    }
+
+    body {
+      background-color: #ffffff !important;
+      color: #09090b !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Hide extraneous navigation and interactive chrome during print */
+    nav,
+    aside,
+    header[role="banner"],
+    [data-sonner-toaster],
+    .no-print {
+      display: none !important;
+    }
+
+    /* Prevent page splits across item lines or receipt sections */
+    article,
+    section,
+    tr,
+    li {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  }
 }
