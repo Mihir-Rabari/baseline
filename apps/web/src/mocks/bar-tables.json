@@ -1,0 +1,78 @@
+[
+  {
+    "id": "b0000000-0000-4000-8000-000000000001",
+    "name": "T1",
+    "seats": 4,
+    "status": "OCCUPIED",
+    "openTab": {
+      "id": "b0000000-0000-4000-8000-000000000200",
+      "tabNumber": 42,
+      "label": "Riya",
+      "totalPaise": 0,
+      "openedAt": "2026-10-03T09:26:29.027Z"
+    }
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000002",
+    "name": "T2",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000003",
+    "name": "T3",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000004",
+    "name": "T4",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000005",
+    "name": "T5",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000006",
+    "name": "T6",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000007",
+    "name": "T7",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000008",
+    "name": "T8",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000009",
+    "name": "T9",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  },
+  {
+    "id": "b0000000-0000-4000-8000-000000000010",
+    "name": "T10",
+    "seats": 4,
+    "status": "FREE",
+    "openTab": null
+  }
+]

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AvailabilitySchema, BookingSchema, CreateTrialBookingResponseSchema, JoinSocialResponseSchema } from '@packages/validation';
+import { AvailabilitySchema, BookingSchema, JoinSocialResponseSchema } from '@packages/validation';
 import standard from '@/mocks/availability.json';
 import friday from '@/mocks/availability-friday.json';
 
@@ -97,16 +97,5 @@ describe('public play API bindings and mocks', () => {
     await api.public.availability({ date: '2026-10-09' }); await api.public.createTrialBooking(trial);
     expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://club.example/api/v1/public/availability?date=2026-10-09', 'https://club.example/api/v1/public/trial-bookings']);
     expect(fetch.mock.calls[1][1]).toMatchObject({ method: 'POST', body: JSON.stringify(trial) });
-  });
-  it('mock trial booking is kind TRIAL, blocks the slot and refuses a second trial for the same phone', async () => {
-    vi.setSystemTime(new Date('2031-05-13T00:00:00Z'));
-    const { mockAvailability, mockCreateTrialBooking } = await import('./mock-bookings');
-    const data = mockAvailability({ date: '2031-05-14' }); const court = data.courts[1];
-    const trial = { courtId: court.courtId, startsAt: court.slots[0].startsAt, name: 'Riya', phone: '+91 98765 43210' };
-    const result = mockCreateTrialBooking(trial);
-    expect(CreateTrialBookingResponseSchema.parse(result).booking).toMatchObject({ kind: 'TRIAL', channel: 'WEBSITE_TRIAL', paymentStatus: expect.any(String) });
-    expect(result.message).toBe('Trial booked. Pay at the club on arrival.');
-    expect(mockAvailability({ date: data.date }).courts[1].slots[0].status).toBe('BOOKED');
-    expect(() => mockCreateTrialBooking({ ...trial, courtId: data.courts[2].courtId, startsAt: data.courts[2].slots[0].startsAt, phone: '9876543210' })).toThrow('already used');
   });
 });

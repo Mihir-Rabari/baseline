@@ -1,0 +1,52 @@
+[
+  {
+    "id": "c0000000-0000-4000-8000-000000000001",
+    "fullName": "Asha Shah",
+    "department": "FRONT_DESK",
+    "position": "Receptionist",
+    "monthlySalaryPaise": 2800000,
+    "hiredOn": "2026-01-01",
+    "status": "ACTIVE",
+    "leaveDaysThisYear": 2
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000002",
+    "fullName": "Kabir Mehta",
+    "department": "BAR",
+    "position": "Bartender",
+    "monthlySalaryPaise": 3000000,
+    "hiredOn": "2026-01-01",
+    "status": "ACTIVE",
+    "leaveDaysThisYear": 2
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000003",
+    "fullName": "Rohan Patel",
+    "department": "COACHING",
+    "position": "Coach",
+    "monthlySalaryPaise": 4000000,
+    "hiredOn": "2026-01-01",
+    "status": "ACTIVE",
+    "leaveDaysThisYear": 2
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000004",
+    "fullName": "Neha Rao",
+    "department": "MANAGEMENT",
+    "position": "Manager",
+    "monthlySalaryPaise": 4500000,
+    "hiredOn": "2026-01-01",
+    "status": "ACTIVE",
+    "leaveDaysThisYear": 2
+  },
+  {
+    "id": "c0000000-0000-4000-8000-000000000005",
+    "fullName": "Arun Das",
+    "department": "MAINTENANCE",
+    "position": "Technician",
+    "monthlySalaryPaise": 2500000,
+    "hiredOn": "2026-01-01",
+    "status": "ACTIVE",
+    "leaveDaysThisYear": 2
+  }
+]

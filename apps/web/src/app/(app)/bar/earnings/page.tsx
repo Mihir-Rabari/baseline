@@ -1,52 +1,41 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { BarEarnings } from '@packages/validation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { useOpsQuery } from '@/hooks/use-ops';
-import { qs } from '@/lib/ops';
-import { calendarDate, dateAfter } from '@/lib/booking-calendar';
-import { formatDateTime } from '@/lib/format';
+import { useBarEarnings } from '@/hooks/use-bar';
+import { clubToday } from '@/lib/mock-bar';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { PageHeader } from '@/components/app-shell/page-header';
-import { DateField } from '@/components/club/date-field';
+import { EmptyState } from '@/components/app-shell/empty-state';
+import { PageError } from '@/components/club/page-error';
+import { StatTile } from '@/components/club/stat-tile';
 import { Money } from '@/components/club/money';
-import { BarList, NoAccess, QueryState, Stat, humanize } from '@/components/club/ops-bits';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
-export default function BarEarningsPage() {
-  const { user, hasPermission } = useAuth();
-  const allowed = hasPermission('bar:read');
-  const owner = hasPermission('bar:manage') && hasPermission('reports:read');
-  const today = calendarDate();
-  const [date, setDate] = useState(today);
-  const earnings = useOpsQuery<BarEarnings>(['bar', 'earnings', date], `/bar/earnings${qs({ date })}`, { enabled: allowed, refetchMs: 30000 });
+export default function EarningsPage() {
+  const { user } = useAuth();
+  const [date, setDate] = useState(clubToday);
+  const { query, canRead, canChooseDate } = useBarEarnings(date);
   if (!user) return null;
-  if (!allowed) return <NoAccess what="bar earnings" />;
-  const data = earnings.data;
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Bar earnings" description={owner ? 'Settled tabs for any day. Bar staff can only see today.' : 'Settled tabs for today.'} />
-      {owner && <DateField value={date} min={dateAfter(today, -90)} max={today} onChange={setDate} />}
-      <QueryState query={earnings}>
-        {data && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <Stat label="Total taken" value={<Money paise={data.totalPaise} />} />
-              <Stat label="Tabs settled" value={data.tabsSettled} />
-              <Stat label="Average tab" value={<Money paise={data.averageTabPaise} />} />
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <section className="space-y-3 rounded-lg border p-5"><h2 className="text-lg font-semibold">By payment method</h2>{data.byMethod.length ? <BarList rows={data.byMethod.map((m) => ({ label: humanize(m.method), value: m.amountPaise }))} /> : <p className="text-sm text-muted-foreground">No payments yet.</p>}</section>
-              <section className="space-y-3 rounded-lg border p-5"><h2 className="text-lg font-semibold">Top items</h2>{data.topItems.length ? <BarList rows={data.topItems.map((i) => ({ label: `${i.name} (${i.qty})`, value: i.amountPaise }))} /> : <p className="text-sm text-muted-foreground">Nothing sold yet.</p>}</section>
-            </div>
-            <section className="space-y-3 rounded-lg border p-5">
-              <h2 className="text-lg font-semibold">By shift</h2>
-              {data.byShift.length === 0 ? <p className="text-sm text-muted-foreground">No payments were taken during a clocked-in shift.</p> : (
-                <ul className="divide-y text-sm">{data.byShift.map((s) => <li key={s.shiftId} className="flex justify-between py-2"><span>{s.employeeName} <span className="text-muted-foreground">{formatDateTime(s.startsAt)}</span></span><Money paise={s.amountPaise} /></li>)}</ul>
-              )}
-            </section>
-          </div>
-        )}
-      </QueryState>
-    </div>
-  );
+  const data = query.data;
+  return <div className="space-y-6">
+    <PageHeader title="Bar earnings" description="Review payments and hand over the closing report." actions={<>
+      <Button asChild variant="outline"><Link href="/bar">Bar floor</Link></Button><Button variant="outline" disabled={!data} onClick={() => window.print()}>Print report</Button>
+    </>} />
+    {canRead && <div className="space-y-2"><Label htmlFor="earnings-date">Club date</Label><Input id="earnings-date" type="date" className="w-fit" value={date} max={clubToday()} disabled={!canChooseDate} onChange={(event) => { if (event.target.value) setDate(event.target.value); }} />{!canChooseDate && <p className="text-sm text-muted-foreground">Your earnings report shows today.</p>}</div>}
+    {!canRead ? <EmptyState title="Bar access required" description="Ask the owner for access to bar earnings." /> : query.isPending ? <Skeleton className="h-72" /> : query.isError ? <PageError error={query.error} onRetry={() => query.refetch()} /> : data && <>
+      <div className="grid gap-4 sm:grid-cols-3"><StatTile label="Takings" value={formatMoney(data.totalPaise)} /><StatTile label="Tabs settled" value={String(data.tabsSettled)} /><StatTile label="Average tab" value={formatMoney(data.averageTabPaise)} /></div>
+      {data.tabsSettled === 0 ? <EmptyState title="No settled tabs" description="Payments appear here after a tab is settled on this date." /> : <>
+        <section className="space-y-3"><h2 className="text-lg font-semibold">By payment mode</h2><dl className="divide-y rounded-lg border px-4">{data.byMethod.map((row) => <div key={row.method} className="flex justify-between py-3"><dt>{row.method === 'CASH' ? 'Cash' : row.method === 'CARD' ? 'Card' : 'UPI'}</dt><dd><Money paise={row.amountPaise} /></dd></div>)}</dl></section>
+        <section className="space-y-3"><h2 className="text-lg font-semibold">By shift</h2>{!data.byShift.length ? <p className="text-sm text-muted-foreground">These payments are not linked to a staff shift.</p> : <Table><TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Shift</TableHead><TableHead className="text-right">Takings</TableHead></TableRow></TableHeader><TableBody>{data.byShift.map((row) => <TableRow key={row.shiftId}><TableCell>{row.employeeName}</TableCell><TableCell>{formatDateTime(row.startsAt)} – {formatDateTime(row.endsAt)}</TableCell><TableCell className="text-right"><Money paise={row.amountPaise} /></TableCell></TableRow>)}</TableBody></Table>}</section>
+        <section className="space-y-3"><h2 className="text-lg font-semibold">Popular items</h2><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Quantity</TableHead><TableHead className="text-right">Revenue</TableHead></TableRow></TableHeader><TableBody>{data.topItems.map((row) => <TableRow key={row.name}><TableCell>{row.name}</TableCell><TableCell className="tabular">{row.qty}</TableCell><TableCell className="text-right"><Money paise={row.amountPaise} /></TableCell></TableRow>)}</TableBody></Table></section>
+      </>}
+    </>}
+  </div>;
 }
+

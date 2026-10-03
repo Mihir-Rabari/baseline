@@ -1,56 +1,17 @@
 'use client';
-
-import React, { use, useState } from 'react';
+import React from 'react';
+import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import type { SharedReportResponse } from '@packages/validation';
-import { API_BASE_URL } from '@/lib/api-client';
-import { formatDateTime } from '@/lib/format';
+import { reportApi } from '@/lib/report-api';
+import { ReportCharts } from '@/components/club/charts';
+import { StatTile } from '@/components/club/stat-tile';
 import { EmptyState } from '@/components/app-shell/empty-state';
-import { Money } from '@/components/club/money';
-import { BarList, Stat, humanize } from '@/components/club/ops-bits';
+import { PageError } from '@/components/club/page-error';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-type Range = 'today' | 'week' | 'month';
-
-export default function SharedReportPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = use(params);
-  const [range, setRange] = useState<Range | ''>('');
-  const report = useQuery({
-    queryKey: ['shared-report', token, range],
-    retry: false,
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/public/reports/shared/${encodeURIComponent(token)}${range ? `?range=${range}` : ''}`);
-      if (!response.ok) throw new Error(String(response.status));
-      return (await response.json()) as SharedReportResponse;
-    },
-  });
-  const data = report.data;
-  return (
-    <section className="container space-y-6 py-12">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Club summary</h1>
-        {data && <p className="text-sm text-muted-foreground">Shared view, read only. This link expires {formatDateTime(data.expiresAt)}.</p>}
-      </div>
-      {report.isPending ? <div role="status" aria-label="Loading summary"><Skeleton className="h-64 w-full" /></div>
-        : report.error ? <EmptyState title="This link has expired or was revoked" description="Ask the club owner for a new link." />
-        : data && (
-          <div className="space-y-6">
-            <Tabs value={range || (data.range as Range)} onValueChange={(value) => setRange(value as Range)}>
-              <TabsList aria-label="Range"><TabsTrigger value="today">Today</TabsTrigger><TabsTrigger value="week">This week</TabsTrigger><TabsTrigger value="month">This month</TabsTrigger></TabsList>
-            </Tabs>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat label="Revenue" value={<Money paise={data.kpis.revenuePaise} />} hint={`${data.kpis.changePct >= 0 ? '+' : ''}${data.kpis.changePct}% vs previous period`} />
-              <Stat label="Bookings" value={data.kpis.bookingsCount} hint={`${data.kpis.utilisationPct}% utilisation`} />
-              <Stat label="New members" value={data.kpis.newMembers} />
-              <Stat label="Shop orders · bar tabs" value={`${data.kpis.shopOrdersCount} · ${data.kpis.barTabsCount}`} />
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <section className="space-y-3 rounded-lg border p-5"><h2 className="text-lg font-semibold">By source</h2><BarList rows={data.bySource.map((s) => ({ label: humanize(s.source), value: s.amountPaise }))} /></section>
-              <section className="space-y-3 rounded-lg border p-5"><h2 className="text-lg font-semibold">By payment method</h2><BarList rows={data.byMethod.map((m) => ({ label: humanize(m.method), value: m.amountPaise }))} /></section>
-            </div>
-          </div>
-        )}
-    </section>
-  );
+import { formatMoney, formatDateTime } from '@/lib/format';
+export default function SharedReportPage() {
+  const { token } = useParams<{ token: string }>();
+  const query = useQuery({ queryKey: ['shared-report', token], queryFn: () => reportApi.shared(token), retry: false });
+  return <section className="container space-y-8 py-12"><div><h1 className="text-2xl font-semibold tracking-tight">Shared club report</h1><p className="text-muted-foreground">Read-only summary of club revenue and court use.</p></div>{query.isPending ? <Skeleton className="h-64" /> : query.error ? 'statusCode' in query.error && query.error.statusCode === 404 ? <EmptyState title="This link has expired or was revoked" description="Ask the owner for a new share link." /> : <PageError error={query.error} onRetry={() => { void query.refetch(); }} /> : query.data ? <><p className="text-sm text-muted-foreground">{query.data.from} to {query.data.to}{query.data.expiresAt ? ` · Expires ${formatDateTime(query.data.expiresAt)}` : ""}</p><div className="grid gap-6 sm:grid-cols-2"><StatTile label="Revenue" value={formatMoney(query.data.kpis.revenuePaise)} /><StatTile label="Bookings" value={query.data.kpis.bookingsCount} /></div><ReportCharts report={query.data} /></> : null}</section>;
 }
+
