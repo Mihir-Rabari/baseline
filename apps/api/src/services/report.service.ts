@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import type { DatabaseInstance } from '@packages/db';
+import type { DbExecutor } from './db-types.js';
 import type { DashboardReport, ReportRange } from '@packages/validation';
 import { DomainError } from '../lib/domain-error.js';
 import { getClubHours } from './club-settings.js';
@@ -168,7 +168,7 @@ function num(value: unknown): number {
 
 export class ReportService {
   constructor(
-    private readonly db: DatabaseInstance,
+    private readonly db: DbExecutor,
     private readonly timeZone: string,
     private readonly now: () => Date = () => new Date()
   ) {}
