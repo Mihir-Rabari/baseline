@@ -719,6 +719,35 @@ describe('Bar POS (M-12)', () => {
     expect((await earnings('not-a-date', owner)).statusCode).toBe(400);
   });
 
+  it('serializes ticket cancellation with settlement so the ledger and bill agree', async (ctx) => {
+    if (!hasDatabase) return ctx.skip();
+    const tabId = await guestTab();
+    await addItem(tabId, drink.id);
+    await addItem(tabId, food.id);
+    const sent = (await send(tabId)).json();
+    const ticket = sent.tickets.find((t: { station: string }) => t.station === 'KITCHEN');
+    const [paid, cancelled] = await Promise.all([
+      settle(tabId, { payments: [{ method: 'CASH' }] }),
+      setTicket(ticket.id, 'CANCELLED'),
+    ]);
+    expect(paid.statusCode).toBe(200);
+    expect(cancelled.statusCode).toBe(200);
+    const tab = (await app.inject({ method: 'GET', url: `/api/v1/bar/tabs/${tabId}`, headers: as(bar) })).json();
+    const lines = tab.items.filter((i: { status: string }) => i.status !== 'VOID');
+    const lineTotal = lines.reduce((sum: number, i: { lineTotalPaise: number }) => sum + i.lineTotalPaise, 0);
+    expect(tab.totalPaise).toBe(lineTotal);
+    const ledger = await db.select().from(payments).where(eq(payments.sourceId, tabId));
+    expect(ledger.reduce((sum, p) => sum + p.amountPaise, 0)).toBe(lineTotal);
+  });
+
+  it('publishes the bar routes in OpenAPI', async () => {
+    const response = await app.inject({ method: 'GET', url: '/api/openapi.json' });
+    expect(response.statusCode).toBe(200);
+    const paths = response.json().paths;
+    for (const path of ['/bar/tables', '/bar/menu', '/bar/tabs', '/bar/tickets', '/bar/earnings']) {
+      expect(paths[`/api/v1${path}`]).toBeDefined();
+    }
+  });
   it('keeps bar staff away from finance: no reports or payments permission, and no way in over HTTP', async (ctx) => {
     const actionsOf = (policy: { statements: Array<{ actions: readonly string[] }> }) =>
       policy.statements.flatMap((s) => [...s.actions]);
