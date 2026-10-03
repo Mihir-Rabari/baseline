@@ -59,6 +59,9 @@ Standard codes: `400 VALIDATION_ERROR` (with `details`), `401 UNAUTHORIZED`, `40
 | `ALREADY_SETTLED` | 409 | Tab already settled |
 | `TAB_EMPTY` | 422 | Settle or send with nothing to bill |
 | `ALREADY_CONVERTED` | 409 | Lead already converted |
+| `QUOTE_STATE_INVALID` | 409 | Quote is expired or the requested transition is invalid |
+| `QUOTE_INVALID` | 422 | Conversion quote is not accepted, is expired, or belongs to another lead or plan |
+| `PHONE_REQUIRED` | 422 | Email-only lead needs a phone number before conversion |
 | `JUNIOR_AGE_INVALID` | 422 | Date of birth not valid for the plan (age rule) |
 | `MEMBER_HAS_ACTIVE_MEMBERSHIP` | 409 | Cannot create a second active membership |
 | `LEAVE_OVERLAP` | 409 | Overlaps approved leave |

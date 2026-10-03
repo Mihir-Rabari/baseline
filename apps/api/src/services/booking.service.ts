@@ -67,6 +67,12 @@ export interface CreateBookingInput {
   payNow?: { method: PaymentMethod; reference?: string };
   /** The authenticated user performing the action (audit, `created_by`, `received_by`). */
   actorUserId?: string | null;
+  /**
+   * Runs inside the booking transaction once the booking row exists. Whatever it writes commits
+   * or rolls back with the booking (the public trial flow creates its lead here), and a throw
+   * rolls the booking back too.
+   */
+  inTransaction?: (tx: DbExecutor, bookingId: string) => Promise<void>;
 }
 
 export interface JoinSocialInput {
@@ -405,6 +411,7 @@ export class BookingService {
             reference: input.payNow.reference ?? null,
           });
         }
+        if (input.inTransaction) await input.inTransaction(tx, booking.id);
         return booking.id;
       });
       return (await this.getBooking(bookingId))!;

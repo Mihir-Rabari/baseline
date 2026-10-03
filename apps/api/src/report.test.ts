@@ -363,57 +363,61 @@ describe('Owner dashboard (M-14)', () => {
 
     it('reflects new employees, invoices, leads, leave, stock and expiring memberships', async () => {
       if (!hasDatabase) return;
-      const before = await service.dashboard({ range: 'today' });
+      // A repeatable snapshot excludes concurrent fixtures from other suites.
+      await db.transaction(async db => {
+        const service = new ReportService(db, TZ, () => NOW);
+        const before = await service.dashboard({ range: 'today' });
 
-      const [emp] = await db
-        .insert(employees)
-        .values({ fullName: 'M14 Employee', position: 'Coach', department: 'COACHING', monthlySalaryPaise: 123_400, hiredOn: '2030-01-01' })
-        .returning({ id: employees.id });
-      employeeIds.push(emp.id);
-      await db.insert(leaveRequests).values({ employeeId: emp.id, leaveType: 'CASUAL', fromDate: '2031-06-01', toDate: '2031-06-02' });
+        const [emp] = await db
+          .insert(employees)
+          .values({ fullName: 'M14 Employee', position: 'Coach', department: 'COACHING', monthlySalaryPaise: 123_400, hiredOn: '2030-01-01' })
+          .returning({ id: employees.id });
+        employeeIds.push(emp.id);
+        await db.insert(leaveRequests).values({ employeeId: emp.id, leaveType: 'CASUAL', fromDate: '2031-06-01', toDate: '2031-06-02' });
 
-      const [member] = await db
-        .insert(members)
-        .values({ memberCode: `M14${randomUUID().slice(0, 8)}`, fullName: 'M14 Member', phone: '+910000000014', createdAt: ist('2031-05-14T10:00:00') })
-        .returning({ id: members.id });
-      memberIds.push(member.id);
-      const [plan] = await db
-        .insert(plans)
-        .values({ code: `M14${randomUUID().slice(0, 8)}`, name: 'M14 Plan', monthlyFeePaise: 100_000 })
-        .returning({ id: plans.id });
-      planIds.push(plan.id);
-      await db.insert(memberships).values({ memberId: member.id, planId: plan.id, status: 'ACTIVE', startsOn: '2031-04-19', endsOn: '2031-05-18' });
+        const [member] = await db
+          .insert(members)
+          .values({ memberCode: `M14${randomUUID().slice(0, 8)}`, fullName: 'M14 Member', phone: '+910000000014', createdAt: ist('2031-05-14T10:00:00') })
+          .returning({ id: members.id });
+        memberIds.push(member.id);
+        const [plan] = await db
+          .insert(plans)
+          .values({ code: `M14${randomUUID().slice(0, 8)}`, name: 'M14 Plan', monthlyFeePaise: 100_000 })
+          .returning({ id: plans.id });
+        planIds.push(plan.id);
+        await db.insert(memberships).values({ memberId: member.id, planId: plan.id, status: 'ACTIVE', startsOn: '2031-04-19', endsOn: '2031-05-18' });
 
-      const invoiceBase = { memberId: member.id, subtotalPaise: 70_000, taxPaise: 10_678, totalPaise: 77_700, issueDate: '2031-05-01' };
-      const inv = await db
-        .insert(invoices)
-        .values([
-          { ...invoiceBase, invoiceNumber: `M14-${randomUUID().slice(0, 8)}`, status: 'SENT', dueDate: '2031-05-10' }, // overdue
-          { ...invoiceBase, invoiceNumber: `M14-${randomUUID().slice(0, 8)}`, status: 'PAID', dueDate: '2031-05-10' },
-          { ...invoiceBase, invoiceNumber: `M14-${randomUUID().slice(0, 8)}`, status: 'DRAFT', dueDate: '2031-05-10' },
-        ])
-        .returning({ id: invoices.id });
-      invoiceIds.push(...inv.map((i) => i.id));
+        const invoiceBase = { memberId: member.id, subtotalPaise: 70_000, taxPaise: 10_678, totalPaise: 77_700, issueDate: '2031-05-01' };
+        const inv = await db
+          .insert(invoices)
+          .values([
+            { ...invoiceBase, invoiceNumber: `M14-${randomUUID().slice(0, 8)}`, status: 'SENT', dueDate: '2031-05-10' }, // overdue
+            { ...invoiceBase, invoiceNumber: `M14-${randomUUID().slice(0, 8)}`, status: 'PAID', dueDate: '2031-05-10' },
+            { ...invoiceBase, invoiceNumber: `M14-${randomUUID().slice(0, 8)}`, status: 'DRAFT', dueDate: '2031-05-10' },
+          ])
+          .returning({ id: invoices.id });
+        invoiceIds.push(...inv.map((i) => i.id));
 
-      const [lead] = await db.insert(leads).values({ name: 'M14 Lead', phone: '+910000000015', source: 'WALK_IN' }).returning({ id: leads.id });
-      leadIds.push(lead.id);
+        const [lead] = await db.insert(leads).values({ name: 'M14 Lead', phone: '+910000000015', source: 'WALK_IN' }).returning({ id: leads.id });
+        leadIds.push(lead.id);
 
-      const [product] = await db
-        .insert(products)
-        .values({ sku: `M14-${randomUUID()}`, name: 'M14 Low', category: 'BALL', pricePaise: 1000, stockQty: 1, reorderLevel: 3 })
-        .returning({ id: products.id });
-      productIds.push(product.id);
+        const [product] = await db
+          .insert(products)
+          .values({ sku: `M14-${randomUUID()}`, name: 'M14 Low', category: 'BALL', pricePaise: 1000, stockQty: 1, reorderLevel: 3 })
+          .returning({ id: products.id });
+        productIds.push(product.id);
 
-      const after = await service.dashboard({ range: 'today' });
-      expect(after.owed.payrollDuePaise - before.owed.payrollDuePaise).toBe(123_400);
-      expect(after.owed.unpaidInvoicesPaise - before.owed.unpaidInvoicesPaise).toBe(77_700); // SENT only
-      expect(after.owed.overdueInvoicesCount - before.owed.overdueInvoicesCount).toBe(1);
-      expect(after.alerts.pendingLeaveCount - before.alerts.pendingLeaveCount).toBe(1);
-      expect(after.alerts.expiringMembershipsCount - before.alerts.expiringMembershipsCount).toBe(1);
-      expect(after.alerts.newLeadsCount - before.alerts.newLeadsCount).toBe(1);
-      expect(after.alerts.lowStockCount - before.alerts.lowStockCount).toBe(1);
-      expect(after.kpis.newMembers - before.kpis.newMembers).toBe(1);
-      expect(DashboardReportSchema.safeParse(after).success).toBe(true);
+        const after = await service.dashboard({ range: 'today' });
+        expect(after.owed.payrollDuePaise - before.owed.payrollDuePaise).toBe(123_400);
+        expect(after.owed.unpaidInvoicesPaise - before.owed.unpaidInvoicesPaise).toBe(77_700); // SENT only
+        expect(after.owed.overdueInvoicesCount - before.owed.overdueInvoicesCount).toBe(1);
+        expect(after.alerts.pendingLeaveCount - before.alerts.pendingLeaveCount).toBe(1);
+        expect(after.alerts.expiringMembershipsCount - before.alerts.expiringMembershipsCount).toBe(1);
+        expect(after.alerts.newLeadsCount - before.alerts.newLeadsCount).toBe(1);
+        expect(after.alerts.lowStockCount - before.alerts.lowStockCount).toBe(1);
+        expect(after.kpis.newMembers - before.kpis.newMembers).toBe(1);
+        expect(DashboardReportSchema.safeParse(after).success).toBe(true);
+      }, { isolationLevel: 'repeatable read' });
     });
   });
 
