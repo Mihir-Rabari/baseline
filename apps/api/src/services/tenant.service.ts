@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
-import { tenantBranding, tenantDomains, tenants, type DatabaseInstance } from '@packages/db';
+import { DEFAULT_CATEGORIES, categories, tenantBranding, tenantDomains, tenants, type DatabaseInstance } from '@packages/db';
 import type {
   DnsRecord,
   TenantBranding,
@@ -33,6 +33,8 @@ export class TenantService {
 
   constructor(
     private readonly db: DatabaseInstance,
+    /** Owner connection for platform-wide work (all clubs); `db` is confined to the request's club. */
+    private readonly platformDb: DatabaseInstance,
     private readonly directory: TenantDirectory,
     private readonly dns: () => DnsVerifier,
     private readonly options: TenantServiceOptions = {}
@@ -177,7 +179,7 @@ export class TenantService {
   }
 
   async listTenants(): Promise<TenantSummary[]> {
-    const rows = await this.db
+    const rows = await this.platformDb
       .select({ t: tenants, domain: sql<string | null>`(select domain from tenant_domains d where d.tenant_id = ${tenants.id} and d.kind = 'PLATFORM' limit 1)` })
       .from(tenants)
       .orderBy(desc(tenants.createdAt), asc(tenants.slug));
@@ -187,9 +189,11 @@ export class TenantService {
   async createTenant(input: { slug: string; name: string }): Promise<TenantSummary> {
     const platform = this.options.platformDomain;
     try {
-      return await this.db.transaction(async (tx) => {
+      return await this.platformDb.transaction(async (tx) => {
         const [row] = await tx.insert(tenants).values({ slug: input.slug, name: input.name }).returning();
         await tx.insert(tenantBranding).values({ tenantId: row.id });
+        // Every club starts with the standard product and menu categories (they are club-owned rows).
+        await tx.insert(categories).values(DEFAULT_CATEGORIES.map((c) => ({ ...c, tenantId: row.id })));
         let domain: string | null = null;
         if (platform) {
           domain = `${row.slug}.${platform}`;
@@ -206,10 +210,10 @@ export class TenantService {
   }
 
   async setStatus(id: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<TenantSummary> {
-    const [row] = await this.db.update(tenants).set({ status }).where(eq(tenants.id, id)).returning();
+    const [row] = await this.platformDb.update(tenants).set({ status }).where(eq(tenants.id, id)).returning();
     if (!row) throw new DomainError('NOT_FOUND', 404, 'Club not found.');
     this.directory.invalidate();
-    const [{ domain }] = await this.db.select({ domain: sql<string | null>`(select domain from tenant_domains d where d.tenant_id = ${row.id} and d.kind = 'PLATFORM' limit 1)` }).from(tenants).where(eq(tenants.id, id));
+    const [{ domain }] = await this.platformDb.select({ domain: sql<string | null>`(select domain from tenant_domains d where d.tenant_id = ${row.id} and d.kind = 'PLATFORM' limit 1)` }).from(tenants).where(eq(tenants.id, id));
     return this.summary(row, domain);
   }
 }

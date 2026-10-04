@@ -36,7 +36,7 @@ const rootOnly = async (request: FastifyRequest, reply: FastifyReply) => {
  * verification, and the platform operator's club management.
  */
 export const tenantRoutes: FastifyPluginAsyncZod = async (fastify) => {
-  const service = new TenantService(fastify.db, fastify.tenantDirectory, () => fastify.dnsVerifier, {
+  const service = new TenantService(fastify.db, fastify.systemDb, fastify.tenantDirectory, () => fastify.dnsVerifier, {
     platformDomain: fastify.env.PLATFORM_DOMAIN,
     cnameTarget: fastify.env.PLATFORM_CNAME_TARGET,
   });

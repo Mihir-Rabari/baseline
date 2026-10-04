@@ -86,13 +86,15 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (fastify) => {
         throw new DomainError('INVALID_IMAGE', 422, 'The file contents do not match the declared image type.');
       }
       const file = `${randomUUID()}.${detected.ext}`;
-      const key = `${request.params.kind}/${file}`;
+      // Objects live under the club's own prefix; the public URL stays tenant-free and is resolved
+      // back to the right prefix from the request host when the file is fetched.
+      const key = `${request.tenantId}/${request.params.kind}/${file}`;
       await fastify.storage.upload(key, body, {
         contentType: detected.contentType,
-        metadata: { uploader: request.user!.id },
+        metadata: { uploader: request.user!.id, tenant: request.tenantId },
       });
       request.log.info({ kind: request.params.kind, key, bytes: body.length, actorId: request.user!.id }, 'Image uploaded');
-      return reply.status(201).send({ url: `/api/v1/media/${key}`, key, contentType: detected.contentType, size: body.length });
+      return reply.status(201).send({ url: `/api/v1/media/${request.params.kind}/${file}`, key, contentType: detected.contentType, size: body.length });
     }
   );
 
@@ -109,7 +111,8 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
     async (request, reply) => {
       const { kind, file } = request.params;
-      const bytes = await fastify.storage.get(`${kind}/${file}`);
+      // Only this club's prefix is ever read, so another club's file name resolves to nothing.
+      const bytes = await fastify.storage.get(`${request.tenantId}/${kind}/${file}`);
       if (!bytes) throw new DomainError('NOT_FOUND', 404, 'Image not found.');
       const ext = file.slice(file.lastIndexOf('.') + 1) as keyof typeof EXT_CONTENT_TYPE;
       return reply

@@ -191,7 +191,7 @@ export async function runSeeds(): Promise<void> {
         .insert(systemSettings)
         .values(setting)
         .onConflictDoUpdate({
-          target: systemSettings.key,
+          target: [systemSettings.tenantId, systemSettings.key],
           set: {
             value: setting.value,
             description: setting.description,
