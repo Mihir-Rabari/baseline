@@ -172,6 +172,30 @@ describe('Orders Page & Board Layout (Issue #72)', () => {
     expect(screen.getByRole('listitem', { name: 'Ready for pickup' })).toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'Out for delivery' })).toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'Done' })).toBeInTheDocument();
+    expect(screen.getByRole('listitem', { name: 'POS / Counter' })).toBeInTheDocument();
+  });
+
+  it('separates POS counter orders into dedicated POS column instead of oversized Done column (Issue #72)', async () => {
+    mount();
+    await waitFor(() => {
+      expect(screen.getByText('ORD-001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    await waitFor(() => {
+      expect(screen.getByRole('list', { name: 'Board' })).toBeInTheDocument();
+    });
+
+    // ORD-001 is ONLINE PLACED -> in Placed column
+    const placedColumn = screen.getByRole('listitem', { name: 'Placed' });
+    expect(placedColumn).toHaveTextContent('ORD-001');
+
+    // ORD-002 is POS COMPLETED -> must be in POS / Counter column, NOT Done column
+    const posColumn = screen.getByRole('listitem', { name: 'POS / Counter' });
+    expect(posColumn).toHaveTextContent('ORD-002');
+
+    const doneColumn = screen.getByRole('listitem', { name: 'Done' });
+    expect(doneColumn).not.toHaveTextContent('ORD-002');
   });
 
   it('uses the self endpoint and hides staff actions for members', async () => {

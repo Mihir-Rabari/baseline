@@ -76,7 +76,7 @@ export function KanbanBoard<T>({ columns, items, columnOf, idOf, renderCard, onM
   const [over, setOver] = useState<string | null>(null);
   const droppable = (column: string) => Boolean(dragging && onMove && columnOf(dragging) !== column && (canDrop ? canDrop(dragging, column) : true));
   return (
-    <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2" role="list" aria-label="Board">
+    <div className="-mx-1 flex min-w-0 snap-x gap-3 overflow-x-auto px-1 pb-2 scrollbar-thin" role="list" aria-label="Board">
       {columns.map((column) => {
         const cards = items.filter((item) => columnOf(item) === column.id);
         const target = droppable(column.id);
@@ -85,9 +85,9 @@ export function KanbanBoard<T>({ columns, items, columnOf, idOf, renderCard, onM
             onDragOver={(event) => { if (target) { event.preventDefault(); setOver(column.id); } }}
             onDragLeave={() => setOver((current) => (current === column.id ? null : current))}
             onDrop={(event) => { event.preventDefault(); setOver(null); if (dragging && target) onMove?.(dragging, column.id); setDragging(null); }}
-            className={cn('flex w-72 shrink-0 snap-start flex-col rounded-lg border bg-muted/30 transition-colors', target && 'border-dashed border-primary/60', over === column.id && 'bg-primary/10')}>
+            className={cn('flex w-64 sm:w-72 shrink-0 snap-start flex-col rounded-lg border bg-muted/30 transition-colors', target && 'border-dashed border-primary/60', over === column.id && 'bg-primary/10')}>
             <header className="flex items-center justify-between gap-2 px-3 py-2.5">
-              <h3 className="text-sm font-semibold">{column.title}</h3>
+              <h3 className="text-sm font-semibold truncate" title={column.title}>{column.title}</h3>
               <span className="tabular rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground">{cards.length}</span>
             </header>
             <div className="flex min-h-24 flex-1 flex-col gap-2 px-2 pb-2">

@@ -87,4 +87,52 @@ describe('Receipt Printing (Issue #78)', () => {
 
     expect(screen.queryByRole('button', { name: 'Print receipt' })).not.toBeInTheDocument();
   });
+
+  it('renders printable receipt header and calls window.print in OrderDetailDialog', async () => {
+    const { OrderDetailDialog } = await import('@/components/club/order-detail-dialog');
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+
+    const mockOrder: any = {
+      id: 'ord-123',
+      orderNumber: 'ORD-000123',
+      channel: 'ONLINE',
+      fulfilment: 'DELIVERY',
+      status: 'DELIVERED',
+      createdAt: '2026-10-03T12:00:00.000Z',
+      member: { fullName: 'Rohit Sharma', memberCode: 'MEM-045' },
+      deliveryAddress: 'Lane 4, Court Road',
+      items: [
+        { name: 'Match Ball', qty: 2, unitPricePaise: 40000, lineTotalPaise: 80000, discountPct: 0 },
+      ],
+      subtotalPaise: 80000,
+      discountPaise: 0,
+      deliveryFeePaise: 0,
+      totalPaise: 80000,
+      paymentStatus: 'PAID',
+    };
+
+    render(
+      <OrderDetailDialog order={mockOrder} open={true} onOpenChange={() => {}} />
+    );
+
+    // Verify print receipt button is present
+    const printButton = screen.getByRole('button', { name: 'Print receipt' });
+    expect(printButton).toBeInTheDocument();
+
+    // Verify printable receipt header exists for @media print
+    const printHeader = screen.getByTestId('printable-receipt-header');
+    expect(printHeader).toBeInTheDocument();
+    expect(printHeader).toHaveClass('print:block');
+    expect(screen.getByRole('heading', { name: /Receipt · ORD-000123/ })).toBeInTheDocument();
+
+    // Verify footer actions are hidden on print
+    const footer = printButton.closest('div');
+    expect(footer).toHaveClass('print:hidden');
+
+    // Click print
+    fireEvent.click(printButton);
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    printSpy.mockRestore();
+  });
 });

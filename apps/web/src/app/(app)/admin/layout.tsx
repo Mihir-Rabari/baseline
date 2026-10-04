@@ -41,6 +41,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  // Club Settings (/admin/club) manages club-specific configuration and must not display IAM tabs (Issue #64).
+  const isClubSettings = pathname === '/admin/club' || pathname.startsWith('/admin/club/');
+  if (isClubSettings) {
+    return <div className="min-w-0">{children}</div>;
+  }
+
   // A horizontal tab strip, not a second sidebar. The app shell already owns
   // the vertical navigation; nesting another one produced two competing rails.
   return (
