@@ -1,4 +1,5 @@
 import type { IRedisService } from '@packages/shared';
+import { DEFAULT_TENANT_ID, currentTenantId } from '@packages/db';
 
 export interface LoginThrottleConfig {
   /** Failed attempts permitted before the account is locked. */
@@ -33,11 +34,11 @@ export class LoginThrottle {
   ) {}
 
   private attemptsKey(identifier: string): string {
-    return `login:attempts:${identifier.toLowerCase()}`;
+    return `login:attempts:${currentTenantId() ?? DEFAULT_TENANT_ID}:${identifier.toLowerCase()}`;
   }
 
   private lockKey(identifier: string): string {
-    return `login:locked:${identifier.toLowerCase()}`;
+    return `login:locked:${currentTenantId() ?? DEFAULT_TENANT_ID}:${identifier.toLowerCase()}`;
   }
 
   /**

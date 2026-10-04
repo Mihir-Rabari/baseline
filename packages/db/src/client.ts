@@ -42,6 +42,12 @@ export function getDb(): DatabaseInstance {
   return dbInstance;
 }
 
+/** The underlying connection pool (the owner connection), for scoped reservations. */
+export function getSql(): postgres.Sql {
+  getDb();
+  return dbClient as postgres.Sql;
+}
+
 /**
  * Check database connectivity and latency
  */

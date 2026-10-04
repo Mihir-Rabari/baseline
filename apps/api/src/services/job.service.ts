@@ -7,6 +7,7 @@ import {
   plans,
   type DatabaseInstance,
   type ReminderKind,
+  runInTenantScope,
 } from '@packages/db';
 import type { MembershipExpiryJobResponse } from '@packages/validation';
 import { getEnv } from '@packages/config/env';
@@ -198,23 +199,38 @@ export class JobService {
 /**
  * Starts the recurring membership-expiry run. Returns a function that stops it; call that
  * on shutdown so the timer never keeps the process alive. Overlapping runs are skipped.
+ *
+ * With `listTenants` the job runs once per returned club, each inside that club's tenant scope, so
+ * expiries, reminders and notifications land in the right club and one club's failure never stops
+ * the others. Without it the job runs once in the ambient (default club) scope.
  */
 export function startMembershipExpiryScheduler(
   job: JobService,
   log: Logger,
-  intervalMs: number = MEMBERSHIP_EXPIRY_INTERVAL_MS
+  intervalMs: number = MEMBERSHIP_EXPIRY_INTERVAL_MS,
+  listTenants?: () => Promise<string[]>
 ): () => void {
   let running = false;
+  const runOne = (tenantId?: string) => {
+    const run = () => job.runMembershipExpiry();
+    return (tenantId ? runInTenantScope(tenantId, run) : run())
+      .then((result) => log.info({ ...result, ...(tenantId ? { tenantId } : {}) }, 'Membership expiry job completed'))
+      .catch((err: unknown) => log.error({ err, ...(tenantId ? { tenantId } : {}) }, 'Membership expiry job failed'));
+  };
   const timer = setInterval(() => {
     if (running) return;
     running = true;
-    job
-      .runMembershipExpiry()
-      .then((result) => log.info({ ...result }, 'Membership expiry job completed'))
-      .catch((err: unknown) => log.error({ err }, 'Membership expiry job failed'))
-      .finally(() => {
-        running = false;
-      });
+    const work = listTenants
+      ? listTenants().then(
+          async (ids) => {
+            for (const id of ids) await runOne(id);
+          },
+          (err: unknown) => log.error({ err }, 'Listing clubs for the membership expiry job failed')
+        )
+      : runOne();
+    void work.finally(() => {
+      running = false;
+    });
   }, intervalMs);
   timer.unref();
   return () => clearInterval(timer);

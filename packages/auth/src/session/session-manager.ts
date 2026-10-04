@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 import type { DatabaseInstance } from '@packages/db';
-import { sessions, users } from '@packages/db';
+import { DEFAULT_TENANT_ID, currentTenantId, sessions, users } from '@packages/db';
 import type { IRedisService } from '@packages/shared';
 import type { AuthUser, AuthSession, SessionValidationResult, UserStatus, IdentityType } from '../types.js';
 import {
@@ -20,6 +20,15 @@ export function hashSessionToken(token: string): string {
 
 export function generateSessionToken(): string {
   return crypto.randomBytes(32).toString('hex');
+}
+
+/**
+ * Cached sessions are keyed by club as well as token, so a cookie that is valid in one club can never be
+ * answered from the cache while the request is for another club (the database lookup, which row level
+ * security confines to the request's club, stays the authority).
+ */
+export function sessionCacheKey(tokenHash: string, tenantId: string = currentTenantId() ?? DEFAULT_TENANT_ID): string {
+  return `session:${tenantId}:${tokenHash}`;
 }
 
 export class SessionManager {
@@ -109,7 +118,7 @@ export class SessionManager {
 
     // 4. Cache session in Redis if available
     if (this.redis) {
-      const cacheKey = `session:${tokenHash}`;
+      const cacheKey = sessionCacheKey(tokenHash);
       await this.redis.setJson(
         cacheKey,
         { session: authSession, user: authUser },
@@ -133,7 +142,7 @@ export class SessionManager {
     }
 
     const tokenHash = hashSessionToken(token);
-    const cacheKey = `session:${tokenHash}`;
+    const cacheKey = sessionCacheKey(tokenHash);
 
     // 1. Try Redis cache first
     if (this.redis) {
@@ -262,7 +271,7 @@ export class SessionManager {
     if (!token) return false;
 
     const tokenHash = hashSessionToken(token);
-    const cacheKey = `session:${tokenHash}`;
+    const cacheKey = sessionCacheKey(tokenHash);
 
     // 1. Remove from Redis
     if (this.redis) {
@@ -285,13 +294,13 @@ export class SessionManager {
   public async revokeAllUserSessions(userId: string): Promise<void> {
     // 1. Find all active sessions to delete from cache
     const activeSessions = await this.db
-      .select({ tokenHash: sessions.tokenHash })
+      .select({ tokenHash: sessions.tokenHash, tenantId: sessions.tenantId })
       .from(sessions)
       .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 
     if (this.redis && activeSessions.length > 0) {
       await Promise.allSettled(
-        activeSessions.map((s) => this.redis!.delete(`session:${s.tokenHash}`))
+        activeSessions.map((s) => this.redis!.delete(sessionCacheKey(s.tokenHash, s.tenantId)))
       );
     }
 

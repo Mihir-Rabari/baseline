@@ -1,5 +1,7 @@
 import { buildApp } from './app.js';
+import { eq } from 'drizzle-orm';
 import { getEnv } from '@packages/config/env';
+import { tenants } from '@packages/db';
 import { JobService, startMembershipExpiryScheduler } from './services/job.service.js';
 
 async function start() {
@@ -30,7 +32,10 @@ async function start() {
       host: env.HOST,
     });
     // Background jobs: the timer is cleared by the shutdown handler above.
-    stopJobs = startMembershipExpiryScheduler(new JobService(app.db), app.log);
+    // One run per active club, each inside that club's tenant scope.
+    const activeClubs = async () =>
+      (await app.systemDb.select({ id: tenants.id }).from(tenants).where(eq(tenants.status, 'ACTIVE'))).map((t) => t.id);
+    stopJobs = startMembershipExpiryScheduler(new JobService(app.db), app.log, undefined, activeClubs);
     app.log.info(`🚀 API Server running at: ${address}`);
     app.log.info(`📚 Swagger Documentation at: ${address}/api/docs`);
     app.log.info(`📊 Prometheus Metrics at: ${address}/metrics`);

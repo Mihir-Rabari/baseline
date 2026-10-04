@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LoginThrottle } from './login-throttle.js';
 import type { IRedisService } from '@packages/shared';
+import { DEFAULT_TENANT_ID, enterTenantScope } from '@packages/db';
 
 /**
  * Minimal in-memory stand-in for the Redis service.
@@ -120,9 +121,23 @@ describe('LoginThrottle', () => {
     expect((await throttle.check('user@example.com')).locked).toBe(true);
 
     // Rewind the stored deadline into the past rather than waiting 15 minutes.
-    redis.store.set('login:locked:user@example.com', String(Date.now() - 1000));
+    redis.store.set(`login:locked:${DEFAULT_TENANT_ID}:user@example.com`, String(Date.now() - 1000));
 
     expect((await throttle.check('user@example.com')).locked).toBe(false);
+  });
+
+  it('counts failures per club: locking an email in one club leaves the same email free in another', async () => {
+    const inClub = (tenantId: string, fn: () => Promise<void>) =>
+      new Promise<void>((resolve, reject) => enterTenantScope({ tenantId, db: {} as never }, () => fn().then(resolve, reject)));
+    const clubA = '11111111-1111-4111-8111-111111111111';
+    const clubB = '22222222-2222-4222-8222-222222222222';
+    await inClub(clubA, async () => {
+      for (let i = 0; i < 3; i += 1) await throttle.recordFailure('shared@example.com');
+      expect((await throttle.check('shared@example.com')).locked).toBe(true);
+    });
+    await inClub(clubB, async () => {
+      expect((await throttle.check('shared@example.com')).locked).toBe(false);
+    });
   });
 
   it('degrades to no-lockout when Redis is unavailable', async () => {

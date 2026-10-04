@@ -1,12 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import { createRedisClient, type IRedisService, createStorageClient, type IStorageService } from '@packages/shared';
-import { getDb, closeDatabase, type DatabaseInstance } from '@packages/db';
+import { getDb, closeDatabase, createScopedDb, type DatabaseInstance } from '@packages/db';
 import { HealthService } from '../services/health.service.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     db: DatabaseInstance;
+    /** The plain owner connection, outside any tenant scope. Platform-wide work only. */
+    systemDb: DatabaseInstance;
     redis: IRedisService;
     storage: IStorageService;
     healthService: HealthService;
@@ -17,7 +19,11 @@ async function servicesPlugin(fastify: FastifyInstance) {
   const env = fastify.env;
 
   // Initialize DB instance
-  const db = getDb();
+  // `db` follows the request's tenant scope (row level security); `systemDb` is the plain owner
+  // connection for platform-wide work such as creating clubs.
+  const systemDb = getDb();
+  fastify.decorate('systemDb', systemDb);
+  const db = createScopedDb(systemDb);
   fastify.decorate('db', db);
 
   // Initialize Redis Service
