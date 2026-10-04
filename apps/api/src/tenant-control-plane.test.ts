@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fastify, { type FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import { eq, inArray, like } from 'drizzle-orm';
-import { DEFAULT_TENANT_ID, getDb, systemAuditLogs, tenantBranding, tenantDomains, tenants, users } from '@packages/db';
+import { DEFAULT_TENANT_ID, categories, getDb, systemAuditLogs, tenantBranding, tenantDomains, tenants, users } from '@packages/db';
 import { TenantBrandingSchema, TenantDomainDetailSchema, TenantSiteSchema, TenantSummarySchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import tenantPlugin, { requestHost } from './plugins/tenant.js';
@@ -154,7 +154,10 @@ describe('Tenant control plane (database)', () => {
     if (available) {
       await fx.cleanup(); // users (and their sessions) go before the clubs they belong to
       const mine = (await db.select({ id: tenants.id }).from(tenants).where(like(tenants.slug, `t${RUN}-%`))).map((t) => t.id);
-      if (mine.length) await db.delete(systemAuditLogs).where(inArray(systemAuditLogs.tenantId, mine));
+      if (mine.length) {
+        await db.delete(systemAuditLogs).where(inArray(systemAuditLogs.tenantId, mine));
+        await db.delete(categories).where(inArray(categories.tenantId, mine)); // created with each club
+      }
       await db.delete(tenants).where(like(tenants.slug, `t${RUN}-%`));
       await db.delete(tenantDomains).where(like(tenantDomains.domain, `%-${RUN}.example.org`));
     }
