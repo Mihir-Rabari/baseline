@@ -9,9 +9,11 @@ describe('calendar requests and dates', () => {
     expect(dateAfter('2026-12-29', 14)).toBe('2027-01-12');
     expect(slotTime(selection.startsAt, 'Asia/Kolkata')).toMatch(/6:00 pm/);
   });
-  it('never includes staff participant or payment fields in a self booking', () => {
-    expect(bookingPayload(selection, false, { ...participant, memberId: 'b0000000-0000-4000-8000-000000000001' }, false))
+  it('omits payment fields in self booking when LATER, but includes payNow when specified', () => {
+    expect(bookingPayload(selection, false, { ...participant, payment: 'LATER', memberId: 'b0000000-0000-4000-8000-000000000001' }, false))
       .toEqual({ ...selection, channel: 'ONLINE' });
+    expect(bookingPayload(selection, false, { ...participant, payment: 'UPI', memberId: 'b0000000-0000-4000-8000-000000000001' }, false))
+      .toEqual({ ...selection, channel: 'ONLINE', payNow: { method: 'UPI' } });
   });
   it('validates guest details and requires a selected member for desk bookings', () => {
     expect(() => bookingPayload(selection, true, { ...participant, phone: 'bad' }, false)).toThrow();

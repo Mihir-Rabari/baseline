@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { describe, expect, it } from 'vitest';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -28,11 +29,12 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
       expect(before).toHaveLength(0);
       await migrate(db, options);
       const firstJournal = await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`;
-      expect(firstJournal).toHaveLength(16);
+      expect(firstJournal.map((row) => row.hash)).toEqual(readMigrationFiles(options).map((migration) => migration.hash));
       const firstTables = await isolated`SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`;
-      expect(firstTables).toHaveLength(56);
+      expect(firstTables).toHaveLength(59);
       expect(firstTables.map((row) => row.tablename)).toEqual(expect.arrayContaining([
         'users', 'system_settings', 'members', 'bookings', 'court_occupancies', 'payments', 'kitchen_tickets',
+        'agent_conversations', 'agent_messages', 'agent_actions',
       ]));
       const ticketColumn = await isolated`SELECT is_identity, identity_generation FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'kitchen_tickets' AND column_name = 'ticket_number'`;

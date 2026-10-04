@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
 import { isDatabaseAvailable } from './test-support/database.js';
@@ -114,6 +114,24 @@ describe('Image uploads (#80)', () => {
       expect((await app.inject({ method: 'GET', url })).statusCode, url).toBe(400);
     }
     expect((await app.inject({ method: 'GET', url: `/api/v1/media/product/${id}.png` })).statusCode).toBe(404);
+  });
+
+  it('returns a correlated 404 for a missing image and preserves storage failures as 500', async () => {
+    const get = vi.spyOn(app.storage, 'get');
+    const url = '/api/v1/media/product/123e4567-e89b-42d3-a456-426614174000.png';
+    try {
+      get.mockResolvedValueOnce(null);
+      const missing = await app.inject({ method: 'GET', url });
+      expect(missing.statusCode).toBe(404);
+      expect(missing.json()).toMatchObject({ code: 'NOT_FOUND', requestId: missing.headers['x-request-id'] });
+
+      get.mockRejectedValueOnce(new Error('Storage connection unavailable'));
+      const unavailable = await app.inject({ method: 'GET', url });
+      expect(unavailable.statusCode).toBe(500);
+      expect(unavailable.body).not.toContain('Storage connection unavailable');
+    } finally {
+      get.mockRestore();
+    }
   });
 
   it('accepts an uploaded or https image on a product, and rejects script URLs', async (ctx) => {

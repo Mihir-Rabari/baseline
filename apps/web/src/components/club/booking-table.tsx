@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import type { Booking } from '@packages/validation';
-import { formatDateTime } from '@/lib/format';
+import { promiseFeePaise, type Booking } from '@packages/validation';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { canCancel } from '@/lib/booking-history';
 import { Money } from '@/components/club/money';
 import { StatusBadge } from '@/components/club/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CardGrid } from '@/components/club/views';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,7 +31,16 @@ export function BookingTable({ bookings, showWho, onCancel }: { bookings: Bookin
             {showWho && <TableCell>{booking.member?.fullName ?? booking.guest?.name ?? 'Walk-in'}</TableCell>}
             <TableCell>{booking.court.name}</TableCell>
             <TableCell className="text-right"><Money paise={booking.pricePaise} /></TableCell>
-            <TableCell><StatusBadge kind="booking" value={booking.status} /></TableCell>
+            <TableCell>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <StatusBadge kind="booking" value={booking.status} />
+                {booking.paymentStatus === 'PARTIAL' && (
+                  <Badge variant="warning">
+                    Paid {formatMoney(promiseFeePaise(booking.pricePaise))}, due {formatMoney(booking.pricePaise - promiseFeePaise(booking.pricePaise))}
+                  </Badge>
+                )}
+              </div>
+            </TableCell>
             {onCancel && (
               <TableCell className="text-right">
                 {canCancel(booking) && (
@@ -51,7 +61,17 @@ export function BookingCards({ bookings, showWho, onCancel }: { bookings: Bookin
     <CardGrid>
       {bookings.map((booking) => (
         <div key={booking.id} className="space-y-2 rounded-lg border bg-card p-4 text-sm">
-          <div className="flex items-start justify-between gap-2"><p className="font-medium">{booking.court.name}</p><StatusBadge kind="booking" value={booking.status} /></div>
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-medium">{booking.court.name}</p>
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <StatusBadge kind="booking" value={booking.status} />
+              {booking.paymentStatus === 'PARTIAL' && (
+                <Badge variant="warning">
+                  Paid {formatMoney(promiseFeePaise(booking.pricePaise))}, due {formatMoney(booking.pricePaise - promiseFeePaise(booking.pricePaise))}
+                </Badge>
+              )}
+            </div>
+          </div>
           <p className="tabular">{formatDateTime(booking.startsAt)}</p>
           {showWho && <p className="text-muted-foreground">{booking.member?.fullName ?? booking.guest?.name ?? 'Walk-in'}</p>}
           <div className="flex items-center justify-between gap-2"><span className="tabular font-medium"><Money paise={booking.pricePaise} /></span>

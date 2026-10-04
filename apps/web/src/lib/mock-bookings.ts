@@ -71,7 +71,7 @@ function create(input: CreateBookingRequest, kind: 'STANDARD' | 'SOCIAL' | 'TRIA
     guest: input.guest ?? null, startsAt: slot.startsAt, endsAt: slot.endsAt, bookingDate: date,
     status: 'CONFIRMED', cancelledLate: false, channel: kind === 'TRIAL' ? 'WEBSITE_TRIAL' : input.channel ?? 'DESK',
     basePricePaise: baseRate, discountPct: discount, pricePaise: price,
-    paymentStatus: price === 0 ? 'WAIVED' : kind !== 'SOCIAL' && input.payNow ? 'PAID' : 'UNPAID',
+    paymentStatus: price === 0 ? 'WAIVED' : kind !== 'SOCIAL' && input.payNow ? (input.payNow.method === 'CASH' ? 'PARTIAL' : 'PAID') : 'UNPAID',
     socialSessionId: kind === 'SOCIAL' ? slot.socialSessionId ?? crypto.randomUUID() : null, createdAt: new Date().toISOString(),
   });
   mockBookingStore.push(booking);

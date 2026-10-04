@@ -101,4 +101,19 @@ describe('bookings page', () => {
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Cancel Tennis/ })).not.toBeInTheDocument();
   });
+
+  it('displays partial payment badge (Paid X, due Y) across table, cards and calendar views', () => {
+    state.mine = page([booking('b5', 2, { pricePaise: 60000, paymentStatus: 'PARTIAL' })]);
+    render(<BookingsPage />);
+    // In table view (default)
+    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
+
+    // Switch to cards view
+    fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
+
+    // Switch to calendar view
+    fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
+    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
+  });
 });

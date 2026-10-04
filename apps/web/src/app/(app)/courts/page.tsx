@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import type { MemberLookupItem } from '@packages/validation';
+import type { CheckoutMethod, MemberLookupItem } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { useAvailability, useCreateBooking } from '@/hooks/use-availability';
 import { ApiError } from '@/lib/api-client';
 import { bookingPayload, calendarDate, dateAfter, canSelectSlot, slotTime, type SlotSelection } from '@/lib/booking-calendar';
+import { PaymentDialog } from '@/components/club/payment-dialog';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
@@ -37,6 +38,7 @@ export default function CourtsPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [payment, setPayment] = useState('LATER');
+  const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const availability = useAvailability({ date, ...(staff && mode === 'MEMBER' && member ? { memberId: member.id } : {}) }, Boolean(user) && canRead);
   const create = useCreateBooking();
@@ -49,25 +51,29 @@ export default function CourtsPage() {
   const quotaUsed = data?.limits && data.limits.usedToday >= data.limits.maxPerDay;
   const social = slot?.status === 'SOCIAL_OPEN';
   const visible = data ? { ...data, courts: data.courts.filter((item) => sport === 'ALL' || item.type === sport) } : null;
-  function resetSelection() { setSelection(null); setError(null); create.reset(); }
+  const requiresCheckout = !staff && !social && (slot?.pricePaise ?? 0) > 0;
+  function resetSelection() { setSelection(null); setError(null); setPaying(false); create.reset(); }
   if (!user) return null;
 
-  async function book() {
+  async function book(chosenPayment?: string) {
     if (!selection || !validSelection || !canBook || create.isPending || availability.isFetching || quotaUsed) return;
     setError(null);
     try {
-      const payload = bookingPayload(selection, staff, { mode, memberId: member?.id, name, phone, payment }, Boolean(social));
+      const pay = chosenPayment ?? payment;
+      const payload = bookingPayload(selection, staff, { mode, memberId: member?.id, name, phone, payment: pay }, Boolean(social));
       const booking = await create.mutateAsync({ social: Boolean(social), data: payload });
       toast.success(`${social ? 'Joined' : 'Booked'} ${booking.court.name} at ${slotTime(booking.startsAt, timezone)}`);
       setSelection(null);
+      setPaying(false);
     } catch (caught) {
       if (caught instanceof ApiError && ['SLOT_TAKEN', 'SOCIAL_FULL', 'SOCIAL_WINDOW'].includes(caught.code)) {
         toast.error(caught.code === 'SLOT_TAKEN' ? 'That slot was just taken. Choose another time.' : caught.message);
-        setSelection(null); void availability.refetch();
+        setSelection(null); setPaying(false); void availability.refetch();
       } else if (caught instanceof Error) {
         const message = 'issues' in caught ? 'Check the guest name and phone number before booking.' : caught.message;
         setError(message);
       }
+      if (chosenPayment) throw caught;
     }
   }
 
@@ -105,8 +111,21 @@ export default function CourtsPage() {
               {data?.limits && <p className="text-sm text-muted-foreground">Used {data.limits.usedToday} of {data.limits.maxPerDay} bookings on this date.</p>}
               {staff && !social && <SelectBox id="booking-payment" label="Payment" value={payment} disabled={create.isPending} onChange={setPayment} options={[{ value: 'LATER', label: 'Pay at the club' }, { value: 'CASH', label: 'Cash now' }, { value: 'CARD', label: 'Card now' }, { value: 'UPI', label: 'UPI now' }]} />}
               {social && <p className="text-sm text-muted-foreground">Shared session · {slot.spotsLeft} places left. Pay at the club.</p>}
-              <Button className="w-full" onClick={() => { void book(); }} disabled={create.isPending || availability.isFetching || Boolean(quotaUsed) || (staff && mode === 'MEMBER' && !member)}>{create.isPending ? 'Confirming…' : social ? 'Join session' : 'Book court'}</Button>
+              <Button className="w-full" onClick={() => { if (requiresCheckout) { setPaying(true); } else { void book(); } }} disabled={create.isPending || availability.isFetching || Boolean(quotaUsed) || (staff && mode === 'MEMBER' && !member)}>{create.isPending ? 'Confirming…' : social ? 'Join session' : 'Book court'}</Button>
               <Button variant="ghost" className="w-full" disabled={create.isPending} onClick={resetSelection}>Change selection</Button>
+              {requiresCheckout && (
+                <PaymentDialog
+                  open={paying}
+                  onClose={() => setPaying(false)}
+                  title="Court checkout"
+                  description={`${court.name} · ${slotTime(slot.startsAt, timezone)}`}
+                  totalPaise={slot.pricePaise}
+                  cash="promise-fee"
+                  onConfirm={async (method: CheckoutMethod) => {
+                    await book(method);
+                  }}
+                />
+              )}
             </> : <p className="text-sm text-muted-foreground">{selection ? 'That session is no longer available. Choose another time.' : 'Select an available time to see the session and confirm your booking.'}</p>}
           </section>
         </div>}
