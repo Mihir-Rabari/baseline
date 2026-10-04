@@ -3,6 +3,7 @@ import { UuidSchema, EmailSchema, IsoDateTimeSchema, IsoDateTimeOutSchema, Nulla
 import { PaginationQuerySchema, createPaginatedResponseSchema } from './pagination.js';
 import { DateOnlySchema, PaiseSchema, NonNegativePaiseSchema, PersonRefSchema } from './domain-common.js';
 import { PhoneSchema } from './members.js';
+import { ImageRefSchema } from './uploads.js';
 
 export const DepartmentEnum = z.enum(['FRONT_DESK', 'BAR', 'MAINTENANCE', 'COACHING', 'MANAGEMENT']);
 export type DepartmentCode = z.infer<typeof DepartmentEnum>;
@@ -64,8 +65,17 @@ export const EmployeeSchema = z.object({
   hiredOn: DateOnlySchema,
   status: z.string(),
   leaveDaysThisYear: z.number().int().min(0),
+  photoUrl: z.string().nullable().optional(),
 });
 export type Employee = z.infer<typeof EmployeeSchema>;
+
+/** GET /hr/employees/:id: the profile screen. Bank details are a separate, masked call. */
+export const EmployeeProfileSchema = EmployeeSchema.extend({
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  pendingLeaveRequests: z.number().int().min(0),
+});
+export type EmployeeProfile = z.infer<typeof EmployeeProfileSchema>;
 export const EmployeeListSchema = z.array(EmployeeSchema);
 
 /** GET /hr/employees */
@@ -86,6 +96,8 @@ export const CreateEmployeeRequestSchema = z.object({
   monthlySalaryPaise: NonNegativePaiseSchema,
   hiredOn: DateOnlySchema,
   userId: UuidSchema.optional(),
+  /** One of our uploads or an https link; null removes the photo. */
+  photoUrl: ImageRefSchema.nullable().optional(),
 });
 export type CreateEmployeeRequest = z.infer<typeof CreateEmployeeRequestSchema>;
 
