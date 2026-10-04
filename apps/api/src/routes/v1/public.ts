@@ -8,9 +8,14 @@ import {
   CreateTrialBookingRequestSchema,
   CreatePublicBookingRequestSchema,
   CreatePublicBookingResponseSchema,
+  CreateBookingHoldRequestSchema, PaymentIntentSchema, PaymentWebhookRequestSchema, PaymentWebhookResponseSchema,
+  type PaymentIntent,
   promiseFeePaise, CreateTrialBookingResponseSchema,
   SharedReportParamSchema, SharedReportQuerySchema, SharedReportResponseSchema,
 } from '@packages/validation';
+import { DomainError } from '../../lib/domain-error.js';
+import { verifyPaymentWebhook } from '../../lib/payment-signature.js';
+import type { PaymentIntentRow } from '../../services/booking.service.js';
 import { AvailabilityService } from '../../services/availability.service.js';
 import { BookingService } from '../../services/booking.service.js';
 import { CrmService } from '../../services/crm.service.js';
@@ -135,6 +140,63 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
       booking, paidPaise, duePaise,
       message: duePaise > 0 ? 'Booked. Pay the rest at the club.' : 'Booked and paid. See you on court.',
     });
+  });
+
+  const toIntent = async (row: PaymentIntentRow): Promise<PaymentIntent> => ({
+    id: row.id, status: row.status, method: row.method, amountPaise: row.amountPaise, totalPaise: row.totalPaise,
+    duePaise: row.totalPaise - row.amountPaise, expiresAt: row.expiresAt.toISOString(),
+    booking: row.bookingId ? await bookingService.getBooking(row.bookingId) : null,
+  });
+
+  // Gateway flow: hold the slot, let the gateway collect `amountPaise`, then confirm via webhook.
+  // The amount is derived from the server-side price; the client never sends one.
+  fastify.post('/public/bookings/holds', {
+    config: postLimit,
+    schema: { tags: ['Public'], description: 'Hold a slot for a guest checkout. Unpaid holds expire and release the slot.', body: CreateBookingHoldRequestSchema, response: { 201: PaymentIntentSchema, ...errors } },
+  }, async (request, reply) => {
+    const { courtId, startsAt, name, phone, email, method } = request.body;
+    const intent = await bookingService.createHold({
+      courtId, startsAt: new Date(startsAt), guest: { name, phone, email }, method, ttlMinutes: fastify.env.PAYMENT_HOLD_MINUTES,
+    });
+    request.log.info({ intentId: intent.id, courtId, method }, 'Guest booking hold created');
+    return reply.status(201).send(await toIntent(intent));
+  });
+
+  // Polled by the checkout page. The id is an unguessable UUID and the response carries no more than
+  // the guest already submitted.
+  fastify.get('/public/payment-intents/:id', {
+    config: getLimit,
+    schema: { tags: ['Public'], params: z.object({ id: z.string().uuid() }), response: { 200: PaymentIntentSchema, 400: HttpErrorResponseSchema, 404: HttpErrorResponseSchema, 429: HttpErrorResponseSchema } },
+  }, async (request, reply) => {
+    let row = await bookingService.getIntent(request.params.id);
+    if (!row) throw new DomainError('NOT_FOUND', 404, 'Payment not found.');
+    if (row.status === 'PENDING' && row.expiresAt.getTime() <= Date.now()) {
+      await bookingService.expireHolds();
+      row = (await bookingService.getIntent(request.params.id)) ?? row;
+    }
+    return reply.header('cache-control', 'no-store').send(await toIntent(row));
+  });
+
+  fastify.post('/public/payments/webhook', {
+    config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
+    schema: {
+      tags: ['Public'], description: 'Signed gateway webhook (HMAC-SHA256 in x-signature). Idempotent per reference.',
+      body: PaymentWebhookRequestSchema,
+      response: { 200: PaymentWebhookResponseSchema, 400: HttpErrorResponseSchema, 401: HttpErrorResponseSchema, 404: HttpErrorResponseSchema, 409: HttpErrorResponseSchema, 429: HttpErrorResponseSchema, 503: HttpErrorResponseSchema },
+    },
+  }, async (request, reply) => {
+    const secret = fastify.env.PAYMENT_WEBHOOK_SECRET;
+    if (!secret) throw new DomainError('WEBHOOK_DISABLED', 503, 'Payment webhooks are not configured.');
+    if (!verifyPaymentWebhook(secret, request.body, request.headers['x-signature'])) {
+      request.log.warn({ intentId: request.body.intentId }, 'Payment webhook rejected: bad signature');
+      throw new DomainError('INVALID_SIGNATURE', 401, 'Invalid webhook signature.');
+    }
+    const { intentId, event, amountPaise, reference } = request.body;
+    const result = event === 'payment.succeeded'
+      ? await bookingService.confirmHold(intentId, { amountPaise, reference })
+      : await bookingService.failHold(intentId);
+    request.log.info({ intentId, event, duplicate: result.duplicate }, 'Payment webhook applied');
+    return reply.send({ intentId, status: result.intent.status, duplicate: result.duplicate });
   });
 
   // ---------------------------------------------------------------------------

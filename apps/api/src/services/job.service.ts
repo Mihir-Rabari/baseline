@@ -219,3 +219,28 @@ export function startMembershipExpiryScheduler(
   timer.unref();
   return () => clearInterval(timer);
 }
+
+export const HOLD_EXPIRY_INTERVAL_MS = 60 * 1000;
+
+/** Releases unpaid guest-checkout holds on a timer. Returns a function that stops it. */
+export function startHoldExpiryScheduler(
+  expire: () => Promise<number>,
+  log: Logger,
+  intervalMs: number = HOLD_EXPIRY_INTERVAL_MS
+): () => void {
+  let running = false;
+  const timer = setInterval(() => {
+    if (running) return;
+    running = true;
+    expire()
+      .then((released) => {
+        if (released > 0) log.info({ released }, 'Released expired booking holds');
+      })
+      .catch((err: unknown) => log.error({ err }, 'Booking hold expiry failed'))
+      .finally(() => {
+        running = false;
+      });
+  }, intervalMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}
