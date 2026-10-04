@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import products from '@/mocks/shop-products.json';
@@ -62,6 +62,11 @@ function mount() {
   );
 }
 
+async function confirmPayment() {
+  const dialog = await screen.findByRole('dialog', { name: 'Take payment' });
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Pay/ }));
+}
+
 describe('Counter sale POS (Issue #71)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,8 +95,12 @@ describe('Counter sale POS (Issue #71)', () => {
     // Select UPI payment method
     fireEvent.click(screen.getByRole('button', { name: /UPI/ }));
 
-    // Click pay button
+    // The pay button opens the shared payment dialog, preselected with the chosen method
     fireEvent.click(screen.getByRole('button', { name: 'Pay UPI' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Take payment' });
+    expect(within(dialog).getByRole('radio', { name: 'UPI' })).toBeChecked();
+    expect(shopApi.pos).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Pay/ }));
 
     await waitFor(() =>
       expect(shopApi.pos).toHaveBeenCalledWith({
@@ -175,6 +184,7 @@ describe('Counter sale POS (Issue #71)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
+    await confirmPayment();
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('insufficient stock')
@@ -194,6 +204,7 @@ describe('Counter sale POS (Issue #71)', () => {
     fireEvent.change(customerInput, { target: { value: 'Rahul Sharma' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
+    await confirmPayment();
 
     await waitFor(() =>
       expect(shopApi.pos).toHaveBeenCalledWith({
@@ -268,6 +279,7 @@ describe('Counter sale POS (Issue #71)', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
+    await confirmPayment();
 
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'ORD-000099' })).toBeInTheDocument()

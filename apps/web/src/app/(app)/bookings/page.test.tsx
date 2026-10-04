@@ -22,7 +22,7 @@ function booking(id: string, hoursFromNow: number, extra: Record<string, unknown
   const start = new Date(Date.now() + hoursFromNow * HOUR);
   return { id, court: { id: 'c1', name: 'Tennis Court 1', type: 'TENNIS' }, kind: 'STANDARD', member: { id: 'm1', memberCode: 'CC-1', fullName: 'Aarav Mehta', planCode: 'GOLD' }, guest: null,
     startsAt: start.toISOString(), endsAt: new Date(start.getTime() + HOUR).toISOString(), bookingDate: '2026-10-09', status: 'CONFIRMED', cancelledLate: false,
-    channel: 'ONLINE', basePricePaise: 60000, discountPct: 0, pricePaise: 60000, paymentStatus: 'UNPAID', socialSessionId: null, createdAt: start.toISOString(), ...extra };
+    channel: 'ONLINE', basePricePaise: 60000, discountPct: 0, pricePaise: 60000, paidPaise: 0, paymentStatus: 'UNPAID', socialSessionId: null, createdAt: start.toISOString(), ...extra };
 }
 const page = (rows: unknown[]) => ({ data: rows, meta: { page: 1, limit: 100, totalItems: rows.length, totalPages: 1, hasNextPage: false, hasPrevPage: false } });
 

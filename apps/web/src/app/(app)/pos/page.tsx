@@ -40,6 +40,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { PaymentDialog } from '@/components/club/payment-dialog';
 import {
   Dialog,
   DialogContent,
@@ -86,6 +87,7 @@ export default function PosPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchInputId = useId();
@@ -212,14 +214,14 @@ export default function PosPage() {
           !quote.error &&
           !quote.data?.items.some((line) => !line.inStock)
         ) {
-          pay.mutate(paymentMethod);
+          setCheckoutOpen(true);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [q, items.length, pay, paymentMethod, quote]);
+  }, [q, items.length, pay.isPending, quote]);
 
   if (!user) return null;
 
@@ -759,7 +761,7 @@ export default function PosPage() {
                   Boolean(quote.error) ||
                   quote.data?.items.some((line) => !line.inStock)
                 }
-                onClick={() => pay.mutate(paymentMethod)}
+                onClick={() => setCheckoutOpen(true)}
               >
                 {pay.isPending ? (
                   'Processing sale…'
@@ -832,6 +834,22 @@ export default function PosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Shared payment dialog: the same one the shop and guest booking use */}
+      <PaymentDialog
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        title="Take payment"
+        description={`${items.reduce((sum, line) => sum + line.qty, 0)} item(s) · total from the server quote`}
+        totalPaise={totalPaise}
+        cash="now"
+        defaultMethod={paymentMethod}
+        onConfirm={async (method) => {
+          setPaymentMethod(method);
+          await pay.mutateAsync(method);
+          setCheckoutOpen(false);
+        }}
+      />
 
       {/* Order Receipt Dialog */}
       <OrderDetailDialog

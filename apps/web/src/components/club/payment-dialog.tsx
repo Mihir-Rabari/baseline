@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Banknote, CreditCard, Smartphone, type LucideIcon } from 'lucide-react';
 import { promiseFeePaise, type CheckoutMethod } from '@packages/validation';
 import { formatMoney } from '@/lib/format';
@@ -13,9 +13,16 @@ const OPTIONS: Array<{ method: CheckoutMethod; label: string; icon: LucideIcon }
   { method: 'CASH', label: 'Cash', icon: Banknote },
 ];
 
+/**
+ * How cash behaves for a purchase: a guest's booking takes a 20% `promise-fee` now, an online order
+ * is paid `at-pickup`, and a counter sale takes the cash in full `now`.
+ */
+export type CashTerms = 'promise-fee' | 'at-pickup' | 'now';
+
 /** What a method means for this purchase, and how much is paid right now. */
-export function checkoutTerms(method: CheckoutMethod, totalPaise: number, cash: 'promise-fee' | 'at-pickup') {
+export function checkoutTerms(method: CheckoutMethod, totalPaise: number, cash: CashTerms) {
   if (method !== 'CASH') return { nowPaise: totalPaise, laterPaise: 0, note: 'Paid in full now.' };
+  if (cash === 'now') return { nowPaise: totalPaise, laterPaise: 0, note: 'Cash is taken in full now.' };
   if (cash === 'promise-fee') {
     const fee = promiseFeePaise(totalPaise);
     return { nowPaise: fee, laterPaise: totalPaise - fee, note: `A 20% promise fee holds your booking. Pay the remaining ${formatMoney(totalPaise - fee)} at the club.` };
@@ -25,7 +32,7 @@ export function checkoutTerms(method: CheckoutMethod, totalPaise: number, cash: 
 
 /** The three payment choices as a radio group, with the consequence of the chosen one spelled out. */
 export function PaymentMethodPicker({ value, onChange, totalPaise, cash, disabled }: {
-  value: CheckoutMethod; onChange: (method: CheckoutMethod) => void; totalPaise: number; cash: 'promise-fee' | 'at-pickup'; disabled?: boolean;
+  value: CheckoutMethod; onChange: (method: CheckoutMethod) => void; totalPaise: number; cash: CashTerms; disabled?: boolean;
 }) {
   const terms = checkoutTerms(value, totalPaise, cash);
   return (
@@ -51,13 +58,15 @@ export function PaymentMethodPicker({ value, onChange, totalPaise, cash, disable
 }
 
 /** A dialog that asks how to pay and completes the purchase when the button is pressed. */
-export function PaymentDialog({ open, onClose, title, description, totalPaise, cash, confirmLabel, onConfirm, children }: {
-  open: boolean; onClose: () => void; title: string; description?: string; totalPaise: number; cash: 'promise-fee' | 'at-pickup';
-  confirmLabel?: string; onConfirm: (method: CheckoutMethod) => Promise<void>; children?: React.ReactNode;
+export function PaymentDialog({ open, onClose, title, description, totalPaise, cash, confirmLabel, defaultMethod = 'UPI', onConfirm, children }: {
+  open: boolean; onClose: () => void; title: string; description?: string; totalPaise: number; cash: CashTerms;
+  confirmLabel?: string; defaultMethod?: CheckoutMethod; onConfirm: (method: CheckoutMethod) => Promise<void>; children?: React.ReactNode;
 }) {
-  const [method, setMethod] = useState<CheckoutMethod>('UPI');
+  const [method, setMethod] = useState<CheckoutMethod>(defaultMethod);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Every opening starts from the default method with a clean slate.
+  useEffect(() => { if (open) { setMethod(defaultMethod); setError(null); setPending(false); } }, [open, defaultMethod]);
   const terms = checkoutTerms(method, totalPaise, cash);
   async function submit() {
     setPending(true); setError(null);
