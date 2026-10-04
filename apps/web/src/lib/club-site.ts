@@ -1,4 +1,4 @@
-import type { Plan, PublicClub } from '@packages/validation';
+import type { Plan, PublicClub, TenantBranding } from '@packages/validation';
 import { API_BASE_URL } from '@/lib/api-client';
 
 export interface SiteProduct { id: string; name: string; category: string; pricePaise: number; inStock: boolean }
@@ -6,6 +6,8 @@ export interface ClubSite {
   club: PublicClub;
   plans: Plan[];
   products: SiteProduct[];
+  /** The club's palette and logo; null when it could not be read. */
+  branding: TenantBranding | null;
   /** Free sessions today per court type code, or null when availability could not be read. */
   freeToday: Record<string, number> | null;
 }
@@ -34,8 +36,20 @@ export function joinList(items: string[]): string {
 
 export const telHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 
+/** The host the visitor used, so the API serves the right club. Empty outside a request (tests, builds). */
+async function requestHost(): Promise<string> {
+  try {
+    const { headers } = await import('next/headers');
+    const list = await headers();
+    return list.get('x-forwarded-host') ?? list.get('host') ?? '';
+  } catch {
+    return '';
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}/api/v1${path}`, { cache: 'no-store' });
+  const host = await requestHost();
+  const response = await fetch(`${API_BASE_URL}/api/v1${path}`, { cache: 'no-store', ...(host ? { headers: { 'X-Tenant-Host': host } } : {}) });
   if (!response.ok) throw new Error(`${path} returned ${response.status}`);
   return (await response.json()) as T;
 }
@@ -49,10 +63,11 @@ export async function getClubSite(today = new Date()): Promise<ClubSite | null> 
     return null;
   }
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: club.timezone }).format(today);
-  const [plans, products, availability] = await Promise.allSettled([
+  const [plans, products, availability, branding] = await Promise.allSettled([
     getJson<Plan[]>('/public/plans'),
     getJson<{ data: SiteProduct[] }>('/public/products?limit=8'),
     getJson<{ courts: Array<{ type: string; slots: Array<{ status: string; endsAt: string }> }> }>(`/public/availability?date=${date}`),
+    getJson<TenantBranding>('/tenant/branding'),
   ]);
   let freeToday: Record<string, number> | null = null;
   if (availability.status === 'fulfilled') {
@@ -66,6 +81,7 @@ export async function getClubSite(today = new Date()): Promise<ClubSite | null> 
     club,
     plans: plans.status === 'fulfilled' ? plans.value : [],
     products: products.status === 'fulfilled' ? products.value.data.filter((p) => p.inStock) : [],
+    branding: branding.status === 'fulfilled' ? branding.value : null,
     freeToday,
   };
 }

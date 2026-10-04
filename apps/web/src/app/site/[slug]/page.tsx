@@ -6,6 +6,8 @@ import type { Plan } from '@packages/validation';
 import { buttonVariants } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Money } from '@/components/club/money';
+import { brandingStyle } from '@/lib/branding';
+import { mediaUrl } from '@/lib/upload-api';
 import { WEEKDAYS, clockTime, getClubSite, hoursText, joinList, slugify, telHref } from '@/lib/club-site';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +29,7 @@ export default async function ClubSitePage({ params }: Params) {
   const { slug } = await params;
   const site = await getClubSite();
   if (!site || slugify(site.club.name) !== slug) notFound();
-  const { club, plans, products, freeToday } = site;
+  const { club, plans, products, freeToday, branding } = site;
 
   const totalCourts = club.courtTypes.reduce((sum, type) => sum + type.courtCount, 0);
   const sports = club.courtTypes.map((type) => type.name);
@@ -38,10 +40,10 @@ export default async function ClubSitePage({ params }: Params) {
   const headline = club.tagline || `Play more at ${club.name}.`;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col" style={brandingStyle(branding) as React.CSSProperties}>
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
         <div className="container flex h-14 items-center justify-between gap-4">
-          <Link href={`/site/${slug}`} className="font-semibold tracking-tight">{club.name}</Link>
+          <Link href={`/site/${slug}`} className="flex items-center gap-2 font-semibold tracking-tight">{branding?.logoUrl && <img src={mediaUrl(branding.logoUrl) ?? ''} alt="" className="h-7 w-7 rounded object-cover" />}{club.name}</Link>
           <nav aria-label="Sections" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             <a href="#courts" className="transition-colors hover:text-foreground">Courts</a>
             {plans.length > 0 && <a href="#membership" className="transition-colors hover:text-foreground">Membership</a>}
