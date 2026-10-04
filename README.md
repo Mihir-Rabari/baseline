@@ -94,7 +94,11 @@ Configure application behavior in `packages/config/src/`:
 * `app-config.ts`: Application constants and metadata.
 * `auth-config.ts`: Authentication settings (registration enabled, session TTL, cookie name).
 * `iam-config.ts`: Declarative roles, groups, default policies, and baseline role-policy assignments.
-* `feature-config.ts`: Feature toggles (email, realtime, storage, observability).
+* `feature-config.ts`: Feature toggles (email, realtime, storage, observability, agent).
+
+### AI Agent
+
+A chat agent acts on behalf of the signed-in user. It calls the API through `fastify.inject()` with the caller's own session, so every route guard applies and it can never exceed the user's permissions. Read tools run immediately; write tools are staged as pending actions the user must confirm. Access is controlled by the `agent:use` and `agent:act` permissions. Set `ANTHROPIC_API_KEY` (plus optional `AGENT_MODEL`, `AGENT_MAX_TOOL_STEPS`) in `.env` to enable it. See `skills/agent/SKILL.md`.
 
 ---
 

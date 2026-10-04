@@ -86,7 +86,7 @@ baseline/
 │   └── openapi/                         OpenAPI builder, tags, `CookieAuth` scheme
 ├── infrastructure/docker/               Prometheus and Grafana provisioning
 ├── scripts/                             setup.ts (+ .sh/.ps1/.cmd), health-check.ts, check-skills.ts, pack-skills.ts, check-deps.ts
-├── skills/                              15 Agent Skills (read `design`, `frontend`, `api`, `database`, `testing`, `authorization`)
+├── skills/                              16 Agent Skills (read `design`, `frontend`, `api`, `database`, `testing`, `authorization`)
 └── docs/hackathon/                      These documents
 ```
 

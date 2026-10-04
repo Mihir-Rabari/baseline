@@ -42,6 +42,10 @@ const SELF_PROFILE_AND_NOTIFICATIONS = [
   'profile:update:self',
   'notifications:read:self',
   'notifications:update:self',
+  // AI agent: chat (use) and stage/execute write actions as the caller (act).
+  // The agent never exceeds the caller's own permissions; every tool runs through route guards.
+  'agent:use',
+  'agent:act',
 ];
 
 const STAFF_SELF_SERVICE = [
@@ -140,7 +144,7 @@ export const IamConfig = {
       statements: [
         {
           effect: 'allow',
-          actions: ['admin:access', 'users:*', 'roles:*', 'groups:*', 'policies:*', 'permissions:*'],
+          actions: ['admin:access', 'users:*', 'roles:*', 'groups:*', 'policies:*', 'permissions:*', 'agent:use', 'agent:act'],
           resources: ['*'],
         },
       ],
@@ -156,6 +160,8 @@ export const IamConfig = {
             'profile:update:self',
             'notifications:read:self',
             'notifications:update:self',
+            'agent:use',
+            'agent:act',
           ],
           resources: ['*'],
         },
