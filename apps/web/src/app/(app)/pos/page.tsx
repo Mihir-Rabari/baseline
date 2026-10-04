@@ -286,6 +286,12 @@ export default function PosPage() {
       } else if (event.key === 'F10' || (event.altKey && event.key === '3')) {
         event.preventDefault();
         openPayment('UPI');
+      } else if (event.altKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        cart.clear();
+      } else if (event.altKey && event.key.toLowerCase() === 'i') {
+        event.preventDefault();
+        setInStockOnly((v) => !v);
       } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
         openPayment(startMethod);
@@ -294,7 +300,7 @@ export default function PosPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [q, canTakePayment, paying, startMethod]);
+  }, [q, canTakePayment, paying, startMethod, cart]);
 
   if (!user) return null;
 
@@ -787,6 +793,18 @@ export default function PosPage() {
               <span className="text-muted-foreground">Pay with UPI</span>
               <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
                 F10 or Alt+3
+              </kbd>
+            </div>
+            <div className="flex items-center justify-between border-b pb-2">
+              <span className="text-muted-foreground">Clear cart</span>
+              <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
+                Alt+C
+              </kbd>
+            </div>
+            <div className="flex items-center justify-between border-b pb-2">
+              <span className="text-muted-foreground">Toggle in-stock only</span>
+              <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
+                Alt+I
               </kbd>
             </div>
             <div className="flex items-center justify-between">
