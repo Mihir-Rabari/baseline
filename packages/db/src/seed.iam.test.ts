@@ -8,6 +8,20 @@ import { describe, it, expect } from 'vitest';
  */
 const databaseUrl = process.env.DATABASE_URL;
 
+describe('baseline permission registry (agent)', () => {
+  it('registers agent:use and agent:act exactly once as system permissions', async () => {
+    const { BASELINE_PERMISSIONS } = await import('./seed.js');
+    for (const id of ['agent:use', 'agent:act']) {
+      const matches = BASELINE_PERMISSIONS.filter((p) => p.id === id);
+      expect(matches, id).toHaveLength(1);
+      expect(matches[0].namespace).toBe('agent');
+      expect(matches[0].isSystem).toBe(true);
+    }
+    const ids = BASELINE_PERMISSIONS.map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
 describe.skipIf(!databaseUrl)('seedDomainIam (database)', () => {
   it('creates MEMBER, FRONT_DESK, BAR_STAFF and OWNER and yields identical row counts on re-run', async () => {
     const { getDb, closeDatabase } = await import('./client.js');

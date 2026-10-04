@@ -28,6 +28,14 @@ describe('Configuration Layer Invariants', () => {
       expect(externalStatements[0].actions).toContain('profile:read:self');
     });
 
+    it('grants agent:use and agent:act to admin, external user and every baseline role bundle', () => {
+      for (const policy of ['AdministratorPolicy', 'ExternalUserPolicy', 'MemberPolicy', 'FrontDeskPolicy', 'BarStaffPolicy', 'OwnerPolicy']) {
+        const actions = IamConfig.policies[policy].statements.flatMap((s) => s.actions);
+        expect(actions, policy).toContain('agent:use');
+        expect(actions, policy).toContain('agent:act');
+      }
+    });
+
     it('should define baseline ADMIN and USER roles', () => {
       expect(IamConfig.roles.ADMIN).toBeDefined();
       expect(IamConfig.roles.ADMIN.policies).toContain('AdministratorPolicy');
@@ -43,6 +51,7 @@ describe('Configuration Layer Invariants', () => {
       expect(typeof FeatureConfig.enableMetrics).toBe('boolean');
       expect(typeof FeatureConfig.enableStorage).toBe('boolean');
       expect(typeof FeatureConfig.enableRedis).toBe('boolean');
+      expect(typeof FeatureConfig.enableAgent).toBe('boolean');
     });
   });
 

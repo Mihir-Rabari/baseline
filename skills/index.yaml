@@ -57,6 +57,10 @@ skills:
     path: skills/observability/SKILL.md
     description: Structured logging, request correlation, Prometheus metrics, health probes, and sensitive data redaction.
 
+  - name: agent
+    path: skills/agent/SKILL.md
+    description: AI chat agent acting as the caller, tool registry, staged write actions, permission-filtered tools, and prompt-injection rules.
+
   - name: dependencies
     path: skills/dependencies/SKILL.md
     description: Monorepo dependency inventory, safe version upgrades, lockfile integrity, and compatibility verification.

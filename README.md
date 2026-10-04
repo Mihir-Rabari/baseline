@@ -94,7 +94,11 @@ Configure application behavior in `packages/config/src/`:
 * `app-config.ts`: Application constants and metadata.
 * `auth-config.ts`: Authentication settings (registration enabled, session TTL, cookie name).
 * `iam-config.ts`: Declarative roles, groups, default policies, and baseline role-policy assignments.
-* `feature-config.ts`: Feature toggles (email, realtime, storage, observability).
+* `feature-config.ts`: Feature toggles (email, realtime, storage, observability, agent).
+
+### AI Agent
+
+A chat agent acts on behalf of the signed-in user. It calls the API through `fastify.inject()` with the caller's own session, so every route guard applies and it can never exceed the user's permissions. Read tools run immediately; write tools are staged as pending actions the user must confirm. Access is controlled by the `agent:use` and `agent:act` permissions. Set `ANTHROPIC_API_KEY` (plus optional `AGENT_MODEL`, `AGENT_MAX_TOOL_STEPS`) in `.env` to enable it. See `skills/agent/SKILL.md`.
 
 ---
 
@@ -114,3 +118,7 @@ Configure application behavior in `packages/config/src/`:
 | `pnpm infra:up` | Start Docker Compose infrastructure |
 | `pnpm infra:down` | Stop Docker Compose infrastructure |
 | `pnpm health` | Run infrastructure health check |
+
+## Bulk demo data
+
+After `pnpm db:seed`, run `pnpm db:seed:bulk` (needs `BULK_SEED_PASSWORD` or `SEED_DEMO_PASSWORD`) to load 450 member logins (`bulk.user0001@baseline.test` ... `bulk.user0450@baseline.test`, MEMBER role, mixed ACTIVE/SUSPENDED/DISABLED), 10 courts, membership history, and about 4,600 bookings with payments across the past 60 and next 14 days. It is deterministic and safe to re-run.
