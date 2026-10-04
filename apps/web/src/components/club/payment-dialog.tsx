@@ -39,7 +39,7 @@ export function PaymentMethodPicker({ value, onChange, totalPaise, cash, disable
         {OPTIONS.map(({ method, label, icon: Icon }) => (
           <label key={method} className={cn('flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border p-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring', value === method ? 'border-primary bg-primary/5' : 'hover:bg-muted')}>
             <input type="radio" name="payment-method" value={method} checked={value === method} onChange={() => onChange(method)} className="sr-only" />
-            <Icon className="h-4 w-4" aria-hidden />
+            <Icon className="h-4 w-4" aria-hidden="true" />
             {label}
           </label>
         ))}

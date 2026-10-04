@@ -1,5 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import dotenv from 'dotenv';
+
+const testLogLevel = process.env.LOG_LEVEL ?? 'silent';
+// Match the application environment before deciding whether database suites may run together.
+dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
 
 // The `database` CI job (see .github/workflows/ci.yml) is the only place `DATABASE_URL`
 // is set, so it's also the only place `iam-service.integration.test.ts` actually runs
@@ -37,7 +42,7 @@ export default defineConfig({
       // failure hard to find. Set LOG_LEVEL on the command line to get it back:
       //   LOG_LEVEL=debug pnpm test
       // (`.env` also sets LOG_LEVEL, which is why this cannot be keyed off its absence.)
-      LOG_LEVEL: process.env.LOG_LEVEL ?? 'silent',
+      LOG_LEVEL: testLogLevel,
     },
     include: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/.claude/**', '**/worktrees/**'],
