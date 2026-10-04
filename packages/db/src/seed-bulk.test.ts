@@ -64,7 +64,7 @@ describe.skipIf(!databaseUrl)('seedBulk (database)', () => {
     }
   });
 
-  it('creates ~450 member users, 10 courts and bookings that satisfy the DB constraints, and is idempotent', async () => {
+  it('creates ~300 member users, 10 courts and bookings that satisfy the DB constraints, and is idempotent', async () => {
     const { seedDomainIam } = await import('./seed.js');
     const { seedCourtOs } = await import('./seed-courtos.js');
     const { seedBulk } = await import('./seed-bulk.js');
@@ -87,7 +87,7 @@ describe.skipIf(!databaseUrl)('seedBulk (database)', () => {
 
     await seedBulk(db, { password: 'bulk-test-secret-1', today: '2026-03-15' });
     const first = await counts();
-    expect(first.users).toBe(450);
+    expect(first.users).toBe(300);
     expect(first.courts).toBe(10);
     expect(first.bookings).toBeGreaterThan(2000);
     expect(first.occupancies).toBeLessThanOrEqual(first.bookings); // cancelled bookings hold no slot
@@ -100,7 +100,7 @@ describe.skipIf(!databaseUrl)('seedBulk (database)', () => {
     const memberRoles = await db.select({ n: count() }).from(schema.userRoles)
       .innerJoin(schema.users, eq(schema.users.id, schema.userRoles.userId))
       .where(like(schema.users.email, '%@baseline.test'));
-    expect(memberRoles[0].n).toBe(450);
+    expect(memberRoles[0].n).toBe(300);
 
     await seedBulk(db, { password: 'a-different-secret-2', today: '2026-03-15' });
     expect(await counts()).toEqual(first);
