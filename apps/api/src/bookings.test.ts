@@ -13,7 +13,7 @@ import {
   systemAuditLogs,
   users,
 } from "@packages/db";
-import { hashSessionToken } from "@packages/auth";
+import { hashSessionToken, sessionCacheKey } from "@packages/auth";
 import {
   BookingPageSchema,
   BookingRaceResponseSchema,
@@ -420,7 +420,7 @@ describe("Booking engine (M-07, M-08)", () => {
     // Suspending straight in the database leaves the Redis-cached session untouched (known issue,
     // being fixed separately); evict it so the request exercises the database path.
     await app.redis.delete(
-      `session:${hashSessionToken(cookies.suspended.split("=")[1])}`,
+      sessionCacheKey(hashSessionToken(cookies.suspended.split("=")[1])),
     );
 
     await ensureFridayWindow();

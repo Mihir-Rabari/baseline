@@ -41,11 +41,15 @@ export class MembersFixtures {
     };
   }
 
-  /** Signs a user up through the real API, then swaps it onto exactly one domain role. */
-  async actor(app: FastifyInstance, role: ActorRole): Promise<Actor> {
+  /**
+   * Signs a user up through the real API, then swaps it onto exactly one domain role. With `host` the
+   * user is created inside the club served at that host (the default club otherwise).
+   */
+  async actor(app: FastifyInstance, role: ActorRole, host?: string): Promise<Actor> {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/signup',
+      headers: host ? { 'x-tenant-host': host } : {},
       payload: { email: `m10-${randomUUID()}@example.com`, password: 'Password123!', name: `M10 ${role}` },
     });
     if (res.statusCode !== 201) throw new Error(`signup failed: ${res.statusCode}`);
@@ -55,7 +59,9 @@ export class MembersFixtures {
     await this.db.delete(userRoles).where(eq(userRoles.userId, id));
     const [roleRow] = await this.db.select().from(roles).where(eq(roles.name, role)).limit(1);
     if (!roleRow) throw new Error(`role ${role} is not seeded; run pnpm db:seed`);
-    await this.db.insert(userRoles).values({ userId: id, roleId: roleRow.id });
+    // The role assignment belongs to the user's club (it is invisible from any other one).
+    const [{ tenantId }] = await this.db.select({ tenantId: users.tenantId }).from(users).where(eq(users.id, id));
+    await this.db.insert(userRoles).values({ userId: id, roleId: roleRow.id, tenantId });
     return { id, cookie: `app_session=${cookie!.value}` };
   }
 

@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fastify, { type FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
-import { eq, like } from 'drizzle-orm';
-import { DEFAULT_TENANT_ID, getDb, tenantBranding, tenantDomains, tenants, users } from '@packages/db';
+import { eq, inArray, like } from 'drizzle-orm';
+import { DEFAULT_TENANT_ID, getDb, systemAuditLogs, tenantBranding, tenantDomains, tenants, users } from '@packages/db';
 import { TenantBrandingSchema, TenantDomainDetailSchema, TenantSiteSchema, TenantSummarySchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import tenantPlugin, { requestHost } from './plugins/tenant.js';
@@ -119,6 +119,7 @@ describe('Tenant control plane (database)', () => {
   let desk: Actor;
   let member: Actor;
   let root: Actor;
+  let otherOwner: Actor;
   let otherTenantId: string;
 
   const call = (method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, actor?: Actor, payload?: object, host?: string) =>
@@ -145,13 +146,17 @@ describe('Tenant control plane (database)', () => {
     otherTenantId = other.id;
     await db.insert(tenantBranding).values({ tenantId: other.id });
     await db.insert(tenantDomains).values({ tenantId: other.id, domain: domain('other'), status: 'VERIFIED', verificationToken: 'x', verifiedAt: new Date() });
+    // The other club's own owner: sessions are bound to a club, so the default club's owner cannot act there.
+    otherOwner = await fx.actor(app, 'OWNER', domain('other'));
   });
 
   afterAll(async () => {
     if (available) {
+      await fx.cleanup(); // users (and their sessions) go before the clubs they belong to
+      const mine = (await db.select({ id: tenants.id }).from(tenants).where(like(tenants.slug, `t${RUN}-%`))).map((t) => t.id);
+      if (mine.length) await db.delete(systemAuditLogs).where(inArray(systemAuditLogs.tenantId, mine));
       await db.delete(tenants).where(like(tenants.slug, `t${RUN}-%`));
       await db.delete(tenantDomains).where(like(tenantDomains.domain, `%-${RUN}.example.org`));
-      await fx.cleanup();
     }
     await app.close();
   });
@@ -191,7 +196,7 @@ describe('Tenant control plane (database)', () => {
 
   it('updates branding with validated colours and refuses injection', async (ctx) => {
     if (!available) return ctx.skip();
-    const ok = await call('PUT', '/tenant/branding', owner, { primaryColor: '#1A73E8', accentColor: '#ff8800', logoUrl: 'https://cdn.example.org/logo.png' }, domain('other'));
+    const ok = await call('PUT', '/tenant/branding', otherOwner, { primaryColor: '#1A73E8', accentColor: '#ff8800', logoUrl: 'https://cdn.example.org/logo.png' }, domain('other'));
     expect(ok.statusCode, ok.body).toBe(200);
     expect(TenantBrandingSchema.parse(ok.json())).toMatchObject({ primaryColor: '#1a73e8', accentColor: '#ff8800', logoUrl: 'https://cdn.example.org/logo.png', secondaryColor: null });
     // Branding landed on the other tenant, not the default one.
@@ -199,10 +204,12 @@ describe('Tenant control plane (database)', () => {
     expect(otherRow.primaryColor).toBe('#1a73e8');
     const [defaultRow] = await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, DEFAULT_TENANT_ID));
     expect(defaultRow.primaryColor).not.toBe('#1a73e8');
+    // The default club's owner has no standing on the other club's host.
+    expect([401, 403]).toContain((await call('PUT', '/tenant/branding', owner, { primaryColor: '#000000' }, domain('other'))).statusCode);
     for (const bad of [{ primaryColor: 'red' }, { primaryColor: '#12345' }, { primaryColor: 'red; background:url(//evil)' }, { accentColor: 'url(javascript:alert(1))' }, { logoUrl: 'javascript:alert(1)' }, { logoUrl: 'data:image/png;base64,AAAA' }, {}]) {
       expect((await call('PUT', '/tenant/branding', owner, bad)).statusCode, JSON.stringify(bad)).toBe(400);
     }
-    expect((await call('PUT', '/tenant/branding', owner, { accentColor: null }, domain('other'))).json().accentColor).toBeNull();
+    expect((await call('PUT', '/tenant/branding', otherOwner, { accentColor: null }, domain('other'))).json().accentColor).toBeNull();
   });
 
   it('adds a domain, returns the DNS records, verifies through DNS and then resolves it', async (ctx) => {
@@ -262,10 +269,15 @@ describe('Tenant control plane (database)', () => {
     if (!available) return ctx.skip();
     const mine = (await call('POST', '/tenant/domains', owner, { domain: domain('isolated') })).json();
     const otherHost = domain('other');
-    expect((await call('GET', `/tenant/domains/${mine.id}`, owner, undefined, otherHost)).statusCode).toBe(404);
-    expect((await call('POST', `/tenant/domains/${mine.id}/verify`, owner, undefined, otherHost)).statusCode).toBe(404);
-    expect((await call('DELETE', `/tenant/domains/${mine.id}`, owner, undefined, otherHost)).statusCode).toBe(404);
-    const list = (await call('GET', '/tenant/domains', owner, undefined, otherHost)).json() as Array<{ id: string }>;
+    // The default club's owner session is refused outright on the other club's host.
+    for (const [method, url] of [['GET', `/tenant/domains/${mine.id}`], ['POST', `/tenant/domains/${mine.id}/verify`], ['DELETE', `/tenant/domains/${mine.id}`], ['GET', '/tenant/domains']] as const) {
+      expect([401, 403], `${method} ${url}`).toContain((await call(method, url, owner, undefined, otherHost)).statusCode);
+    }
+    // The other club's real owner is authorised there but cannot see the row.
+    expect((await call('GET', `/tenant/domains/${mine.id}`, otherOwner, undefined, otherHost)).statusCode).toBe(404);
+    expect((await call('POST', `/tenant/domains/${mine.id}/verify`, otherOwner, undefined, otherHost)).statusCode).toBe(404);
+    expect((await call('DELETE', `/tenant/domains/${mine.id}`, otherOwner, undefined, otherHost)).statusCode).toBe(404);
+    const list = (await call('GET', '/tenant/domains', otherOwner, undefined, otherHost)).json() as Array<{ id: string }>;
     expect(list.map((x) => x.id)).not.toContain(mine.id);
     expect((await call('GET', `/tenant/domains/${mine.id}`, owner)).statusCode).toBe(200);
   });

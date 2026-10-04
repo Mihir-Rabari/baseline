@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { getDb, users } from '@packages/db';
-import { hashSessionToken } from '@packages/auth';
+import { hashSessionToken, sessionCacheKey } from '@packages/auth';
 import { AvailabilitySchema, CourtListSchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import { addDays, clubDateOf, clubWallTimeToInstant } from './services/time.js';
@@ -103,7 +103,7 @@ describe('Court & availability routes', () => {
     await db.update(users).set({ status: 'SUSPENDED' }).where(eq(users.id, suspended.user.id));
     // Suspending straight in the database leaves the Redis-cached session untouched (see PR notes), so
     // evict it to exercise the database path that real session validation falls back to.
-    await app.redis.delete(`session:${hashSessionToken(cookies.suspended.split('=')[1])}`);
+    await app.redis.delete(sessionCacheKey(hashSessionToken(cookies.suspended.split('=')[1])));
   });
 
   afterAll(async () => {

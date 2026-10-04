@@ -4,7 +4,7 @@ import { count, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { invoices, members, membershipEvents, memberships, payments, plans, users } from '@packages/db';
 import { CreateMemberResponseSchema, MemberSchema } from '@packages/validation';
-import { hashSessionToken } from '@packages/auth';
+import { hashSessionToken, sessionCacheKey } from '@packages/auth';
 import { buildApp } from './app.js';
 import { addDays, clubDateOf } from './lib/club-date.js';
 import { InvoiceService } from './services/invoice.service.js';
@@ -202,7 +202,7 @@ describe('Members, plans and memberships (M-10)', () => {
       const suspended = await fx.actor(app, 'FRONT_DESK');
       await db.update(users).set({ status: 'SUSPENDED' }).where(eq(users.id, suspended.id));
       // Sessions are cached in Redis with a user snapshot; drop it as a real suspension flow must.
-      await app.redis.delete(`session:${hashSessionToken(suspended.cookie.split('=')[1]!)}`);
+      await app.redis.delete(sessionCacheKey(hashSessionToken(suspended.cookie.split('=')[1]!)));
       const res = await app.inject({ method: 'GET', url: '/api/v1/members', headers: as(suspended) });
       expect([401, 403]).toContain(res.statusCode);
     });

@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { and, eq, like } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { members, membershipEvents, membershipReminders, memberships, notifications } from '@packages/db';
+import { currentTenantId, members, membershipEvents, membershipReminders, memberships, notifications } from '@packages/db';
 import { MembershipExpiryJobResponseSchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import { JobService, startMembershipExpiryScheduler } from './services/job.service.js';
@@ -235,6 +236,46 @@ describe('Membership expiry job (M-10)', () => {
         const stop = startMembershipExpiryScheduler({ runMembershipExpiry: run } as unknown as JobService, log, 1000);
         await vi.advanceTimersByTimeAsync(2500);
         expect(run).toHaveBeenCalledTimes(2);
+        expect(log.error).toHaveBeenCalledTimes(2);
+        stop();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('runs once per club inside its own tenant scope and survives one club failing', async () => {
+      vi.useFakeTimers();
+      try {
+        const clubs = [randomUUID(), randomUUID(), randomUUID()];
+        const seen: Array<string | undefined> = [];
+        const run = vi.fn(async () => {
+          await Promise.resolve();
+          const id = currentTenantId();
+          seen.push(id);
+          if (id === clubs[1]) throw new Error('club two is broken');
+          return { asOf: '2020-01-01', expired: 0, remindersCreated: 0 };
+        });
+        const log = { info: vi.fn(), error: vi.fn() };
+        const stop = startMembershipExpiryScheduler({ runMembershipExpiry: run } as unknown as JobService, log, 1000, async () => clubs);
+        await vi.advanceTimersByTimeAsync(1100);
+        expect(seen).toEqual(clubs);
+        expect(log.error).toHaveBeenCalledTimes(1);
+        expect(log.info).toHaveBeenCalledTimes(2);
+        expect(currentTenantId()).toBeUndefined(); // nothing leaks into the ambient scope
+        stop();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('logs and keeps ticking when the club list cannot be read', async () => {
+      vi.useFakeTimers();
+      try {
+        const run = vi.fn();
+        const log = { info: vi.fn(), error: vi.fn() };
+        const stop = startMembershipExpiryScheduler({ runMembershipExpiry: run } as unknown as JobService, log, 1000, () => Promise.reject(new Error('db down')));
+        await vi.advanceTimersByTimeAsync(2500);
+        expect(run).not.toHaveBeenCalled();
         expect(log.error).toHaveBeenCalledTimes(2);
         stop();
       } finally {
