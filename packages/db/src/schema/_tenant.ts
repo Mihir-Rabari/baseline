@@ -13,4 +13,4 @@ export const tenantId = () =>
   uuid('tenant_id')
     .notNull()
     .default(sql`app_tenant_default()`)
-    .references(() => tenants.id);
+    .references(() => tenants.id, { onDelete: 'cascade' });

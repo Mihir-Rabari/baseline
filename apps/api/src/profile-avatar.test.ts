@@ -5,6 +5,7 @@ import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fast
 import { deflateSync } from 'node:zlib';
 import { profileAvatarRoutes } from './routes/v1/profile-avatar.js';
 import { normalizeAvatarPng } from './lib/avatar-png.js';
+import { DEFAULT_TENANT_ID } from '@packages/db';
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const otherId = '22222222-2222-4222-8222-222222222222';
@@ -38,6 +39,7 @@ describe('Private profile avatar routes', () => {
     storage.ensureBucketExists.mockResolvedValue(undefined);
     app = Fastify(); app.setValidatorCompiler(validatorCompiler); app.setSerializerCompiler(serializerCompiler);
     app.decorate('storage', storage); app.decorate('iamService', { getUserStatements: async () => [] });
+    app.decorateRequest('tenantId', DEFAULT_TENANT_ID);
     app.addHook('onRequest', async (request) => {
       const actor = request.headers['x-test-actor'];
       // Controlled authentication double: absent/expired sessions have no identity.
@@ -56,7 +58,7 @@ describe('Private profile avatar routes', () => {
     expect((await app.inject({ url: '/api/v1/profile/avatar', headers })).json()).toEqual({ version: null });
     const uploaded = await app.inject({ method: 'PUT', url: '/api/v1/profile/avatar', headers, payload });
     expect(uploaded.statusCode).toBe(200); expect(uploaded.json().version).toMatch(/^[a-f0-9]{64}$/);
-    expect(storage.upload).toHaveBeenCalledWith(`profiles/${userId}/avatar.png`, image, { contentType: 'image/png' });
+    expect(storage.upload).toHaveBeenCalledWith(`tenants/${DEFAULT_TENANT_ID}/profiles/${userId}/avatar.png`, image, { contentType: 'image/png' });
     expect((await app.inject({ url: '/api/v1/profile/avatar', headers })).json()).toEqual(uploaded.json());
     const downloaded = await app.inject({ url: `/api/v1/profile/avatar/${userId}`, headers });
     expect(downloaded.statusCode).toBe(200); expect(downloaded.rawPayload).toEqual(image);

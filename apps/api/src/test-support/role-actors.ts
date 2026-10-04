@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
-import { getDb, roles, userRoles } from '@packages/db';
+import { eq, and } from 'drizzle-orm';
+import { DEFAULT_TENANT_ID, getDb, roles, userRoles } from '@packages/db';
 
 export type RoleName = 'OWNER' | 'FRONT_DESK' | 'BAR_STAFF' | 'MEMBER';
 export interface Actor {
@@ -24,7 +24,7 @@ export async function makeActor(app: FastifyInstance, roleName: RoleName, tag: s
   if (res.statusCode !== 201) throw new Error(`signup failed: ${res.statusCode} ${res.body}`);
   const id = res.json().user.id as string;
   const db = getDb();
-  const [role] = await db.select().from(roles).where(eq(roles.name, roleName)).limit(1);
+  const [role] = await db.select().from(roles).where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), eq(roles.name, roleName))).limit(1);
   await db.delete(userRoles).where(eq(userRoles.userId, id));
   await db.insert(userRoles).values({ userId: id, roleId: role.id });
   return { id, cookie: `app_session=${res.cookies.find((c) => c.name === 'app_session')!.value}` };

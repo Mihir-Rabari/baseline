@@ -16,223 +16,223 @@ $$;
 --> statement-breakpoint
 ALTER TABLE "agent_actions" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "agent_actions" ADD CONSTRAINT "agent_actions_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "agent_actions" ADD CONSTRAINT "agent_actions_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "agent_conversations" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "agent_conversations" ADD CONSTRAINT "agent_conversations_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "agent_conversations" ADD CONSTRAINT "agent_conversations_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "agent_messages" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "agent_messages" ADD CONSTRAINT "agent_messages_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "agent_messages" ADD CONSTRAINT "agent_messages_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "bar_table_bookings" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "bar_table_bookings" ADD CONSTRAINT "bar_table_bookings_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "bar_table_bookings" ADD CONSTRAINT "bar_table_bookings_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "bar_tables" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "bar_tables" ADD CONSTRAINT "bar_tables_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "bar_tables" ADD CONSTRAINT "bar_tables_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "bookings" ADD CONSTRAINT "bookings_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "bookings" ADD CONSTRAINT "bookings_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "business_clients" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "business_clients" ADD CONSTRAINT "business_clients_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "business_clients" ADD CONSTRAINT "business_clients_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "categories" ADD CONSTRAINT "categories_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "categories" ADD CONSTRAINT "categories_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "court_occupancies" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "court_occupancies" ADD CONSTRAINT "court_occupancies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "court_occupancies" ADD CONSTRAINT "court_occupancies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "court_types" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "court_types" ADD CONSTRAINT "court_types_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "court_types" ADD CONSTRAINT "court_types_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "courts" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "courts" ADD CONSTRAINT "courts_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "courts" ADD CONSTRAINT "courts_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "employee_bank_details" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "employee_bank_details" ADD CONSTRAINT "employee_bank_details_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "employee_bank_details" ADD CONSTRAINT "employee_bank_details_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "employees" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "employees" ADD CONSTRAINT "employees_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "employees" ADD CONSTRAINT "employees_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "group_policies" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "group_policies" ADD CONSTRAINT "group_policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "group_policies" ADD CONSTRAINT "group_policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "groups" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "groups" ADD CONSTRAINT "groups_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "groups" ADD CONSTRAINT "groups_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "invoice_lines" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "invoices" ADD CONSTRAINT "invoices_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "kitchen_tickets" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "kitchen_tickets" ADD CONSTRAINT "kitchen_tickets_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "kitchen_tickets" ADD CONSTRAINT "kitchen_tickets_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "lead_activities" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "lead_activities" ADD CONSTRAINT "lead_activities_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "lead_activities" ADD CONSTRAINT "lead_activities_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "leads" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "leads" ADD CONSTRAINT "leads_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "leads" ADD CONSTRAINT "leads_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "leave_requests" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "leave_requests" ADD CONSTRAINT "leave_requests_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "leave_requests" ADD CONSTRAINT "leave_requests_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "member_checkins" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "member_checkins" ADD CONSTRAINT "member_checkins_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "member_checkins" ADD CONSTRAINT "member_checkins_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "members" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "members" ADD CONSTRAINT "members_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "members" ADD CONSTRAINT "members_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "membership_events" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "membership_events" ADD CONSTRAINT "membership_events_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "membership_events" ADD CONSTRAINT "membership_events_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "membership_reminders" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "membership_reminders" ADD CONSTRAINT "membership_reminders_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "membership_reminders" ADD CONSTRAINT "membership_reminders_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "memberships" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "memberships" ADD CONSTRAINT "memberships_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "memberships" ADD CONSTRAINT "memberships_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "menu_items" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "menu_items" ADD CONSTRAINT "menu_items_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "menu_items" ADD CONSTRAINT "menu_items_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "order_items" ADD CONSTRAINT "order_items_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "orders" ADD CONSTRAINT "orders_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "password_setup_tokens" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "password_setup_tokens" ADD CONSTRAINT "password_setup_tokens_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "password_setup_tokens" ADD CONSTRAINT "password_setup_tokens_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "payments" ADD CONSTRAINT "payments_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "payroll_runs" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "payroll_runs" ADD CONSTRAINT "payroll_runs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "payroll_runs" ADD CONSTRAINT "payroll_runs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "payslips" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "payslips" ADD CONSTRAINT "payslips_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "payslips" ADD CONSTRAINT "payslips_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "plans" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "plans" ADD CONSTRAINT "plans_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "plans" ADD CONSTRAINT "plans_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "policies" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "policies" ADD CONSTRAINT "policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "policies" ADD CONSTRAINT "policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "policy_statements" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "policy_statements" ADD CONSTRAINT "policy_statements_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "policy_statements" ADD CONSTRAINT "policy_statements_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "products" ADD CONSTRAINT "products_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "products" ADD CONSTRAINT "products_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "quotes" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "quotes" ADD CONSTRAINT "quotes_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "quotes" ADD CONSTRAINT "quotes_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "report_shares" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "report_shares" ADD CONSTRAINT "report_shares_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "report_shares" ADD CONSTRAINT "report_shares_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "role_policies" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "role_policies" ADD CONSTRAINT "role_policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "role_policies" ADD CONSTRAINT "role_policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "roles" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "roles" ADD CONSTRAINT "roles_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "roles" ADD CONSTRAINT "roles_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "social_sessions" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "social_sessions" ADD CONSTRAINT "social_sessions_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "social_sessions" ADD CONSTRAINT "social_sessions_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "social_windows" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "social_windows" ADD CONSTRAINT "social_windows_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "social_windows" ADD CONSTRAINT "social_windows_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "staff_shifts" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "staff_shifts" ADD CONSTRAINT "staff_shifts_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "staff_shifts" ADD CONSTRAINT "staff_shifts_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "stock_movements" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "system_audit_logs" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "system_audit_logs" ADD CONSTRAINT "system_audit_logs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "system_audit_logs" ADD CONSTRAINT "system_audit_logs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "system_settings" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "system_settings" ADD CONSTRAINT "system_settings_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "system_settings" ADD CONSTRAINT "system_settings_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "tab_items" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "tab_items" ADD CONSTRAINT "tab_items_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "tab_items" ADD CONSTRAINT "tab_items_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "tabs" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "tabs" ADD CONSTRAINT "tabs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "tabs" ADD CONSTRAINT "tabs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "user_groups" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "user_groups" ADD CONSTRAINT "user_groups_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "user_groups" ADD CONSTRAINT "user_groups_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "user_policies" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "user_policies" ADD CONSTRAINT "user_policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "user_policies" ADD CONSTRAINT "user_policies_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "user_roles" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
 --> statement-breakpoint
-ALTER TABLE "users" ADD CONSTRAINT "users_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "users" ADD CONSTRAINT "users_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "users_email_unique";
 --> statement-breakpoint

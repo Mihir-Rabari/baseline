@@ -201,12 +201,12 @@ describe('Membership expiry job (M-10)', () => {
         let resolveRun: (() => void) | undefined;
         const run = vi.fn(
           () =>
-            new Promise<{ asOf: string; expired: number; remindersCreated: number }>((resolve) => {
-              resolveRun = () => resolve({ asOf: '2020-01-01', expired: 0, remindersCreated: 0 });
+            new Promise<{ clubs: number; failed: number; expired: number; remindersCreated: number; perClub: [] }>((resolve) => {
+              resolveRun = () => resolve({ clubs: 1, failed: 0, expired: 0, remindersCreated: 0, perClub: [] });
             })
         );
         const log = { info: vi.fn(), error: vi.fn() };
-        const stop = startMembershipExpiryScheduler({ runMembershipExpiry: run } as unknown as JobService, log, 15 * 60 * 1000);
+        const stop = startMembershipExpiryScheduler({ runMembershipExpiryForAllClubs: run } as unknown as JobService, log, 15 * 60 * 1000);
 
         await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
         expect(run).toHaveBeenCalledTimes(1);
@@ -232,7 +232,7 @@ describe('Membership expiry job (M-10)', () => {
       try {
         const run = vi.fn().mockRejectedValue(new Error('db down'));
         const log = { info: vi.fn(), error: vi.fn() };
-        const stop = startMembershipExpiryScheduler({ runMembershipExpiry: run } as unknown as JobService, log, 1000);
+        const stop = startMembershipExpiryScheduler({ runMembershipExpiryForAllClubs: run } as unknown as JobService, log, 1000);
         await vi.advanceTimersByTimeAsync(2500);
         expect(run).toHaveBeenCalledTimes(2);
         expect(log.error).toHaveBeenCalledTimes(2);

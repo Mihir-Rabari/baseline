@@ -56,9 +56,9 @@ export const profileAvatarRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: { tags: ['Profile'], security: [{ CookieAuth: [] }], description: 'Remove own profile photo', response: { 200: z.object({ success: z.literal(true) }), ...errors } },
   }, async (request, reply) => {
     try {
+      if (!await fastify.storage.delete(avatarKey(request.tenantId, request.user!.id))) return unavailable(request, reply);
       const legacy = legacyKey(request.tenantId, legacyAvatarKey(request.user!.id));
       if (legacy) await fastify.storage.delete(legacy);
-      if (!await fastify.storage.delete(avatarKey(request.tenantId, request.user!.id))) return unavailable(request, reply);
       return reply.send({ success: true });
     } catch { return unavailable(request, reply); }
   });
