@@ -79,6 +79,11 @@ export const envSchema = z.object({
   // Accepts `true`/`false`, a hop count ("1"), or a comma-separated CIDR allowlist.
   TRUST_PROXY: z.string().default('false'),
 
+  // Multi-tenancy. Clubs are reached at `<slug>.<PLATFORM_DOMAIN>` or at a verified custom domain.
+  // PLATFORM_CNAME_TARGET is the hostname custom domains must point their CNAME at.
+  PLATFORM_DOMAIN: z.string().trim().toLowerCase().optional(),
+  PLATFORM_CNAME_TARGET: z.string().trim().toLowerCase().optional(),
+
   // PostgreSQL Database
   DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/app_db'),
   DATABASE_HOST: z.string().default('localhost'),

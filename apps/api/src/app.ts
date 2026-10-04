@@ -98,13 +98,13 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
 
   // Register foundational plugins
   app.register(configPlugin);
-  app.register(tenantPlugin);
   app.register(helmetPlugin);
   app.register(corsPlugin);
   app.register(rateLimitPlugin);
   app.register(swaggerPlugin);
   app.register(metricsPlugin);
   app.register(servicesPlugin);
+  app.register(tenantPlugin);
   app.register(authPlugin);
   app.register(iamPlugin);
   app.register(emailPlugin);

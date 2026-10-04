@@ -79,6 +79,8 @@ export async function fetchApi<T>(endpoint: string, options: RequestOptions = {}
       signal: controller.signal,
       headers: {
         ...(fetchOptions.body != null ? { 'Content-Type': 'application/json' } : {}),
+        // The API lives on another origin, so tell it which club's site this is.
+        ...(typeof window !== 'undefined' ? { 'X-Tenant-Host': window.location.host } : {}),
         ...fetchOptions.headers,
       },
     });

@@ -40,7 +40,7 @@ describe('getClubSite', () => {
 
   it('still returns the club when plans, products and availability fail', async () => {
     vi.stubGlobal('fetch', respond({ '/public/club': club, '/public/plans': 500, '/public/products': 500, '/public/availability': 500 }));
-    expect(await getClubSite()).toEqual({ club, plans: [], products: [], freeToday: null });
+    expect(await getClubSite()).toEqual({ club, plans: [], products: [], freeToday: null, branding: null });
   });
 
   it('counts only free sessions per sport and hides sold-out products', async () => {
