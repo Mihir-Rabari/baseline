@@ -133,6 +133,7 @@ pnpm release:check    # Canonical pre-release verification checklist
 pnpm setup            # Cross-platform idempotent setup and database seeding
 pnpm db:migrate       # Apply pending Drizzle PostgreSQL migrations
 pnpm db:seed          # Execute deterministic seed runner (bootstraps ROOT & baseline IAM)
+pnpm db:seed:bulk     # Idempotent bulk demo data: 450 member users, 10 courts, ~4.6k bookings + payments
 pnpm db:studio        # Open Drizzle database GUI
 
 # Infrastructure (Docker Compose)
