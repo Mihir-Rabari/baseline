@@ -367,7 +367,7 @@ export class ReportService {
     const range = resolveRange(input, now, this.timeZone);
     const today = clubDateOf(now, this.timeZone);
     const q = async (query: ReturnType<typeof sql>) => rowsOf(await this.db.execute(query)) as Array<Record<string, unknown>>;
-    const [bSport, bChannel, bCourt, bTotals, oChannel, oTop, tabTotals, tabTop, inv, lowStock, sold, memberTotals, byPlan, payTotals, byDept] = await Promise.all([
+    const [bSport, bChannel, bCourt, bTotals, oChannel, oTop, tabTotals, tabTop, inv, lowStock, sold, memberTotals, byPlan, payTotals, byDept, payRuns, leaveDays] = await Promise.all([
       q(sql`SELECT ct.name AS sport, COUNT(*)::int AS count, COALESCE(SUM(b.price_paise), 0)::bigint AS amount
               FROM bookings b JOIN courts c ON c.id = b.court_id JOIN court_types ct ON ct.id = c.court_type_id
              WHERE b.booking_date BETWEEN ${range.from}::date AND ${range.to}::date AND b.status <> 'CANCELLED'
@@ -411,6 +411,13 @@ export class ReportService {
                    (SELECT COUNT(*) FROM leave_requests WHERE status = 'PENDING')::int AS pending_leave`),
       q(sql`SELECT department, COUNT(*)::int AS employees, COALESCE(SUM(monthly_salary_paise), 0)::bigint AS monthly
               FROM employees WHERE status = 'ACTIVE' GROUP BY department ORDER BY monthly DESC, department`),
+      q(sql`SELECT r.month, r.status, COUNT(s.id)::int AS payslips, COALESCE(SUM(s.net_paise), 0)::bigint AS net,
+                   COALESCE(SUM(s.leave_deduction_paise), 0)::bigint AS leave_deduction, COALESCE(SUM(s.unpaid_leave_days), 0)::int AS unpaid_days
+              FROM payroll_runs r LEFT JOIN payslips s ON s.run_id = r.id
+             WHERE r.month BETWEEN ${range.from.slice(0, 7)} AND ${range.to.slice(0, 7)}
+             GROUP BY r.month, r.status ORDER BY r.month`),
+      q(sql`SELECT COALESCE(SUM(GREATEST(0, LEAST(to_date, ${range.to}::date) - GREATEST(from_date, ${range.from}::date) + 1)), 0)::int AS days
+              FROM leave_requests WHERE status = 'APPROVED' AND from_date <= ${range.to}::date AND to_date >= ${range.from}::date`),
     ]);
     const bt = bTotals[0] ?? {};
     const tt = tabTotals[0] ?? {};
@@ -460,6 +467,8 @@ export class ReportService {
         monthlyPayrollPaise: num(pt.payroll),
         pendingLeave: num(pt.pending_leave),
         byDepartment: byDept.map((r) => ({ department: String(r.department), employees: num(r.employees), monthlyPaise: num(r.monthly) })),
+        runs: payRuns.map((r) => ({ month: String(r.month), status: String(r.status), payslips: num(r.payslips), netPaise: num(r.net), leaveDeductionPaise: num(r.leave_deduction), unpaidLeaveDays: num(r.unpaid_days) })),
+        approvedLeaveDays: num(leaveDays[0]?.days),
       },
     };
   }
@@ -698,6 +707,7 @@ export function breakdownPdf(r: ReportBreakdown): Buffer {
     { text: `${r.members.newMembers} joined, ${r.members.activeMemberships} active, ${r.members.expiringSoon} expiring within 7 days` },
     { text: 'Payroll (current staff)', bold: true, size: 12, gap: 12 },
     { text: `${r.payroll.activeEmployees} staff, ${r.payroll.pendingLeave} leave requests pending`, right: rupee(r.payroll.monthlyPayrollPaise) },
+    ...r.payroll.runs.map((x) => ({ text: `Payroll run ${x.month} (${x.status}), ${x.payslips} payslips`, right: rupee(x.netPaise) })),
     { text: `Generated ${r.generatedAt}`, size: 9, gap: 24 },
   ];
   return renderPdf(lines, `Club report by area ${r.from} to ${r.to}`);
@@ -722,6 +732,8 @@ export function breakdownCsvRows(r: ReportBreakdown): Array<Array<string | numbe
   for (const x of r.members.byPlan) rows.push(['Members by plan', x.plan, x.active, '']);
   rows.push(['Payroll', 'Active employees', r.payroll.activeEmployees, rupees(r.payroll.monthlyPayrollPaise)], ['Payroll', 'Pending leave requests', r.payroll.pendingLeave, '']);
   for (const x of r.payroll.byDepartment) rows.push(['Payroll by department', x.department, x.employees, rupees(x.monthlyPaise)]);
+  rows.push(['Payroll', 'Approved leave days in range', r.payroll.approvedLeaveDays, '']);
+  for (const x of r.payroll.runs) rows.push(['Payroll runs', `${x.month} (${x.status}, ${x.unpaidLeaveDays} unpaid leave days)`, x.payslips, rupees(x.netPaise)]);
   return rows;
 }
 
