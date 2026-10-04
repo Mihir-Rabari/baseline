@@ -4,6 +4,7 @@ import React from 'react';
 import type { Booking } from '@packages/validation';
 import { formatDateTime } from '@/lib/format';
 import { canCancel } from '@/lib/booking-history';
+import { paymentNote } from '@/lib/booking-payment';
 import { Money } from '@/components/club/money';
 import { StatusBadge } from '@/components/club/status-badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ export function BookingTable({ bookings, showWho, onCancel }: { bookings: Bookin
             <TableCell className="tabular">{formatDateTime(booking.startsAt)}</TableCell>
             {showWho && <TableCell>{booking.member?.fullName ?? booking.guest?.name ?? 'Walk-in'}</TableCell>}
             <TableCell>{booking.court.name}</TableCell>
-            <TableCell className="text-right"><Money paise={booking.pricePaise} /></TableCell>
+            <TableCell className="text-right"><Money paise={booking.pricePaise} />{paymentNote(booking) && <p className="text-xs text-muted-foreground">{paymentNote(booking)}</p>}</TableCell>
             <TableCell><StatusBadge kind="booking" value={booking.status} /></TableCell>
             {onCancel && (
               <TableCell className="text-right">
@@ -54,6 +55,7 @@ export function BookingCards({ bookings, showWho, onCancel }: { bookings: Bookin
           <div className="flex items-start justify-between gap-2"><p className="font-medium">{booking.court.name}</p><StatusBadge kind="booking" value={booking.status} /></div>
           <p className="tabular">{formatDateTime(booking.startsAt)}</p>
           {showWho && <p className="text-muted-foreground">{booking.member?.fullName ?? booking.guest?.name ?? 'Walk-in'}</p>}
+          {paymentNote(booking) && <p className="text-xs text-muted-foreground">{paymentNote(booking)}</p>}
           <div className="flex items-center justify-between gap-2"><span className="tabular font-medium"><Money paise={booking.pricePaise} /></span>
             {onCancel && canCancel(booking) && <Button size="sm" variant="outline" onClick={() => onCancel(booking)}>Cancel</Button>}</div>
         </div>

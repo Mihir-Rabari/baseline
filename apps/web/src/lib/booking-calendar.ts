@@ -23,6 +23,6 @@ export function bookingPayload(selection: SlotSelection, staff: boolean, partici
   const base = { ...selection, ...subject };
   if (social) return JoinSocialRequestSchema.parse(base);
   return CreateBookingRequestSchema.parse({ ...base, channel: staff ? 'DESK' : 'ONLINE',
-    ...(staff && participant.payment !== 'LATER' ? { payNow: { method: participant.payment } } : {}),
+    ...(participant.payment !== 'LATER' ? { payNow: { method: participant.payment } } : {}),
   });
 }

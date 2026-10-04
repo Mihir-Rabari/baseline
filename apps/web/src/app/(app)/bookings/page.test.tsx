@@ -42,6 +42,16 @@ describe('bookings page', () => {
     expect(screen.queryByRole('button', { name: /^Cancel Tennis/ })).not.toBeInTheDocument();
   });
 
+  it('shows "Paid X, due Y" on partially paid bookings in the list and card views, and nothing on others (#68)', () => {
+    state.mine = page([booking('b1', 30, { paymentStatus: 'PARTIAL', paidPaise: 12000 }), booking('b2', 31, { paymentStatus: 'PAID', paidPaise: 60000 }), booking('b3', 32)]);
+    render(<BookingsPage />);
+    expect(screen.getAllByText('Paid ₹120, due ₹480')).toHaveLength(1);
+    expect(screen.queryByText(/^Paid ₹600/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /cards/i }));
+    expect(screen.getAllByText('Paid ₹120, due ₹480')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /list/i })); // the view choice is remembered between tests
+  });
+
   it('explains the free window and cancels the chosen booking', async () => {
     render(<BookingsPage />);
     fireEvent.click(screen.getAllByRole('button', { name: /^Cancel Tennis Court 1/ })[0]);
