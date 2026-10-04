@@ -1,6 +1,7 @@
 import { pgTable, varchar, text, uuid, jsonb, index } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { pk, tstz, createdAt, updatedAt } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 export type AgentMessageRole = 'user' | 'assistant';
 export type AgentActionStatusValue = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'EXPIRED' | 'FAILED';
@@ -9,6 +10,7 @@ export type AgentActionStatusValue = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'EXP
 export const agentConversations = pgTable(
   'agent_conversations',
   {
+    tenantId: tenantId(),
     id: pk(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
@@ -23,6 +25,7 @@ export const agentConversations = pgTable(
 export const agentMessages = pgTable(
   'agent_messages',
   {
+    tenantId: tenantId(),
     id: pk(),
     conversationId: uuid('conversation_id')
       .references(() => agentConversations.id, { onDelete: 'cascade' })
@@ -40,6 +43,7 @@ export const agentMessages = pgTable(
 export const agentActions = pgTable(
   'agent_actions',
   {
+    tenantId: tenantId(),
     id: pk(),
     conversationId: uuid('conversation_id')
       .references(() => agentConversations.id, { onDelete: 'cascade' })

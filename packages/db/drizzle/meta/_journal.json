@@ -120,6 +120,13 @@
       "when": 1740801600000,
       "tag": "0016_agent",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1740801700000,
+      "tag": "0017_tenant_isolation",
+      "breakpoints": true
     }
   ]
 }

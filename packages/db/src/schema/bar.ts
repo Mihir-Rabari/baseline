@@ -14,6 +14,7 @@ import { sql } from 'drizzle-orm';
 import { users } from './auth.js';
 import { members } from './members.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 /** A `categories.code` in the MENU scope. */
 export type MenuCategory = string;
@@ -23,15 +24,17 @@ export type TabItemStatus = 'PENDING' | 'SENT' | 'VOID';
 export type TableBookingStatus = 'BOOKED' | 'SEATED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
 export const barTables = pgTable('bar_tables', {
+  tenantId: tenantId(),
   id: pk(),
-  name: varchar('name', { length: 32 }).notNull().unique(), // "T1"
+  name: varchar('name', { length: 32 }).notNull(), // "T1"
   seats: smallint('seats').notNull().default(4),
   isActive: boolean('is_active').notNull().default(true),
-});
+}, (t) => [uniqueIndex('uq_bar_tables_tenant_name').on(t.tenantId, t.name)]);
 
 export const menuItems = pgTable(
   'menu_items',
   {
+    tenantId: tenantId(),
     id: pk(),
     name: varchar('name', { length: 128 }).notNull(),
     category: varchar('category', { length: 16 }).$type<MenuCategory>().notNull(),
@@ -49,6 +52,7 @@ export const menuItems = pgTable(
 export const tabs = pgTable(
   'tabs',
   {
+    tenantId: tenantId(),
     id: pk(),
     tabNumber: integer('tab_number').notNull().unique(), // from tab_number_seq
     memberId: uuid('member_id').references(() => members.id),
@@ -77,6 +81,7 @@ export const tabs = pgTable(
 export const kitchenTickets = pgTable(
   'kitchen_tickets',
   {
+    tenantId: tenantId(),
     id: pk(),
     ticketNumber: integer('ticket_number').generatedAlwaysAsIdentity().notNull().unique(),
     tabId: uuid('tab_id')
@@ -94,6 +99,7 @@ export const kitchenTickets = pgTable(
 export const tabItems = pgTable(
   'tab_items',
   {
+    tenantId: tenantId(),
     id: pk(),
     tabId: uuid('tab_id')
       .references(() => tabs.id, { onDelete: 'cascade' })
@@ -123,6 +129,7 @@ export const tabItems = pgTable(
 export const barTableBookings = pgTable(
   'bar_table_bookings',
   {
+    tenantId: tenantId(),
     id: pk(),
     tableId: uuid('table_id')
       .notNull()

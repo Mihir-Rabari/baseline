@@ -1,7 +1,8 @@
-import { pgTable, varchar, text, uuid, smallint, integer, boolean, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, uuid, smallint, integer, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { members } from './members.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 /** A `categories.code` in the PRODUCT scope. */
 export type ProductCategory = string;
@@ -20,8 +21,9 @@ export type StockReason = 'SALE_COUNTER' | 'SALE_ONLINE' | 'RESTOCK' | 'ADJUSTME
 export const products = pgTable(
   'products',
   {
+    tenantId: tenantId(),
     id: pk(),
-    sku: varchar('sku', { length: 64 }).notNull().unique(),
+    sku: varchar('sku', { length: 64 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     category: varchar('category', { length: 24 }).$type<ProductCategory>().notNull(),
     description: text('description'),
@@ -35,12 +37,14 @@ export const products = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('idx_products_category').on(t.category), index('idx_products_stock').on(t.stockQty)]
+  (t) => [
+    uniqueIndex('uq_products_tenant_sku').on(t.tenantId, t.sku),index('idx_products_category').on(t.category), index('idx_products_stock').on(t.stockQty)]
 );
 
 export const orders = pgTable(
   'orders',
   {
+    tenantId: tenantId(),
     id: pk(),
     orderNumber: varchar('order_number', { length: 20 }).notNull().unique(), // ORD-000123 from order_number_seq
     channel: varchar('channel', { length: 12 }).$type<OrderChannel>().notNull(),
@@ -72,6 +76,7 @@ export const orders = pgTable(
 export const orderItems = pgTable(
   'order_items',
   {
+    tenantId: tenantId(),
     id: pk(),
     orderId: uuid('order_id')
       .references(() => orders.id, { onDelete: 'cascade' })
@@ -91,6 +96,7 @@ export const orderItems = pgTable(
 export const stockMovements = pgTable(
   'stock_movements',
   {
+    tenantId: tenantId(),
     id: pk(),
     productId: uuid('product_id')
       .references(() => products.id)

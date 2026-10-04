@@ -3,6 +3,8 @@ import { eq, inArray, like, sql } from 'drizzle-orm';
 import { hashPassword } from '@packages/shared/crypto';
 import { getEnv } from '@packages/config/env';
 import { closeDatabase, getDb, type DatabaseInstance } from './client.js';
+import { runInTenant, runUnscoped } from './tenant-scope.js';
+import { DEFAULT_TENANT_ID } from './schema/tenants.js';
 import {
   bookings,
   courtOccupancies,
@@ -95,7 +97,7 @@ export async function seedBulk(db: DatabaseInstance, options: SeedBulkOptions = 
   for (const extra of EXTRA_COURTS) {
     const type = typeByCode.get(extra.type);
     if (!type) throw new Error(`[DB] Court type ${extra.type} missing; run \`pnpm db:seed\` first.`);
-    await db.insert(courts).values({ courtTypeId: type.id, name: extra.name, sortOrder: ++sortOrder }).onConflictDoNothing({ target: courts.name });
+    await db.insert(courts).values({ courtTypeId: type.id, name: extra.name, sortOrder: ++sortOrder }).onConflictDoNothing({ target: [courts.tenantId, courts.name] });
   }
   const courtRows = await db.select({ id: courts.id, name: courts.name, courtTypeId: courts.courtTypeId }).from(courts);
   const courtByName = new Map(courtRows.map((c) => [c.name, c]));
@@ -113,7 +115,7 @@ export async function seedBulk(db: DatabaseInstance, options: SeedBulkOptions = 
       const rows = await db
         .insert(users)
         .values(part.map((u) => ({ email: u.email, name: u.name, passwordHash, status: u.status, identityType: 'EXTERNAL_USER' as const })))
-        .onConflictDoNothing({ target: users.email })
+        .onConflictDoNothing({ target: [users.tenantId, users.email] })
         .returning({ id: users.id, email: users.email });
       for (const r of rows) existingUsers.set(r.email, r.id);
     }
@@ -146,7 +148,7 @@ export async function seedBulk(db: DatabaseInstance, options: SeedBulkOptions = 
     if (!id) throw new Error(`[DB] Member ${u.memberCode} was not created`);
     return id;
   });
-  await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), (SELECT COALESCE(MAX(SUBSTRING(member_code FROM 4)::bigint), 0) FROM members)))`);
+  await runUnscoped(async () => await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), (SELECT COALESCE(MAX(SUBSTRING(member_code FROM 4)::bigint), 0) FROM members)))`));
 
   // 3. Memberships (only for members that have none) with a CREATED event each.
   const haveTerms = new Set<string>();
@@ -226,7 +228,7 @@ export async function seedBulk(db: DatabaseInstance, options: SeedBulkOptions = 
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const env = getEnv();
-  seedBulk(getDb(), { password: process.env.BULK_SEED_PASSWORD ?? env.SEED_DEMO_PASSWORD })
+  runInTenant(DEFAULT_TENANT_ID, () => seedBulk(getDb(), { password: process.env.BULK_SEED_PASSWORD ?? env.SEED_DEMO_PASSWORD }))
     .then(async () => {
       await closeDatabase();
       process.exit(0);

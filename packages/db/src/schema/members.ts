@@ -13,6 +13,7 @@ import {
 import { sql } from 'drizzle-orm';
 import { users } from './auth.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 export type MembershipStatusColumn = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'REPLACED';
 export type MembershipEventType =
@@ -28,8 +29,9 @@ export type ReminderKind = 'T30' | 'T7' | 'T1' | 'EXPIRED';
 
 /** Tiers and entitlements. Edited by the Owner; never hard-coded. */
 export const plans = pgTable('plans', {
+  tenantId: tenantId(),
   id: pk(),
-  code: varchar('code', { length: 32 }).notNull().unique(), // GOLD | SILVER | JUNIOR
+  code: varchar('code', { length: 32 }).notNull(), // GOLD | SILVER | JUNIOR
   name: varchar('name', { length: 64 }).notNull(),
   description: text('description'),
   monthlyFeePaise: paise('monthly_fee_paise').notNull(),
@@ -44,13 +46,14 @@ export const plans = pgTable('plans', {
   sortOrder: smallint('sort_order').notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-});
+}, (t) => [uniqueIndex('uq_plans_tenant_code').on(t.tenantId, t.code)]);
 // SQL CHECKs (0003): discounts between 0 and 100; monthly_fee_paise >= 0; max_bookings_per_day >= 1.
 
 /** Club member profile. user_id is set only when the member has a login. */
 export const members = pgTable(
   'members',
   {
+    tenantId: tenantId(),
     id: pk(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'set null' })
@@ -77,6 +80,7 @@ export const members = pgTable(
 export const memberships = pgTable(
   'memberships',
   {
+    tenantId: tenantId(),
     id: pk(),
     memberId: uuid('member_id')
       .references(() => members.id, { onDelete: 'cascade' })
@@ -108,6 +112,7 @@ export const memberships = pgTable(
 export const membershipEvents = pgTable(
   'membership_events',
   {
+    tenantId: tenantId(),
     id: pk(),
     membershipId: uuid('membership_id')
       .references(() => memberships.id, { onDelete: 'cascade' })
@@ -129,6 +134,7 @@ export const membershipEvents = pgTable(
 export const membershipReminders = pgTable(
   'membership_reminders',
   {
+    tenantId: tenantId(),
     membershipId: uuid('membership_id')
       .references(() => memberships.id, { onDelete: 'cascade' })
       .notNull(),
@@ -141,6 +147,7 @@ export const membershipReminders = pgTable(
 export const memberCheckins = pgTable(
   'member_checkins',
   {
+    tenantId: tenantId(),
     id: pk(),
     memberId: uuid('member_id')
       .references(() => members.id, { onDelete: 'cascade' })

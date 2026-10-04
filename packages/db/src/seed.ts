@@ -12,6 +12,8 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import { fileURLToPath } from 'node:url';
 import { seedCourtOs } from './seed-courtos.js';
+import { runInTenant } from './tenant-scope.js';
+import { DEFAULT_TENANT_ID } from './schema/tenants.js';
 import { AppConfig, IamConfig, type PolicyDefinition, type RoleDefinition } from '@packages/config';
 import { getEnv } from '@packages/config/env';
 // Shared with the login path rather than reimplemented here. A local copy of the scrypt
@@ -179,7 +181,12 @@ async function ensureAgentActions(db: DatabaseInstance, policyId: string): Promi
   });
 }
 
-export async function runSeeds(): Promise<void> {
+/** Seeds the default club. Scoped to it, so the run stays idempotent however many other clubs exist. */
+export function runSeeds(): Promise<void> {
+  return runInTenant(DEFAULT_TENANT_ID, runSeedsInScope);
+}
+
+async function runSeedsInScope(): Promise<void> {
   console.log('[DB] Seeding foundational system records & IAM bootstrap...');
   const db = getDb();
   const env = getEnv();
@@ -213,7 +220,7 @@ export async function runSeeds(): Promise<void> {
         .insert(systemSettings)
         .values(setting)
         .onConflictDoUpdate({
-          target: systemSettings.key,
+          target: [systemSettings.tenantId, systemSettings.key],
           set: {
             value: setting.value,
             description: setting.description,

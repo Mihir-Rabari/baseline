@@ -1,4 +1,5 @@
-import { pgTable, varchar, text, timestamp, uuid, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, uuid, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { tenantId } from './_tenant.js';
 
 /**
  * Column-level unions for the `users` status and identity columns.
@@ -18,8 +19,9 @@ export type IdentityTypeColumn = 'ROOT' | 'EXTERNAL_USER';
 export const users = pgTable(
   'users',
   {
+    tenantId: tenantId(),
     id: uuid('id').defaultRandom().primaryKey(),
-    email: varchar('email', { length: 255 }).notNull().unique(),
+    email: varchar('email', { length: 255 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     passwordHash: varchar('password_hash', { length: 255 }).notNull(),
     status: varchar('status', { length: 32 })
@@ -35,6 +37,7 @@ export const users = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    uniqueIndex('uq_users_tenant_email').on(table.tenantId, table.email),
     index('idx_users_email').on(table.email),
     index('idx_users_status').on(table.status),
     index('idx_users_identity_type').on(table.identityType),
@@ -51,6 +54,7 @@ export type NewUser = typeof users.$inferInsert;
 export const sessions = pgTable(
   'sessions',
   {
+    tenantId: tenantId(),
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
@@ -81,6 +85,7 @@ export type NewSession = typeof sessions.$inferInsert;
 export const passwordSetupTokens = pgTable(
   'password_setup_tokens',
   {
+    tenantId: tenantId(),
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })

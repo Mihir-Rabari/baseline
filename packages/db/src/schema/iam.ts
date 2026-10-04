@@ -8,8 +8,10 @@ import {
   jsonb,
   primaryKey,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
+import { tenantId } from './_tenant.js';
 
 /**
  * Normalized system & domain permission registry.
@@ -31,13 +33,14 @@ export type NewPermissionRecord = typeof permissions.$inferInsert;
  * Policies define collections of allow/deny permission statements.
  */
 export const policies = pgTable('policies', {
+  tenantId: tenantId(),
   id: uuid('id').defaultRandom().primaryKey(),
-  name: varchar('name', { length: 128 }).notNull().unique(),
+  name: varchar('name', { length: 128 }).notNull(),
   description: text('description'),
   isSystem: boolean('is_system').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [uniqueIndex('uq_policies_tenant_name').on(t.tenantId, t.name)]);
 
 export type PolicyRecord = typeof policies.$inferSelect;
 export type NewPolicyRecord = typeof policies.$inferInsert;
@@ -48,6 +51,7 @@ export type NewPolicyRecord = typeof policies.$inferInsert;
 export const policyStatements = pgTable(
   'policy_statements',
   {
+    tenantId: tenantId(),
     id: uuid('id').defaultRandom().primaryKey(),
     policyId: uuid('policy_id')
       .references(() => policies.id, { onDelete: 'cascade' })
@@ -68,13 +72,14 @@ export type NewPolicyStatementRecord = typeof policyStatements.$inferInsert;
  * Named roles (bundles of policies).
  */
 export const roles = pgTable('roles', {
+  tenantId: tenantId(),
   id: uuid('id').defaultRandom().primaryKey(),
-  name: varchar('name', { length: 128 }).notNull().unique(),
+  name: varchar('name', { length: 128 }).notNull(),
   description: text('description'),
   isSystem: boolean('is_system').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [uniqueIndex('uq_roles_tenant_name').on(t.tenantId, t.name)]);
 
 export type RoleRecord = typeof roles.$inferSelect;
 export type NewRoleRecord = typeof roles.$inferInsert;
@@ -83,13 +88,14 @@ export type NewRoleRecord = typeof roles.$inferInsert;
  * Named groups (hierarchies of identities inheriting policies).
  */
 export const groups = pgTable('groups', {
+  tenantId: tenantId(),
   id: uuid('id').defaultRandom().primaryKey(),
-  name: varchar('name', { length: 128 }).notNull().unique(),
+  name: varchar('name', { length: 128 }).notNull(),
   description: text('description'),
   isSystem: boolean('is_system').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [uniqueIndex('uq_groups_tenant_name').on(t.tenantId, t.name)]);
 
 export type GroupRecord = typeof groups.$inferSelect;
 export type NewGroupRecord = typeof groups.$inferInsert;
@@ -100,6 +106,7 @@ export type NewGroupRecord = typeof groups.$inferInsert;
 export const userRoles = pgTable(
   'user_roles',
   {
+    tenantId: tenantId(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
@@ -121,6 +128,7 @@ export const userRoles = pgTable(
 export const userGroups = pgTable(
   'user_groups',
   {
+    tenantId: tenantId(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
@@ -142,6 +150,7 @@ export const userGroups = pgTable(
 export const rolePolicies = pgTable(
   'role_policies',
   {
+    tenantId: tenantId(),
     roleId: uuid('role_id')
       .references(() => roles.id, { onDelete: 'cascade' })
       .notNull(),
@@ -163,6 +172,7 @@ export const rolePolicies = pgTable(
 export const groupPolicies = pgTable(
   'group_policies',
   {
+    tenantId: tenantId(),
     groupId: uuid('group_id')
       .references(() => groups.id, { onDelete: 'cascade' })
       .notNull(),
@@ -184,6 +194,7 @@ export const groupPolicies = pgTable(
 export const userPolicies = pgTable(
   'user_policies',
   {
+    tenantId: tenantId(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),

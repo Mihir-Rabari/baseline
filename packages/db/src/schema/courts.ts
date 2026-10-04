@@ -14,6 +14,7 @@ import { sql } from 'drizzle-orm';
 import { users } from './auth.js';
 import { members } from './members.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 export type BookingKind = 'STANDARD' | 'SOCIAL' | 'TRIAL';
 export type BookingStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
@@ -24,8 +25,9 @@ export type OccupancyKind = 'BOOKING' | 'SOCIAL' | 'MAINTENANCE';
 
 /** Sports are data: TENNIS, PADEL, BADMINTON, CRICKET_NETS. */
 export const courtTypes = pgTable('court_types', {
+  tenantId: tenantId(),
   id: pk(),
-  code: varchar('code', { length: 32 }).notNull().unique(),
+  code: varchar('code', { length: 32 }).notNull(),
   name: varchar('name', { length: 64 }).notNull(),
   baseRatePaise: paise('base_rate_paise').notNull(), // walk-in price for 1 hour
   socialFeePaise: paise('social_fee_paise').notNull(), // per head, Friday social play
@@ -33,26 +35,29 @@ export const courtTypes = pgTable('court_types', {
   socialCapacity: smallint('social_capacity').notNull().default(8),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: createdAt(),
-});
+}, (t) => [uniqueIndex('uq_court_types_tenant_code').on(t.tenantId, t.code)]);
 
 export const courts = pgTable(
   'courts',
   {
+    tenantId: tenantId(),
     id: pk(),
     courtTypeId: uuid('court_type_id')
       .references(() => courtTypes.id)
       .notNull(),
-    name: varchar('name', { length: 64 }).notNull().unique(), // "Tennis Court 1"
+    name: varchar('name', { length: 64 }).notNull(), // "Tennis Court 1"
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: smallint('sort_order').notNull().default(0),
     imageUrl: varchar('image_url', { length: 512 }),
     createdAt: createdAt(),
   },
-  (t) => [index('idx_courts_type').on(t.courtTypeId)]
+  (t) => [
+    uniqueIndex('uq_courts_tenant_name').on(t.tenantId, t.name),index('idx_courts_type').on(t.courtTypeId)]
 );
 
 /** Weekday uses ISO numbering: 1 = Monday ... 7 = Sunday (Friday = 5). */
 export const socialWindows = pgTable('social_windows', {
+  tenantId: tenantId(),
   id: pk(),
   weekday: smallint('weekday').notNull(),
   startsTime: time('starts_time').notNull(), // '18:00'
@@ -64,6 +69,7 @@ export const socialWindows = pgTable('social_windows', {
 export const socialSessions = pgTable(
   'social_sessions',
   {
+    tenantId: tenantId(),
     id: pk(),
     courtId: uuid('court_id')
       .references(() => courts.id)
@@ -83,6 +89,7 @@ export const socialSessions = pgTable(
 export const bookings = pgTable(
   'bookings',
   {
+    tenantId: tenantId(),
     id: pk(),
     courtId: uuid('court_id')
       .references(() => courts.id)
@@ -133,6 +140,7 @@ export const bookings = pgTable(
 export const courtOccupancies = pgTable(
   'court_occupancies',
   {
+    tenantId: tenantId(),
     id: pk(),
     courtId: uuid('court_id')
       .references(() => courts.id)
