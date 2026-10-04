@@ -51,12 +51,22 @@ export function filterTickets(tickets: Ticket[], filters: KitchenFilters): Ticke
     if (filters.channel === 'WALK_IN' && ticket.table) {
       return false;
     }
-    // Text search (ticket number, tab number, table, customer/guest, items, item notes)
+    // Text search (ticket number, tab number, order, table, customer/guest, items, item notes)
     if (q) {
-      const matchTicketNo = String(ticket.ticketNumber).includes(q) || `#${ticket.ticketNumber}`.includes(q);
-      const matchTabNo = String(ticket.tab.tabNumber).includes(q) || `tab #${ticket.tab.tabNumber}`.toLowerCase().includes(q);
+      const cleanNum = q.replace(/^(ticket|tab|order|table)\s*(#|no\.?)?\s*/i, '').trim();
+      const matchTicketNo =
+        String(ticket.ticketNumber) === cleanNum ||
+        String(ticket.ticketNumber).includes(q) ||
+        `#${ticket.ticketNumber}`.includes(q);
+      const matchTabNo =
+        String(ticket.tab.tabNumber) === cleanNum ||
+        String(ticket.tab.tabNumber).includes(q) ||
+        `tab #${ticket.tab.tabNumber}`.toLowerCase().includes(q) ||
+        `order #${ticket.tab.tabNumber}`.toLowerCase().includes(q);
       const matchLabel = ticket.tab.label.toLowerCase().includes(q);
-      const matchTable = ticket.table?.name.toLowerCase().includes(q) ?? false;
+      const matchTable =
+        (ticket.table?.name.toLowerCase().includes(q) ?? false) ||
+        (ticket.table?.name.toLowerCase().replace(/\s+/g, '') === q.replace(/\s+/g, ''));
       const matchItems = ticket.items.some((item) =>
         item.name.toLowerCase().includes(q) || (item.note && item.note.toLowerCase().includes(q))
       );

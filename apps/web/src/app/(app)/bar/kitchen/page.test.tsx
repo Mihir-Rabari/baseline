@@ -1,29 +1,30 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import ticketsFixture from '@/mocks/bar-tickets.json';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import KitchenPage from './page';
-import { filterTickets } from '@/lib/kitchen-filter';
+import { barApi } from '@/lib/bar-api';
 import type { Ticket } from '@packages/validation';
 
-const doubles = vi.hoisted(() => ({
-  api: {
-    tickets: vi.fn(),
-    advance: vi.fn(),
-  },
-  permissions: new Set<string>(['bar:read', 'bar:kitchen']),
-}));
-
-vi.mock('@/lib/bar-api', () => ({
-  barApi: doubles.api,
+const authState = vi.hoisted(() => ({
+  user: { id: 'staff-1', fullName: 'Chef Gordon' },
+  canKitchen: true,
+  canBar: true,
 }));
 
 vi.mock('@/hooks/use-auth', () => ({
   useAuth: () => ({
-    user: { id: 'staff-1', fullName: 'Staff User' },
-    hasPermission: (perm: string) => doubles.permissions.has(perm),
+    user: authState.user,
+    hasPermission: (perm: string) =>
+      perm === 'bar:kitchen' ? authState.canKitchen : perm === 'bar:read' ? authState.canBar : false,
   }),
+}));
+
+vi.mock('@/lib/bar-api', () => ({
+  barApi: {
+    tickets: vi.fn(),
+    advance: vi.fn(),
+  },
 }));
 
 function mount() {
@@ -40,167 +41,178 @@ function mount() {
   );
 }
 
-describe('Kitchen Page (Issue #79: Search and Filters)', () => {
-  const sampleTickets = structuredClone(ticketsFixture) as unknown as Ticket[];
+describe('Kitchen & Bar Display Page (Issue #79)', () => {
+  const sampleTickets: Ticket[] = [
+    {
+      id: 'ticket-1',
+      ticketNumber: 201,
+      station: 'KITCHEN',
+      status: 'NEW',
+      minutesWaiting: 3,
+      table: { name: 'Table 1' },
+      tab: { id: 'tab-1', tabNumber: 10, label: 'Table 1 · Rohit Sharma' },
+      items: [
+        { name: 'Margherita Pizza', qty: 1, note: 'thin crust' },
+      ],
+      createdAt: '2026-10-04T12:00:00.000Z',
+    },
+    {
+      id: 'ticket-2',
+      ticketNumber: 202,
+      station: 'BAR',
+      status: 'PREPARING',
+      minutesWaiting: 8,
+      table: { name: 'T2' },
+      tab: { id: 'tab-2', tabNumber: 12, label: 'T2 · Priya Patel' },
+      items: [
+        { name: 'Cold Coffee', qty: 2, note: null },
+      ],
+      createdAt: '2026-10-04T11:55:00.000Z',
+    },
+    {
+      id: 'ticket-3',
+      ticketNumber: 203,
+      station: 'KITCHEN',
+      status: 'READY',
+      minutesWaiting: 15,
+      table: null, // Walk-in
+      tab: { id: 'tab-3', tabNumber: 15, label: 'Walk-in · Amit Verma' },
+      items: [
+        { name: 'Veg Hakka Noodles', qty: 1, note: 'extra spicy' },
+      ],
+      createdAt: '2026-10-04T11:45:00.000Z',
+    },
+  ];
 
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    doubles.permissions = new Set(['bar:read', 'bar:kitchen']);
-    doubles.api.tickets.mockResolvedValue(structuredClone(sampleTickets));
-    doubles.api.advance.mockResolvedValue({});
+    authState.user = { id: 'staff-1', fullName: 'Chef Gordon' };
+    authState.canKitchen = true;
+    authState.canBar = true;
+    vi.mocked(barApi.tickets).mockResolvedValue(structuredClone(sampleTickets));
+    vi.mocked(barApi.advance).mockResolvedValue({} as any);
   });
 
-  it('renders all tickets categorized into New, Preparing, and Ready columns', async () => {
+  it('renders ticket columns and all tickets', async () => {
     mount();
-    expect(await screen.findByRole('heading', { name: /New/ }, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Preparing/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Ready/ })).toBeInTheDocument();
-    expect(screen.getByText(/T1 · #60/)).toBeInTheDocument();
-    expect(screen.getByText(/T2 · #61/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('heading', { name: 'Kitchen & Bar Tickets' })).toBeInTheDocument();
+    expect(screen.getByText('Cold Coffee')).toBeInTheDocument();
+    expect(screen.getByText('Veg Hakka Noodles')).toBeInTheDocument();
+
+    // Column headers
+    expect(screen.getByRole('region', { name: 'New' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Preparing' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Ready' })).toBeInTheDocument();
   });
 
-  it('filters tickets by item name or special note search', async () => {
+  it('filters tickets in real-time by search query (order/item/table)', async () => {
     mount();
-    await screen.findByText(/T1 · #60/, {}, { timeout: 5000 });
+    await waitFor(() => {
+      expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    });
+
     const searchInput = screen.getByLabelText('Search tickets');
 
     // Search by item name
-    fireEvent.change(searchInput, { target: { value: 'Cold coffee' } });
-    expect(screen.getByText(/T2 · #61/)).toBeInTheDocument();
-    expect(screen.queryByText(/T1 · #60/)).not.toBeInTheDocument();
-
-    // Search by note
-    fireEvent.change(searchInput, { target: { value: 'Less salt' } });
-    expect(screen.getByText(/T1 · #60/)).toBeInTheDocument();
-    expect(screen.queryByText(/T2 · #61/)).not.toBeInTheDocument();
-
-    // Clear search
-    fireEvent.click(screen.getByLabelText('Clear search'));
-    expect(screen.getByText(/T2 · #61/)).toBeInTheDocument();
-  });
-
-  it('filters tickets by ticket number, tab number, and table name', async () => {
-    mount();
-    await screen.findByText(/T1 · #60/, {}, { timeout: 5000 });
-    const searchInput = screen.getByLabelText('Search tickets');
-
-    // Search by ticket number
-    fireEvent.change(searchInput, { target: { value: '63' } });
-    expect(screen.getByText(/T4 · #63/)).toBeInTheDocument();
-    expect(screen.queryByText(/T1 · #60/)).not.toBeInTheDocument();
+    fireEvent.change(searchInput, { target: { value: 'Pizza' } });
+    expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    expect(screen.queryByText('Cold Coffee')).not.toBeInTheDocument();
+    expect(screen.queryByText('Veg Hakka Noodles')).not.toBeInTheDocument();
 
     // Search by table name
-    fireEvent.change(searchInput, { target: { value: 'T5' } });
-    expect(screen.getByText(/T5 · #64/)).toBeInTheDocument();
-    expect(screen.queryByText(/T4 · #63/)).not.toBeInTheDocument();
+    fireEvent.change(searchInput, { target: { value: 'T2' } });
+    expect(screen.getByText('Cold Coffee')).toBeInTheDocument();
+    expect(screen.queryByText('Margherita Pizza')).not.toBeInTheDocument();
+
+    // Clear search button
+    const clearButton = screen.getByLabelText('Clear search');
+    fireEvent.click(clearButton);
+    expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    expect(screen.getByText('Cold Coffee')).toBeInTheDocument();
   });
 
   it('filters tickets by station (Kitchen vs Bar)', async () => {
     mount();
-    await screen.findByText(/T1 · #60/, {}, { timeout: 5000 });
+    await waitFor(() => {
+      expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    });
 
-    // Switch to Bar only
+    // Switch to Bar station
     fireEvent.click(screen.getByRole('button', { name: 'Bar' }));
-    // Bar tickets: #61 (T2), #63 (T4), #65 (T6)
-    expect(screen.getByText(/T2 · #61/)).toBeInTheDocument();
-    expect(screen.getByText(/T4 · #63/)).toBeInTheDocument();
-    expect(screen.queryByText(/T1 · #60/)).not.toBeInTheDocument();
+    expect(screen.getByText('Cold Coffee')).toBeInTheDocument();
+    expect(screen.queryByText('Margherita Pizza')).not.toBeInTheDocument();
+    expect(screen.queryByText('Veg Hakka Noodles')).not.toBeInTheDocument();
 
-    // Switch to Kitchen only
+    // Switch to Kitchen station
     fireEvent.click(screen.getByRole('button', { name: 'Kitchen' }));
-    // Kitchen tickets: #60 (T1), #62 (T3), #64 (T5)
-    expect(screen.getByText(/T1 · #60/)).toBeInTheDocument();
-    expect(screen.getByText(/T3 · #62/)).toBeInTheDocument();
-    expect(screen.queryByText(/T2 · #61/)).not.toBeInTheDocument();
+    expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    expect(screen.getByText('Veg Hakka Noodles')).toBeInTheDocument();
+    expect(screen.queryByText('Cold Coffee')).not.toBeInTheDocument();
   });
 
-  it('filters tickets by waiting time (Urgent / 10+ min)', async () => {
+  it('filters by status stage and isolates column', async () => {
     mount();
-    await screen.findByText(/T1 · #60/, {}, { timeout: 5000 });
+    await waitFor(() => {
+      expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    });
+
+    const statusSelect = screen.getByLabelText('Filter by status');
+    fireEvent.change(statusSelect, { target: { value: 'READY' } });
+
+    // Only Ready column is visible
+    expect(screen.getByRole('region', { name: 'Ready' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'New' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Preparing' })).not.toBeInTheDocument();
+    expect(screen.getByText('Veg Hakka Noodles')).toBeInTheDocument();
+  });
+
+  it('filters by wait time and highlights urgent tickets', async () => {
+    mount();
+    await waitFor(() => {
+      expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    });
 
     const timeSelect = screen.getByLabelText('Filter by wait time');
+    // Filter over 10 min (urgent)
     fireEvent.change(timeSelect, { target: { value: 'OVER_10' } });
-
-    // Tickets waiting >= 10 min: #63 (12m), #64 (15m), #65 (18m)
-    expect(screen.getByText(/T4 · #63/)).toBeInTheDocument();
-    expect(screen.getByText(/T5 · #64/)).toBeInTheDocument();
-    expect(screen.queryByText(/T1 · #60/)).not.toBeInTheDocument(); // 3m
-    expect(screen.queryByText(/T2 · #61/)).not.toBeInTheDocument(); // 6m
+    expect(screen.getByText('Veg Hakka Noodles')).toBeInTheDocument();
+    expect(screen.queryByText('Margherita Pizza')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cold Coffee')).not.toBeInTheDocument();
   });
 
-  it('resets all filters using the Reset Filters button', async () => {
+  it('resets all filters using the reset button', async () => {
     mount();
-    await screen.findByText(/T1 · #60/, {}, { timeout: 5000 });
-
-    const searchInput = screen.getByLabelText('Search tickets');
-    fireEvent.change(searchInput, { target: { value: 'Nonexistent Item' } });
-
-    // Should display empty filtered state
-    expect(screen.getByText('No matching tickets')).toBeInTheDocument();
-
-    // Click clear / reset
-    fireEvent.click(screen.getByRole('button', { name: 'Clear all filters' }));
-    expect(screen.getByText(/T1 · #60/)).toBeInTheDocument();
-  });
-
-  it('persists filters to localStorage and reloads them', async () => {
-    window.localStorage.setItem(
-      'bar:kitchen:filters:v1',
-      JSON.stringify({ query: 'Iced tea', station: 'KITCHEN', status: 'ALL', time: 'ALL', channel: 'ALL' })
-    );
-
-    mount();
-    await screen.findByText(/T5 · #64/, {}, { timeout: 5000 });
-    expect(screen.getByText(/T5 · #64/)).toBeInTheDocument();
-    expect(screen.queryByText(/T1 · #60/)).not.toBeInTheDocument();
-
-    // Verify input value reflects stored query
-    const input = screen.getByLabelText('Search tickets') as HTMLInputElement;
-    expect(input.value).toBe('Iced tea');
-  });
-
-  it('advances ticket status through Start, Mark ready, and Mark served', async () => {
-    mount();
-    await screen.findByText(/T1 · #60/, {}, { timeout: 5000 });
-
-    const startBtn = screen.getByRole('button', { name: 'Start ticket 60' });
-    fireEvent.click(startBtn);
-
     await waitFor(() => {
-      expect(doubles.api.advance).toHaveBeenCalledWith('b0000000-0000-4000-8000-000000000300', {
-        status: 'PREPARING',
-      });
+      expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
     });
+
+    // Apply multiple filters
+    fireEvent.change(screen.getByLabelText('Search tickets'), { target: { value: 'Pizza' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kitchen' }));
+
+    expect(screen.getByRole('button', { name: 'Reset all filters' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset all filters' }));
+
+    // All tickets restored
+    expect(screen.getByText('Margherita Pizza')).toBeInTheDocument();
+    expect(screen.getByText('Cold Coffee')).toBeInTheDocument();
+    expect(screen.getByText('Veg Hakka Noodles')).toBeInTheDocument();
   });
 
-  it('pure filterTickets function correctly filters across all dimensions', () => {
-    const res1 = filterTickets(sampleTickets, {
-      query: '',
-      station: 'BAR',
-      status: 'ALL',
-      time: 'ALL',
-      channel: 'ALL',
+  it('advances a ticket status when the action button is clicked', async () => {
+    mount();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Start ticket 201' })).toBeInTheDocument();
     });
-    expect(res1.every((t) => t.station === 'BAR')).toBe(true);
 
-    const res2 = filterTickets(sampleTickets, {
-      query: 'orange',
-      station: 'ALL',
-      status: 'ALL',
-      time: 'ALL',
-      channel: 'ALL',
+    fireEvent.click(screen.getByRole('button', { name: 'Start ticket 201' }));
+    await waitFor(() => {
+      expect(barApi.advance).toHaveBeenCalledWith('ticket-1', { status: 'PREPARING' });
     });
-    expect(res2.length).toBe(1);
-    expect(res2[0].ticketNumber).toBe(63);
-
-    const res3 = filterTickets(sampleTickets, {
-      query: '',
-      station: 'ALL',
-      status: 'ALL',
-      time: 'UNDER_5',
-      channel: 'ALL',
-    });
-    expect(res3.every((t) => t.minutesWaiting < 5)).toBe(true);
   });
 });

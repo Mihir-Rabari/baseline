@@ -83,6 +83,25 @@ export default function KitchenPage() {
     return count;
   }, [filters]);
 
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        if (filters.query) {
+          setFilters((prev) => ({ ...prev, query: '' }));
+        } else {
+          searchInputRef.current?.blur();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filters.query]);
+
   const resetFilters = () => {
     setFilters(DEFAULT_KITCHEN_FILTERS);
   };
@@ -147,11 +166,12 @@ export default function KitchenPage() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Search Bar */}
               <div className="relative min-w-64 flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
+                  ref={searchInputRef}
                   id="kitchen-search"
                   aria-label="Search tickets"
-                  placeholder="Search by ticket #, tab, table, or item..."
+                  placeholder="Search by ticket #, tab, table, or item... (Press / to focus)"
                   value={filters.query}
                   onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
                   className="pl-9 pr-8"
@@ -163,7 +183,7 @@ export default function KitchenPage() {
                     onClick={() => setFilters((prev) => ({ ...prev, query: '' }))}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" aria-hidden />
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -193,7 +213,7 @@ export default function KitchenPage() {
                             : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                         }`}
                       >
-                        {Icon && <Icon className="h-4 w-4" aria-hidden />}
+                        {Icon && <Icon className="h-4 w-4" aria-hidden="true" />}
                         {opt.label}
                       </button>
                     );
@@ -260,7 +280,7 @@ export default function KitchenPage() {
                   className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
                   aria-label="Reset all filters"
                 >
-                  <RotateCcw className="h-4 w-4" aria-hidden />
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
                   Reset filters
                   <Badge variant="secondary" className="ml-0.5 px-1 py-0 text-[10px]">
                     {activeFilterCount}
@@ -276,7 +296,7 @@ export default function KitchenPage() {
               </span>
               {isFiltered && (
                 <span className="flex items-center gap-1 font-medium text-foreground">
-                  <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                   Filters applied
                 </span>
               )}
@@ -344,12 +364,12 @@ export default function KitchenPage() {
 
                               <div className="flex items-center gap-1.5">
                                 <Clock
-                                  className={`h-4 w-4 ${isUrgent ? 'text-amber-500 animate-pulse' : 'text-muted-foreground'} aria-hidden`}
-                                  aria-hidden
+                                  className={`h-4 w-4 ${isUrgent ? 'text-warning animate-pulse' : 'text-muted-foreground'}`}
+                                  aria-hidden="true"
                                 />
                                 <span
                                   className={`tabular text-xs font-medium ${
-                                    isUrgent ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'
+                                    isUrgent ? 'text-warning font-semibold' : 'text-muted-foreground'
                                   }`}
                                 >
                                   Waiting {ticket.minutesWaiting} min {isUrgent && '(Priority)'}
