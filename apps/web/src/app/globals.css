@@ -216,3 +216,24 @@
     }
   }
 }
+
+/*
+ * Receipt paper (Issue #78): a receipt is paper, so it is dark text on white in the preview
+ * dialog and on the printed page alike, whatever theme the app is in. The tokens are redefined
+ * on the element itself so every themed utility inside it (text-muted-foreground, border,
+ * bg-muted, text-primary) resolves to its light-mode value.
+ */
+.receipt-paper {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 4%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 30%;
+  --border: 240 6% 80%;
+  --primary: 240 10% 4%;
+  --primary-foreground: 0 0% 100%;
+  background-color: #ffffff;
+  color: #09090b;
+  color-scheme: light;
+}
