@@ -290,7 +290,7 @@ ALTER TABLE "employee_documents" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAU
 --> statement-breakpoint
 ALTER TABLE "employee_documents" ADD CONSTRAINT "employee_documents_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
-DO $ BEGIN
+DO $$ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'baseline_tenant') THEN
 		CREATE ROLE baseline_tenant NOLOGIN NOSUPERUSER NOBYPASSRLS;
 	END IF;

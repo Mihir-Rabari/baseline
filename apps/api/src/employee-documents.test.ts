@@ -170,7 +170,7 @@ describe('Employee documents (#65)', () => {
     expect(doc).toMatchObject({ employeeId: theirs.id, docType: 'ADDRESS_PROOF', fileName: 'passwd', contentType: 'image/png', sizeBytes: PNG.length });
     expect(created.body).not.toContain('employee-documents/'); // the storage key is never exposed
     const [row] = await fx.db.select().from(employeeDocuments).where(eq(employeeDocuments.id, doc.id));
-    expect(row.storageKey).toMatch(new RegExp(`^employee-documents/${theirs.id}/[0-9a-f-]{36}\\.png$`));
+    expect(row.storageKey).toMatch(new RegExp(`^tenants/[0-9a-f-]{36}/employee-documents/${theirs.id}/[0-9a-f-]{36}\\.png$`));
     expect(stored.get(row.storageKey)?.equals(PNG)).toBe(true);
 
     const listed = EmployeeDocumentListSchema.parse((await raw('GET', `/hr/employees/${theirs.id}/documents`, owner)).json());

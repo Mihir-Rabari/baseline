@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -28,9 +29,11 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
       expect(before).toHaveLength(0);
       await migrate(db, options);
       const firstJournal = await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`;
-      expect(firstJournal).toHaveLength(17);
+      // One row per journal entry, whatever the count is today.
+      const entries = (JSON.parse(readFileSync(fileURLToPath(new URL('../drizzle/meta/_journal.json', import.meta.url)), 'utf8')) as { entries: unknown[] }).entries;
+      expect(firstJournal).toHaveLength(entries.length);
       const firstTables = await isolated`SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`;
-      expect(firstTables).toHaveLength(57);
+      expect(firstTables).toHaveLength(60);
       expect(firstTables.map((row) => row.tablename)).toEqual(expect.arrayContaining([
         'users', 'system_settings', 'members', 'bookings', 'court_occupancies', 'payments', 'kitchen_tickets',
       ]));
