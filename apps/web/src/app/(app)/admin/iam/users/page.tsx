@@ -117,7 +117,7 @@ export default function UsersManagementPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Identity</TableHead>
+                  <TableHead>User</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
