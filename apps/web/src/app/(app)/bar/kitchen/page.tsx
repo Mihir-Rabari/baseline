@@ -13,6 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { KitchenCards } from '@/components/club/kitchen-views';
+import { ViewSwitcher, useViewPreference, type ViewKind } from '@/components/club/views';
+
+const KITCHEN_VIEWS: ViewKind[] = ['board', 'cards'];
 import {
   type KitchenFilters,
   type StationFilter,
@@ -33,6 +37,7 @@ const columns: Array<{ status: 'NEW' | 'PREPARING' | 'READY'; label: string; act
 export default function KitchenPage() {
   const { user, hasPermission } = useAuth();
   const { tickets, advance, canRead } = useKitchen();
+  const [view, setView] = useViewPreference('kitchen', KITCHEN_VIEWS, 'board');
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<KitchenFilters>(() => {
@@ -113,11 +118,14 @@ export default function KitchenPage() {
         title="Kitchen & Bar Tickets"
         description="Live order display with station routing, time warnings, and service tracking."
         actions={
-          hasPermission('bar:read') && (
-            <Button asChild variant="outline">
-              <Link href="/bar">Bar floor</Link>
-            </Button>
-          )
+          <>
+            <ViewSwitcher views={KITCHEN_VIEWS} value={view} onChange={setView} />
+            {hasPermission('bar:read') && (
+              <Button asChild variant="outline">
+                <Link href="/bar">Bar floor</Link>
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -296,6 +304,8 @@ export default function KitchenPage() {
                 </Button>
               }
             />
+          ) : view === 'cards' ? (
+            <KitchenCards tickets={filteredTickets} isPending={advance.isPending} activePendingId={advance.variables?.id} onMove={move} />
           ) : (
             <div
               className={`grid gap-4 ${
