@@ -16,17 +16,24 @@ import {
   EmployeeListSchema,
   EmployeeSchema,
   EmployeeProfileSchema,
+  EmployeeDocumentListSchema,
+  EmployeeDocumentSchema,
+  EMPLOYEE_DOCUMENT_CONTENT_TYPES,
+  MAX_EMPLOYEE_DOCUMENT_BYTES,
+  UploadEmployeeDocumentQuerySchema,
   HttpErrorResponseSchema,
   LeaveDecisionRequestSchema,
   LeaveListQuerySchema,
   LeaveRequestPageSchema,
   LeaveRequestSchema,
   MyLeaveQuerySchema,
+  MyLeavePageSchema,
   PayrollSummaryQuerySchema,
   PayrollSummarySchema,
   UpdateEmployeeRequestSchema,
   UuidSchema,
 } from '@packages/validation';
+import { EmployeeDocumentService } from '../../services/employee-document.service.js';
 import { HrService } from '../../services/hr.service.js';
 import { PayrollService } from '../../services/payroll.service.js';
 
@@ -38,6 +45,7 @@ const errors = { 400: HttpErrorResponseSchema, 404: HttpErrorResponseSchema, 409
 export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
   const service = new HrService(fastify.db, fastify.env.CLUB_TIMEZONE);
   const payroll = new PayrollService(fastify.db, fastify.env.CLUB_TIMEZONE, fastify.env.SESSION_SECRET);
+  const documents = new EmployeeDocumentService(fastify.db, fastify.storage);
   const self = (action: 'leave:read:self' | 'leave:create:self') =>
     requirePermission(action, (req) => ({ resourceOwnerId: req.user?.id }));
 
@@ -125,11 +133,11 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [requirePermission('leave:decide')],
       schema: {
-        description: 'Approve or reject a pending leave request. Approved leave may not overlap other approved leave.',
+        description: 'Approve or reject a pending leave request. Approved leave may not overlap other approved leave, and may not exceed the yearly allowance (422).',
         tags: ['HR'],
         params: IdParam,
         body: LeaveDecisionRequestSchema,
-        response: { 200: LeaveRequestSchema, ...errors },
+        response: { 200: LeaveRequestSchema, 422: HttpErrorResponseSchema, ...errors },
       },
     },
     async (request, reply) => {
@@ -150,10 +158,10 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [self('leave:read:self')],
       schema: {
-        description: 'Your own leave requests.',
+        description: 'Your own leave requests, with your leave balance for this year (allowance, taken, pending, remaining).',
         tags: ['HR'],
         querystring: MyLeaveQuerySchema,
-        response: { 200: LeaveRequestPageSchema, 400: errors[400], ...authErrors },
+        response: { 200: MyLeavePageSchema, 400: errors[400], ...authErrors },
       },
     },
     async (request, reply) => reply.send(await service.listMyLeave(request.user!.id, request.query.page, request.query.limit))
@@ -164,10 +172,10 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [self('leave:create:self')],
       schema: {
-        description: 'Ask for leave. Owners are notified.',
+        description: 'Ask for leave. Owners are notified. 422 when it would take you past your yearly allowance.',
         tags: ['HR'],
         body: CreateLeaveRequestSchema,
-        response: { 201: LeaveRequestSchema, ...errors },
+        response: { 201: LeaveRequestSchema, 422: HttpErrorResponseSchema, ...errors },
       },
     },
     async (request, reply) => {
@@ -296,6 +304,73 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const run = await payroll.markPaid(request.params.id);
       await fastify.iamService.logAuditEvent({ action: 'PAYROLL_RUN_PAID', actor: request.user!.id, target: run.id, details: { month: run.month } });
       return reply.header('cache-control', 'no-store').send(run);
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // Employee documents (ID proof, contract...). Owner only. The file is the raw request body; its type
+  // is decided from its own bytes, and downloads are always attachments.
+  // ---------------------------------------------------------------------------
+  for (const type of EMPLOYEE_DOCUMENT_CONTENT_TYPES) {
+    fastify.addContentTypeParser(type, { parseAs: 'buffer', bodyLimit: MAX_EMPLOYEE_DOCUMENT_BYTES }, (_req, body, done) => done(null, body));
+  }
+  const DocParam = z.object({ id: UuidSchema, docId: UuidSchema });
+  const docErrors = { 413: HttpErrorResponseSchema, 415: HttpErrorResponseSchema, 422: HttpErrorResponseSchema, ...errors };
+
+  fastify.get(
+    '/hr/employees/:id/documents',
+    {
+      preHandler: manage,
+      schema: { description: "An employee's documents, newest first.", tags: ['HR'], params: IdParam, response: { 200: EmployeeDocumentListSchema, ...errors } },
+    },
+    async (request, reply) => reply.header('cache-control', 'no-store').send(await documents.list(request.params.id))
+  );
+
+  fastify.post(
+    '/hr/employees/:id/documents',
+    {
+      bodyLimit: MAX_EMPLOYEE_DOCUMENT_BYTES,
+      preHandler: manage,
+      schema: {
+        description: 'Upload one document (PDF, JPEG, PNG or WebP, at most 10 MB) as the raw request body.',
+        tags: ['HR'],
+        params: IdParam,
+        querystring: UploadEmployeeDocumentQuerySchema,
+        response: { 201: EmployeeDocumentSchema, ...docErrors },
+      },
+    },
+    async (request, reply) => {
+      const declared = String(request.headers['content-type'] ?? '').split(';')[0].trim();
+      const doc = await documents.upload(request.params.id, request.query, request.body, declared, request.user!.id);
+      await fastify.iamService.logAuditEvent({ action: 'EMPLOYEE_DOCUMENT_ADDED', actor: request.user!.id, target: request.params.id, details: { documentId: doc.id, docType: doc.docType } });
+      request.log.info({ employeeId: doc.employeeId, documentId: doc.id, bytes: doc.sizeBytes, actorId: request.user!.id }, 'Employee document uploaded');
+      return reply.status(201).header('cache-control', 'no-store').send(doc);
+    }
+  );
+
+  fastify.get(
+    '/hr/employees/:id/documents/:docId/download',
+    { preHandler: manage, schema: { description: 'Download one document as an attachment.', tags: ['HR'], params: DocParam, response: errors } },
+    async (request, reply) => {
+      const { doc, bytes } = await documents.download(request.params.id, request.params.docId);
+      const ascii = doc.fileName.replace(/[^ -~]/g, '_').replace(/"/g, '_');
+      return reply
+        .header('content-type', doc.contentType)
+        .header('content-disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`)
+        .header('cache-control', 'no-store')
+        .header('x-content-type-options', 'nosniff')
+        .header('content-security-policy', "default-src 'none'; sandbox")
+        .send(bytes as never);
+    }
+  );
+
+  fastify.delete(
+    '/hr/employees/:id/documents/:docId',
+    { preHandler: manage, schema: { description: 'Delete one document and its stored file.', tags: ['HR'], params: DocParam, response: { 204: z.null(), ...errors } } },
+    async (request, reply) => {
+      const doc = await documents.remove(request.params.id, request.params.docId);
+      await fastify.iamService.logAuditEvent({ action: 'EMPLOYEE_DOCUMENT_DELETED', actor: request.user!.id, target: request.params.id, details: { documentId: doc.id, docType: doc.docType } });
+      return reply.status(204).send(null);
     }
   );
 

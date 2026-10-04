@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilitySchema } from '@packages/validation';
 import { ApiError } from '@/lib/api-client';
@@ -22,6 +22,7 @@ vi.mock('@/hooks/use-availability', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+function payInDialog(label = 'Pay ₹600') { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: label })); }
 function chooseFree() { fireEvent.click(screen.getByRole('button', { name: 'Tennis Court 1, 8:30 am, ₹600' })); }
 function guest() {
   fireEvent.change(screen.getByLabelText('Guest name'), { target: { value: 'Riya Patel' } });
@@ -33,24 +34,44 @@ describe('booking calendar', () => {
     Object.assign(state, { staff: false, read: true, book: true, data: AvailabilitySchema.parse(fixture), error: null, pending: false, fetching: false, submitting: false });
     state.mutation.mockResolvedValue({ court: { name: 'Tennis Court 1' }, startsAt: fixture.courts[0].slots[0].startsAt });
   });
-  it('opens checkout dialog for member, pays in full via UPI and clears selection', async () => {
+  it('books for the caller without staff fields and clears selection after success', async () => {
     render(<CourtsPage />); chooseFree();
-    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
-    expect(screen.getByRole('heading', { name: 'Court checkout' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Pay ₹600' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book court' })); payInDialog();
     await waitFor(() => expect(state.mutation).toHaveBeenCalledWith({ social: false, data: { courtId: fixture.courts[0].courtId, startsAt: fixture.courts[0].slots[0].startsAt, channel: 'ONLINE', payNow: { method: 'UPI' } } }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument());
     expect(screen.queryByLabelText('Guest name')).not.toBeInTheDocument();
   });
-  it('allows member to pay 20% promise fee in cash via checkout dialog', async () => {
+  it('shows what a member pays now and what is left for the club before booking, per method', async () => {
     render(<CourtsPage />); chooseFree();
     fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
-    expect(screen.getByRole('heading', { name: 'Court checkout' })).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Cash'));
-    expect(screen.getByText(/20% promise fee/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Pay ₹120' }));
-    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith({ social: false, data: { courtId: fixture.courts[0].courtId, startsAt: fixture.courts[0].slots[0].startsAt, channel: 'ONLINE', payNow: { method: 'CASH' } } }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument());
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Pay now').nextSibling).toHaveTextContent('₹600');
+    expect(within(dialog).queryByText('Pay later')).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Cash' }));
+    expect(within(dialog).getByText('Pay now').nextSibling).toHaveTextContent('₹120');
+    expect(within(dialog).getByText('Pay later').nextSibling).toHaveTextContent('₹480');
+    expect(within(dialog).getByText(/20% promise fee/)).toBeInTheDocument();
+    expect(state.mutation).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pay ₹120' }));
+    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ channel: 'ONLINE', payNow: { method: 'CASH' } }) })));
+  });
+  it('keeps the payment dialog open with the reason when the booking is refused, and sends nothing on cancel', async () => {
+    state.mutation.mockRejectedValue(new ApiError('Payment provider is unavailable', 502, 'PAYMENT_FAILED'));
+    render(<CourtsPage />); chooseFree();
+    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
+    payInDialog();
+    expect(await within(await screen.findByRole('dialog')).findByRole('alert')).toHaveTextContent('Payment provider is unavailable');
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(state.mutation).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Book court' })).toBeInTheDocument();
+  });
+  it('books a free session straight away and never opens payment for staff', async () => {
+    const free = structuredClone(fixture); free.courts[0].slots[0].pricePaise = 0; state.data = free;
+    render(<CourtsPage />); fireEvent.click(screen.getByRole('button', { name: /Tennis Court 1, 8:30 am/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
+    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith({ social: false, data: { courtId: fixture.courts[0].courtId, startsAt: fixture.courts[0].slots[0].startsAt, channel: 'ONLINE' } }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('validates walk-in details, retries and includes immediate payment for staff', async () => {
     state.staff = true; render(<CourtsPage />); chooseFree();
@@ -80,19 +101,16 @@ describe('booking calendar', () => {
   });
   it('refetches and clears a slot lost to a concurrent booking', async () => {
     state.mutation.mockRejectedValue(new ApiError('Taken', 409, 'SLOT_TAKEN'));
-    render(<CourtsPage />); chooseFree();
-    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pay ₹600' }));
+    render(<CourtsPage />); chooseFree(); fireEvent.click(screen.getByRole('button', { name: 'Book court' })); payInDialog();
     await waitFor(() => expect(state.refetch).toHaveBeenCalledOnce());
     expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument();
   });
   it('shows daily-limit errors and prevents booking when quota is already used', async () => {
     state.mutation.mockRejectedValue(new ApiError('Daily quota reached', 422, 'DAILY_LIMIT_REACHED'));
-    const { rerender } = render(<CourtsPage />); chooseFree();
-    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pay ₹600' }));
+    const { rerender } = render(<CourtsPage />); chooseFree(); fireEvent.click(screen.getByRole('button', { name: 'Book court' })); payInDialog();
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Daily quota reached'));
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     state.data = { ...fixture, limits: { usedToday: 2, maxPerDay: 2 } }; rerender(<CourtsPage />);
     expect(screen.getByRole('button', { name: 'Book court' })).toBeDisabled();
   });

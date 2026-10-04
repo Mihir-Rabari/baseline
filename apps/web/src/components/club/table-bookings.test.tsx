@@ -120,6 +120,26 @@ describe('table bookings', () => {
     expect(screen.getByTestId('track-T1')).toBeInTheDocument();
   });
 
+  it('refuses to book over an existing booking before calling the server', async () => {
+    render(<TableBookings tables={tables} canManage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Book a table' }));
+    fireEvent.change(screen.getByLabelText('Guest name'), { target: { value: 'Clash' } });
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '18:30' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '19:30' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Book table' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('already booked for Asha');
+    expect(state.post).not.toHaveBeenCalled();
+  });
+
+  it('seats the guest then hands off to open a tab', async () => {
+    const onOpenTab = vi.fn();
+    render(<TableBookings tables={tables} canManage onOpenTab={onOpenTab} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Asha/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Seat and open tab' }));
+    await waitFor(() => expect(onOpenTab).toHaveBeenCalledWith(expect.objectContaining({ id: T1 }), 'Asha', undefined));
+    expect(state.put).toHaveBeenCalledWith({ id: 'b1', status: 'SEATED' });
+  });
+
   it('shows an empty-day message in the list view', () => {
     state.bookings = [];
     render(<TableBookings tables={tables} canManage />);

@@ -15,6 +15,13 @@ describe('report breakdown', () => {
     expect(within(screen.getByRole('region', { name: 'Payroll' })).getByText('Front desk')).toBeInTheDocument();
   });
 
+  it('ties payroll runs and approved leave into the payroll area', () => {
+    render(<BreakdownSections r={mockBreakdown('today')} />);
+    const payroll = within(screen.getByRole('region', { name: 'Payroll' }));
+    expect(payroll.getByText('2030-03 (Paid)')).toBeInTheDocument();
+    expect(payroll.getByText('5 approved leave days in this period')).toBeInTheDocument();
+  });
+
   it('says so when an area has nothing to show', () => {
     const empty = { ...mockBreakdown('today'), bookings: { total: 0, cancelled: 0, bookedValuePaise: 0, bySport: [], byChannel: [], byCourt: [] }, inventory: { stockValuePaise: 0, unitsSold: 0, lowStock: [] } };
     render(<BreakdownSections r={empty} />);

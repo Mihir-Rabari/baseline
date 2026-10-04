@@ -65,13 +65,17 @@ function create(input: CreateBookingRequest, kind: 'STANDARD' | 'SOCIAL' | 'TRIA
   const baseRate = kind === 'SOCIAL' ? friday.courts.find((item) => item.courtId === input.courtId)?.slots.find((item) => item.startsAt.slice(11) === input.startsAt.slice(11))?.pricePaise ?? slot.pricePaise : club.courtTypes.find((type) => type.code === court.type)?.baseRatePaise ?? slot.pricePaise;
   const price = kind === 'TRIAL' ? club.courtTypes.find((type) => type.code === court.type)?.trialFeePaise ?? 19900 : slot.pricePaise;
   const subject = member ?? (input.guest ? undefined : mockMyMember());
+  // Online cash collects only the promise fee now; every other method pays in full.
+  const paying = kind !== 'SOCIAL' && Boolean(input.payNow) && price > 0;
+  const paidPaise = !paying ? 0 : input.payNow!.method === 'CASH' && input.channel === 'ONLINE' ? promiseFeePaise(price) : price;
   const booking = BookingSchema.parse({
     id: crypto.randomUUID(), court: { id: court.courtId, name: court.name, type: court.type }, kind,
     member: subject ? { id: subject.id, memberCode: subject.memberCode, fullName: subject.fullName } : null,
     guest: input.guest ?? null, startsAt: slot.startsAt, endsAt: slot.endsAt, bookingDate: date,
     status: 'CONFIRMED', cancelledLate: false, channel: kind === 'TRIAL' ? 'WEBSITE_TRIAL' : input.channel ?? 'DESK',
     basePricePaise: baseRate, discountPct: discount, pricePaise: price,
-    paymentStatus: price === 0 ? 'WAIVED' : kind !== 'SOCIAL' && input.payNow ? (input.payNow.method === 'CASH' ? 'PARTIAL' : 'PAID') : 'UNPAID',
+    paidPaise,
+    paymentStatus: price === 0 ? 'WAIVED' : paying ? (paidPaise < price ? 'PARTIAL' : 'PAID') : 'UNPAID',
     socialSessionId: kind === 'SOCIAL' ? slot.socialSessionId ?? crypto.randomUUID() : null, createdAt: new Date().toISOString(),
   });
   mockBookingStore.push(booking);
@@ -101,7 +105,7 @@ function allBookings() {
     const me = mockMyMember(); const court = standard.courts[0]; const hour = 3600000;
     const make = (hours: number, status: Booking['status'], paymentStatus: Booking['paymentStatus']) => {
       const start = new Date(Math.ceil((Date.now() + hours * hour) / hour) * hour);
-      return BookingSchema.parse({ id: crypto.randomUUID(), court: { id: court.courtId, name: court.name, type: court.type }, kind: 'STANDARD', member: { id: me.id, memberCode: me.memberCode, fullName: me.fullName }, guest: null, startsAt: start.toISOString(), endsAt: new Date(start.getTime() + hour).toISOString(), bookingDate: calendarDate(start), status, cancelledLate: false, channel: 'ONLINE', basePricePaise: 60000, discountPct: 0, pricePaise: 60000, paymentStatus, socialSessionId: null, createdAt: new Date(Date.now() - 48 * hour).toISOString() });
+      return BookingSchema.parse({ id: crypto.randomUUID(), court: { id: court.courtId, name: court.name, type: court.type }, kind: 'STANDARD', member: { id: me.id, memberCode: me.memberCode, fullName: me.fullName }, guest: null, startsAt: start.toISOString(), endsAt: new Date(start.getTime() + hour).toISOString(), bookingDate: calendarDate(start), status, cancelledLate: false, channel: 'ONLINE', basePricePaise: 60000, discountPct: 0, pricePaise: 60000, paidPaise: paymentStatus === 'PAID' ? 60000 : paymentStatus === 'PARTIAL' ? 12000 : 0, paymentStatus, socialSessionId: null, createdAt: new Date(Date.now() - 48 * hour).toISOString() });
     };
     mockBookingStore.push(make(0.2, 'CONFIRMED', 'UNPAID'), make(28, 'CONFIRMED', 'PAID'), make(75, 'CONFIRMED', 'UNPAID'), make(-30, 'COMPLETED', 'PAID'), make(-54, 'CANCELLED', 'REFUNDED'), make(-100, 'NO_SHOW', 'UNPAID'));
   }

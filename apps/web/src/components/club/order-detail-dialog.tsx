@@ -38,7 +38,7 @@ export function OrderDetailDialog({
             <DialogTitle className="font-mono text-xl">{order.orderNumber}</DialogTitle>
             <div className="flex items-center gap-2">
               <Badge variant={isPos ? 'default' : 'outline'}>
-                {isPos ? 'Counter POS' : order.fulfilment === 'DELIVERY' ? 'Delivery' : 'Pickup'}
+                {isPos ? 'Counter sale' : order.fulfilment === 'DELIVERY' ? 'Delivery' : 'Pickup'}
               </Badge>
               <StatusBadge kind="order" value={order.status} />
             </div>
@@ -54,7 +54,7 @@ export function OrderDetailDialog({
           <p className="text-xs text-neutral-600">Placed on {order.createdAt ? formatDateTime(order.createdAt) : ''}</p>
         </div>
 
-        <div className="space-y-4 py-2 text-sm" data-testid="order-receipt-content">
+        <div className="receipt-paper space-y-4 rounded-lg border p-3 text-sm" data-testid="order-receipt-content">
           {/* Customer info */}
           <div className="rounded-lg border bg-muted/20 p-3 space-y-1 print:border-neutral-300 print:bg-white print:text-black">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider print:text-neutral-700">

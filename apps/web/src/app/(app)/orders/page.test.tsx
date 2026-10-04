@@ -141,8 +141,8 @@ describe('Orders Page & Board Layout (Issue #72)', () => {
       { timeout: 5000 }
     );
 
-    // Switch to POS / Counter
-    fireEvent.click(screen.getByRole('button', { name: 'POS / Counter' }));
+    // Switch to Counter sales
+    fireEvent.click(screen.getByRole('button', { name: 'Counter sales' }));
     expect(screen.getByText('ORD-002')).toBeInTheDocument();
     expect(screen.queryByText('ORD-001')).not.toBeInTheDocument();
 
@@ -172,7 +172,7 @@ describe('Orders Page & Board Layout (Issue #72)', () => {
     expect(screen.getByRole('listitem', { name: 'Ready for pickup' })).toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'Out for delivery' })).toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'Done' })).toBeInTheDocument();
-    expect(screen.getByRole('listitem', { name: 'POS / Counter' })).toBeInTheDocument();
+    expect(screen.getByRole('listitem', { name: 'Counter sales' })).toBeInTheDocument();
   });
 
   it('separates POS counter orders into dedicated POS column instead of oversized Done column (Issue #72)', async () => {
@@ -190,8 +190,8 @@ describe('Orders Page & Board Layout (Issue #72)', () => {
     const placedColumn = screen.getByRole('listitem', { name: 'Placed' });
     expect(placedColumn).toHaveTextContent('ORD-001');
 
-    // ORD-002 is POS COMPLETED -> must be in POS / Counter column, NOT Done column
-    const posColumn = screen.getByRole('listitem', { name: 'POS / Counter' });
+    // ORD-002 is POS COMPLETED -> must be in Counter sales column, NOT Done column
+    const posColumn = screen.getByRole('listitem', { name: 'Counter sales' });
     expect(posColumn).toHaveTextContent('ORD-002');
 
     const doneColumn = screen.getByRole('listitem', { name: 'Done' });

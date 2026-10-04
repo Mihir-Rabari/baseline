@@ -102,18 +102,16 @@ describe('bookings page', () => {
     expect(screen.queryByRole('button', { name: /^Cancel Tennis/ })).not.toBeInTheDocument();
   });
 
-  it('displays partial payment badge (Paid X, due Y) across table, cards and calendar views', () => {
-    state.mine = page([booking('b5', 2, { pricePaise: 60000, paymentStatus: 'PARTIAL' })]);
+  it('shows paid and due on a part-paid booking only', () => {
+    state.mine = page([booking('b1', 30, { paymentStatus: 'PARTIAL' }), booking('b2', 40, { paymentStatus: 'PAID' }), booking('b3', 50)]);
     render(<BookingsPage />);
-    // In table view (default)
-    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
+    expect(screen.getAllByText(/^Paid /)).toHaveLength(1);
+    expect(screen.getByText('Paid ₹120, due ₹480')).toBeInTheDocument();
+  });
 
-    // Switch to cards view
-    fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
-    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
-
-    // Switch to calendar view
-    fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
-    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
+  it('shows paid and due to the front desk on the day list too', () => {
+    state.staff = true; state.day = page([booking('b1', 3, { paymentStatus: 'PARTIAL', pricePaise: 100000 })]);
+    render(<BookingsPage />);
+    expect(screen.getByText('Paid ₹200, due ₹800')).toBeInTheDocument();
   });
 });

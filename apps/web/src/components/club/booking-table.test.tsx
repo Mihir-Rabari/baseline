@@ -1,67 +1,22 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import type { Booking } from '@packages/validation';
-import { BookingTable, BookingCards } from './booking-table';
+import { BookingCards } from './booking-table';
 
-function makeBooking(extra: Partial<Booking> = {}): Booking {
-  const start = new Date(Date.now() + 24 * 3600000).toISOString();
-  const end = new Date(Date.now() + 25 * 3600000).toISOString();
-  return {
-    id: 'b1',
-    court: { id: 'c1', name: 'Tennis Court 1', type: 'TENNIS' },
-    kind: 'STANDARD',
-    member: { id: 'm1', memberCode: 'CC-1', fullName: 'Aarav Mehta' },
-    guest: null,
-    startsAt: start,
-    endsAt: end,
-    bookingDate: '2026-10-05',
-    status: 'CONFIRMED',
-    cancelledLate: false,
-    channel: 'ONLINE',
-    basePricePaise: 60000,
-    discountPct: 0,
-    pricePaise: 60000,
-    paymentStatus: 'UNPAID',
-    socialSessionId: null,
-    createdAt: start,
-    ...extra,
-  };
-}
+const booking = (paymentStatus: Booking['paymentStatus']) => ({
+  id: 'b0000000-0000-4000-8000-000000000001', court: { id: 'c0000000-0000-4000-8000-000000000001', name: 'Padel 1', type: 'PADEL' }, kind: 'STANDARD', member: null, guest: { name: 'Riya', phone: '9876543210' },
+  startsAt: '2030-01-10T04:30:00.000Z', endsAt: '2030-01-10T05:30:00.000Z', bookingDate: '2030-01-10', status: 'CONFIRMED', cancelledLate: false, channel: 'WEBSITE_TRIAL',
+  basePricePaise: 100000, discountPct: 0, pricePaise: 100000, paymentStatus, socialSessionId: null, createdAt: '2030-01-01T00:00:00.000Z',
+}) as Booking;
 
-describe('BookingTable and BookingCards', () => {
-  it('renders booking table with status badge and price', () => {
-    const onCancel = vi.fn();
-    render(<BookingTable bookings={[makeBooking()]} showWho onCancel={onCancel} />);
-
-    expect(screen.getByText('Tennis Court 1')).toBeInTheDocument();
-    expect(screen.getByText('Aarav Mehta')).toBeInTheDocument();
-    expect(screen.getByText('₹600')).toBeInTheDocument();
-    expect(screen.getByText('Confirmed')).toBeInTheDocument();
-
-    const cancelBtn = screen.getByRole('button', { name: /^Cancel Tennis Court 1/ });
-    fireEvent.click(cancelBtn);
-    expect(onCancel).toHaveBeenCalledOnce();
+describe('booking cards', () => {
+  it('shows paid and due for a part-paid booking', () => {
+    render(<BookingCards bookings={[booking('PARTIAL')]} />);
+    expect(screen.getByText('Paid ₹200, due ₹800')).toBeInTheDocument();
   });
-
-  it('renders "Paid X, due Y" warning badge in BookingTable when paymentStatus is PARTIAL', () => {
-    render(<BookingTable bookings={[makeBooking({ paymentStatus: 'PARTIAL', pricePaise: 60000 })]} />);
-
-    expect(screen.getByText('Confirmed')).toBeInTheDocument();
-    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
-  });
-
-  it('renders "Paid X, due Y" warning badge in BookingCards when paymentStatus is PARTIAL', () => {
-    const onCancel = vi.fn();
-    render(<BookingCards bookings={[makeBooking({ paymentStatus: 'PARTIAL', pricePaise: 60000 })]} showWho onCancel={onCancel} />);
-
-    expect(screen.getByText('Tennis Court 1')).toBeInTheDocument();
-    expect(screen.getByText('Aarav Mehta')).toBeInTheDocument();
-    expect(screen.getByText('Confirmed')).toBeInTheDocument();
-    expect(screen.getByText(/Paid ₹120, due ₹480/)).toBeInTheDocument();
-
-    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
-    fireEvent.click(cancelBtn);
-    expect(onCancel).toHaveBeenCalledOnce();
+  it.each(['PAID', 'UNPAID', 'WAIVED', 'REFUNDED'] as const)('shows nothing extra when %s', (status) => {
+    render(<BookingCards bookings={[booking(status)]} />);
+    expect(screen.queryByText(/^Paid /)).not.toBeInTheDocument();
   });
 });
