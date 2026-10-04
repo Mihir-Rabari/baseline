@@ -113,7 +113,15 @@ describe('Image uploads (#80)', () => {
     for (const url of [`/api/v1/media/product/..%2F..%2Fetc%2Fpasswd`, `/api/v1/media/product/${id}.svg`, `/api/v1/media/product/${id}.html`, `/api/v1/media/product/${id}.png.exe`, `/api/v1/media/secrets/${id}.png`, '/api/v1/media/product/x.png']) {
       expect((await app.inject({ method: 'GET', url })).statusCode, url).toBe(400);
     }
-    expect((await app.inject({ method: 'GET', url: `/api/v1/media/product/${id}.png` })).statusCode).toBe(404);
+    // A well-formed name for an object that does not exist is a 404. Use an empty in-memory store so the
+    // result never depends on MinIO being reachable (without it the real client throws and the route is a 500).
+    const real = app.storage;
+    (app as unknown as { storage: unknown }).storage = { get: async () => null };
+    try {
+      expect((await app.inject({ method: 'GET', url: `/api/v1/media/product/${id}.png` })).statusCode).toBe(404);
+    } finally {
+      (app as unknown as { storage: unknown }).storage = real;
+    }
   });
 
   it('accepts an uploaded or https image on a product, and rejects script URLs', async (ctx) => {

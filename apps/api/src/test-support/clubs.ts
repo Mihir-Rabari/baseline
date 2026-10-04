@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { eq, like } from 'drizzle-orm';
 import { getDb, roles, runInTenant, runUnscoped, tenantDomains, tenants, userRoles } from '@packages/db';
 
@@ -36,7 +36,7 @@ export class ClubFixtures {
     return { 'x-tenant-host': club.host, ...(actor ? { cookie: actor.cookie } : {}) };
   }
 
-  request(club: Pick<Club, 'host'>, method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, actor?: ClubActor, payload?: object, extra: Record<string, string> = {}): ReturnType<FastifyInstance['inject']> {
+  request(club: Pick<Club, 'host'>, method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, actor?: ClubActor, payload?: object, extra: Record<string, string> = {}): Promise<LightMyRequestResponse> {
     return this.app.inject({
       method,
       url: url.startsWith('/api') ? url : `/api/v1${url}`,
