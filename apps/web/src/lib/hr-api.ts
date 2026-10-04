@@ -1,6 +1,6 @@
 import {
   EmployeeListSchema, EmployeeSchema, ShiftListSchema, ShiftSchema, CurrentShiftSchema,
-  LeaveRequestPageSchema, LeaveRequestSchema, PayrollSummarySchema, SuccessMessageSchema,
+  LeaveRequestPageSchema, LeaveRequestSchema, MyLeavePageSchema, PayrollSummarySchema, SuccessMessageSchema,
   type CreateEmployeeRequest, type UpdateEmployeeRequest, type CreateShiftRequest, type ShiftListQuery,
   type CreateLeaveRequest, type LeaveDecisionRequest, type LeaveStatus,
 } from '@packages/validation';
@@ -21,7 +21,7 @@ export const hrApi = {
   currentShift: async () => CurrentShiftSchema.parse(USE_MOCKS ? await mock(hrMock.currentShift()) : await fetchApi('/api/v1/me/shift/current')),
   clockIn: async (id: string) => ShiftSchema.parse(USE_MOCKS ? await mock(hrMock.clock(id)) : await fetchApi(`/api/v1/shifts/${encodeURIComponent(id)}/clock-in`, { method: 'POST' })),
   clockOut: async (id: string) => ShiftSchema.parse(USE_MOCKS ? await mock(hrMock.clock(id, true)) : await fetchApi(`/api/v1/shifts/${encodeURIComponent(id)}/clock-out`, { method: 'POST' })),
-  leave: async (page = 1, own = false, status?: LeaveStatus) => LeaveRequestPageSchema.parse(USE_MOCKS ? await mock(hrMock.leave(page, own, status)) : await fetchApi(`/api/v1/${own ? 'me' : 'hr'}/leave?page=${page}&limit=20${status ? `&status=${status}` : ''}`)),
+  leave: async (page = 1, own = false, status?: LeaveStatus) => (own ? MyLeavePageSchema : LeaveRequestPageSchema).parse(USE_MOCKS ? await mock(hrMock.leave(page, own, status)) : await fetchApi(`/api/v1/${own ? 'me' : 'hr'}/leave?page=${page}&limit=20${status ? `&status=${status}` : ''}`)),
   requestLeave: async (data: CreateLeaveRequest) => LeaveRequestSchema.parse(USE_MOCKS ? await mock(hrMock.requestLeave(data)) : await fetchApi('/api/v1/me/leave', { method: 'POST', body: json(data) })),
   decide: async (id: string, data: LeaveDecisionRequest) => LeaveRequestSchema.parse(USE_MOCKS ? await mock(hrMock.decide(id, data)) : await fetchApi(`/api/v1/hr/leave/${encodeURIComponent(id)}/decision`, { method: 'POST', body: json(data) })),
   payroll: async (month: string) => PayrollSummarySchema.parse(USE_MOCKS ? await mock(hrMock.payroll(month)) : await fetchApi(`/api/v1/hr/payroll-summary?month=${encodeURIComponent(month)}`)),

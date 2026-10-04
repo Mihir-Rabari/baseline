@@ -27,6 +27,7 @@ import {
   LeaveRequestPageSchema,
   LeaveRequestSchema,
   MyLeaveQuerySchema,
+  MyLeavePageSchema,
   PayrollSummaryQuerySchema,
   PayrollSummarySchema,
   UpdateEmployeeRequestSchema,
@@ -132,11 +133,11 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [requirePermission('leave:decide')],
       schema: {
-        description: 'Approve or reject a pending leave request. Approved leave may not overlap other approved leave.',
+        description: 'Approve or reject a pending leave request. Approved leave may not overlap other approved leave, and may not exceed the yearly allowance (422).',
         tags: ['HR'],
         params: IdParam,
         body: LeaveDecisionRequestSchema,
-        response: { 200: LeaveRequestSchema, ...errors },
+        response: { 200: LeaveRequestSchema, 422: HttpErrorResponseSchema, ...errors },
       },
     },
     async (request, reply) => {
@@ -157,10 +158,10 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [self('leave:read:self')],
       schema: {
-        description: 'Your own leave requests.',
+        description: 'Your own leave requests, with your leave balance for this year (allowance, taken, pending, remaining).',
         tags: ['HR'],
         querystring: MyLeaveQuerySchema,
-        response: { 200: LeaveRequestPageSchema, 400: errors[400], ...authErrors },
+        response: { 200: MyLeavePageSchema, 400: errors[400], ...authErrors },
       },
     },
     async (request, reply) => reply.send(await service.listMyLeave(request.user!.id, request.query.page, request.query.limit))
@@ -171,10 +172,10 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [self('leave:create:self')],
       schema: {
-        description: 'Ask for leave. Owners are notified.',
+        description: 'Ask for leave. Owners are notified. 422 when it would take you past your yearly allowance.',
         tags: ['HR'],
         body: CreateLeaveRequestSchema,
-        response: { 201: LeaveRequestSchema, ...errors },
+        response: { 201: LeaveRequestSchema, 422: HttpErrorResponseSchema, ...errors },
       },
     },
     async (request, reply) => {

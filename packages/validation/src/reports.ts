@@ -191,6 +191,18 @@ export const ReportBreakdownSchema = z.object({
     monthlyPayrollPaise: PaiseSchema,
     pendingLeave: z.number().int().min(0),
     byDepartment: z.array(z.object({ department: z.string(), employees: z.number().int().min(0), monthlyPaise: PaiseSchema })),
+    /** Payroll runs whose month falls inside the range, so the report ties to what was really paid. */
+    runs: z.array(
+      z.object({
+        month: z.string(),
+        status: z.string(),
+        payslips: z.number().int().min(0),
+        netPaise: PaiseSchema,
+        leaveDeductionPaise: PaiseSchema,
+        unpaidLeaveDays: z.number().int().min(0),
+      })
+    ),
+    approvedLeaveDays: z.number().int().min(0),
   }),
 });
 export type ReportBreakdown = z.infer<typeof ReportBreakdownSchema>;
