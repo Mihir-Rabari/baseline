@@ -45,6 +45,7 @@ export const courts = pgTable(
     name: varchar('name', { length: 64 }).notNull().unique(), // "Tennis Court 1"
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: smallint('sort_order').notNull().default(0),
+    imageUrl: varchar('image_url', { length: 512 }),
     createdAt: createdAt(),
   },
   (t) => [index('idx_courts_type').on(t.courtTypeId)]

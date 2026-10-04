@@ -7,24 +7,27 @@ import { useAuth } from '@/hooks/use-auth';
 import { useOpsMutation, useOpsQuery } from '@/hooks/use-ops';
 import { slugify } from '@/lib/club-site';
 import { Field, errorText } from '@/components/club/form-dialog';
+import { ImageUploader } from '@/components/club/image-uploader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
 function ClubProfileFields({ club, canEdit }: { club: PublicClub; canEdit: boolean }) {
   const [form, setForm] = useState({ name: club.name, tagline: club.tagline, phone: club.phone, address: club.address });
+  const [logo, setLogo] = useState<string | null>(club.logoUrl ?? null);
   const [error, setError] = useState<string | null>(null);
   const save = useOpsMutation<ClubProfile, object>('put', ['club', 'public'], () => '/club/profile');
-  const dirty = form.name !== club.name || form.tagline !== club.tagline || form.phone !== club.phone || form.address !== club.address;
+  const dirty = form.name !== club.name || form.tagline !== club.tagline || form.phone !== club.phone || form.address !== club.address || logo !== (club.logoUrl ?? null);
   const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: event.target.value });
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     if (!form.name.trim()) return setError('The club needs a name.');
-    try { await save.mutateAsync({ name: form.name.trim(), tagline: form.tagline.trim(), phone: form.phone.trim(), address: form.address.trim() }); toast.success('Club details saved'); }
+    try { await save.mutateAsync({ name: form.name.trim(), tagline: form.tagline.trim(), phone: form.phone.trim(), address: form.address.trim(), logoUrl: logo }); toast.success('Club details saved'); }
     catch (caught) { setError(errorText(caught, 'Could not save the club details.')); }
   }
   return (
     <form onSubmit={(event) => { void submit(event); }} noValidate className="space-y-4 rounded-lg border p-5">
+      <ImageUploader kind="club" label="Club logo" value={logo} onChange={setLogo} disabled={!canEdit} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="club-name" label="Club name" value={form.name} onChange={set('name')} disabled={!canEdit} hint={`The website address is /site/${slugify(form.name) || '…'}`} />
         <Field id="club-tagline" label="Tagline" value={form.tagline} onChange={set('tagline')} disabled={!canEdit} hint="The headline on the website." />

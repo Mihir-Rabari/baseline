@@ -60,7 +60,7 @@ describe('court management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Padel 1' }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Padel One' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(state.put).toHaveBeenCalledWith({ id: 'c1', name: 'Padel One', courtTypeId: TYPE_ID, sortOrder: 1 }));
+    await waitFor(() => expect(state.put).toHaveBeenCalledWith({ id: 'c1', name: 'Padel One', courtTypeId: TYPE_ID, sortOrder: 1, imageUrl: null }));
     fireEvent.click(screen.getByRole('switch', { name: 'Padel 1 bookable' }));
     await waitFor(() => expect(state.put).toHaveBeenCalledWith({ id: 'c1', isActive: false }));
   });

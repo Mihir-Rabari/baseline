@@ -112,6 +112,7 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
         typeActive: courtTypes.isActive,
         courtTypeId: courts.courtTypeId,
         sortOrder: courts.sortOrder,
+        imageUrl: courts.imageUrl,
       })
       .from(courts)
       .innerJoin(courtTypes, eq(courtTypes.id, courts.courtTypeId))
@@ -265,7 +266,7 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
       try {
         const [row] = await fastify.db
           .insert(courts)
-          .values({ name: body.name, courtTypeId: body.courtTypeId, sortOrder: body.sortOrder ?? 0, isActive: body.isActive ?? true })
+          .values({ name: body.name, courtTypeId: body.courtTypeId, sortOrder: body.sortOrder ?? 0, isActive: body.isActive ?? true, imageUrl: body.imageUrl ?? null })
           .returning({ id: courts.id });
         id = row.id;
       } catch (error) {
@@ -303,6 +304,7 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
         ...(body.courtTypeId !== undefined && { courtTypeId: body.courtTypeId }),
         ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
+        ...(body.imageUrl !== undefined && { imageUrl: body.imageUrl }),
       };
       if (Object.keys(patch).length > 0) {
         try {
@@ -478,6 +480,7 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
         tagline: request.body.tagline ?? (current.success ? current.data.tagline : undefined) ?? '',
         phone: request.body.phone ?? (current.success ? current.data.phone : undefined) ?? '',
         address: request.body.address ?? (current.success ? current.data.address : undefined) ?? '',
+        logoUrl: request.body.logoUrl !== undefined ? request.body.logoUrl : (current.success ? current.data.logoUrl : undefined) ?? null,
       };
       await fastify.db
         .insert(systemSettings)

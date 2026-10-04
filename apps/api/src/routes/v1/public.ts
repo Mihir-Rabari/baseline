@@ -41,7 +41,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
       .where(eq(systemSettings.key, 'club.profile')).limit(1);
     const metadata = z.object({
       name: z.string().optional(), tagline: z.string().optional(),
-      phone: z.string().optional(), address: z.string().optional(),
+      phone: z.string().optional(), address: z.string().optional(), logoUrl: z.string().nullable().optional(),
     }).safeParse(profile?.value);
     const contact = metadata.success ? metadata.data : {};
     const types = await fastify.db.select({
@@ -56,7 +56,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
       .orderBy(asc(socialWindows.weekday), asc(socialWindows.startsTime), asc(socialWindows.id)).limit(1);
     return reply.send({
       name: contact.name ?? fastify.env.APP_NAME, tagline: contact.tagline ?? '',
-      phone: contact.phone ?? '', address: contact.address ?? '',
+      phone: contact.phone ?? '', address: contact.address ?? '', logoUrl: contact.logoUrl ?? null,
       hours: await getClubHours(fastify.db), timezone: fastify.env.CLUB_TIMEZONE,
       courtTypes: types,
       socialPlay: social ? {

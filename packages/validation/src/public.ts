@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UuidSchema, EmailSchema, IsoDateTimeSchema } from './common.js';
 import { PaiseSchema, TimeOfDaySchema } from './domain-common.js';
 import { BookingSchema } from './bookings.js';
+import { ImageRefSchema } from './uploads.js';
 import { PhoneSchema } from './members.js';
 
 /** GET /public/club */
@@ -12,11 +13,12 @@ export const UpdateClubProfileRequestSchema = z
     tagline: z.string().trim().max(200).optional(),
     phone: z.string().trim().max(32).optional(),
     address: z.string().trim().max(300).optional(),
+    logoUrl: ImageRefSchema.nullable().optional(),
   })
   .refine((v) => Object.values(v).some((value) => value !== undefined), { message: 'Provide at least one field to change', path: ['name'] });
 export type UpdateClubProfileRequest = z.infer<typeof UpdateClubProfileRequestSchema>;
 
-export const ClubProfileSchema = z.object({ name: z.string(), tagline: z.string(), phone: z.string(), address: z.string() });
+export const ClubProfileSchema = z.object({ name: z.string(), tagline: z.string(), phone: z.string(), address: z.string(), logoUrl: z.string().nullable().optional() });
 export type ClubProfile = z.infer<typeof ClubProfileSchema>;
 
 export const PublicClubSchema = z.object({
@@ -24,6 +26,7 @@ export const PublicClubSchema = z.object({
   tagline: z.string(),
   phone: z.string(),
   address: z.string(),
+  logoUrl: z.string().nullable().optional(),
   hours: z.object({ open: TimeOfDaySchema, close: TimeOfDaySchema }),
   timezone: z.string(),
   courtTypes: z.array(

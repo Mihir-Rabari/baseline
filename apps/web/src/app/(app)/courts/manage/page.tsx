@@ -11,6 +11,7 @@ import { Money } from '@/components/club/money';
 import { SportsManager } from '@/components/club/sports-manager';
 import { ConfirmRemoveDialog } from '@/components/club/confirm-remove-dialog';
 import { Field, FormDialog, errorText } from '@/components/club/form-dialog';
+import { ImageUploader } from '@/components/club/image-uploader';
 import { NoAccess, QueryState, SelectBox } from '@/components/club/ops-bits';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ function CourtDialog({ court, types, open, onClose }: { court: Court | null; typ
   const [name, setName] = useState(court?.name ?? '');
   const [typeId, setTypeId] = useState(court?.courtTypeId ?? usable[0]?.id ?? '');
   const [order, setOrder] = useState(String(court?.sortOrder ?? 0));
+  const [imageUrl, setImageUrl] = useState<string | null>(court?.imageUrl ?? null);
   const [error, setError] = useState<string | null>(null);
   const create = useOpsMutation<Court, object>('post', KEYS, () => '/courts');
   const update = useOpsMutation<Court, { id: string; [key: string]: unknown }>('put', KEYS, (v) => `/courts/${v.id}`);
@@ -34,7 +36,7 @@ function CourtDialog({ court, types, open, onClose }: { court: Court | null; typ
     if (!typeId) return setError('Choose the sport.');
     if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 1000) return setError('Display order must be a whole number from 0 to 1000.');
     try {
-      const body = { name: name.trim(), courtTypeId: typeId, sortOrder };
+      const body = { name: name.trim(), courtTypeId: typeId, sortOrder, ...(court || imageUrl ? { imageUrl } : {}) };
       if (court) await update.mutateAsync({ id: court.id, ...body });
       else await create.mutateAsync(body);
       toast.success(court ? `${name.trim()} updated` : `${name.trim()} added`); onClose();
@@ -42,6 +44,7 @@ function CourtDialog({ court, types, open, onClose }: { court: Court | null; typ
   }
   return (
     <FormDialog open={open} onClose={onClose} title={court ? `Edit ${court.name}` : 'New court'} description="Courts are booked by sport, so the sport sets the price. Courts show in the booking grid in display order." onSubmit={submit} submitLabel={court ? 'Save changes' : 'Add court'} pending={create.isPending || update.isPending} error={error}>
+      <ImageUploader kind="court" label="Court photo" value={imageUrl} onChange={setImageUrl} />
       <Field id="court-name" label="Name" value={name} maxLength={64} autoComplete="off" onChange={(e) => setName(e.target.value)} />
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectBox id="court-sport" label="Sport" value={typeId} onChange={setTypeId} options={usable.map((type) => ({ value: type.id, label: type.name }))} />
