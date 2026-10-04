@@ -1,13 +1,12 @@
 /** Suggested first questions, chosen from the tools the signed-in user can actually use. */
 const SUGGESTIONS: { prefix: string; read: string; write?: string }[] = [
   { prefix: 'bookings', read: 'What is booked today?', write: 'Help me cancel a booking' },
-  { prefix: 'members', read: 'Which memberships expire this week?', write: 'Help me renew a membership' },
+  { prefix: 'members', read: 'Find a member by name' },
   { prefix: 'courts', read: 'Which courts are free this evening?' },
-  { prefix: 'shop', read: 'Which products are running low?' },
-  { prefix: 'bar', read: 'What is on the open bar tabs?' },
-  { prefix: 'crm', read: 'Who enquired in the last week?' },
+  { prefix: 'orders', read: 'Show the latest shop orders' },
+  { prefix: 'crm', read: 'Who enquired in the last week?', write: 'Add a new lead' },
   { prefix: 'reports', read: 'How did we do this week?' },
-  { prefix: 'invoices', read: 'Which invoices are overdue?' },
+  { prefix: 'notifications', read: 'What are my unread notifications?', write: 'Mark all my notifications as read' },
 ];
 
 export function suggestedPrompts(tools: { name: string; write: boolean }[], limit = 4): string[] {

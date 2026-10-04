@@ -140,7 +140,7 @@ describe('RichText', () => {
 describe('suggestedPrompts', () => {
   it('depends on available tools and always returns at least one prompt', () => {
     expect(suggestedPrompts([])).toEqual(['What can you help me with?']);
-    expect(suggestedPrompts([{ name: 'members.list', write: false }])).toEqual(['Which memberships expire this week?']);
+    expect(suggestedPrompts([{ name: 'members.list', write: false }])).toEqual(['Find a member by name']);
     expect(suggestedPrompts([{ name: 'bookings.list', write: false }, { name: 'bookings.cancel', write: true }])).toContain('Help me cancel a booking');
   });
 });

@@ -18,6 +18,7 @@ import metricsPlugin from './plugins/metrics.js';
 import servicesPlugin from './plugins/services.js';
 import authPlugin from './plugins/auth.js';
 import iamPlugin from './plugins/iam.js';
+import agentPlugin from './plugins/agent.js';
 import emailPlugin from './plugins/email.js';
 import errorHandlerPlugin from './plugins/error-handler.js';
 
@@ -107,6 +108,7 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
   app.register(servicesPlugin);
   app.register(authPlugin);
   app.register(iamPlugin);
+  app.register(agentPlugin);
   app.register(emailPlugin);
   app.register(errorHandlerPlugin);
 
