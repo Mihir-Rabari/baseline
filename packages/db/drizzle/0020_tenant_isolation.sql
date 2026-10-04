@@ -290,6 +290,14 @@ ALTER TABLE "employee_documents" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAU
 --> statement-breakpoint
 ALTER TABLE "employee_documents" ADD CONSTRAINT "employee_documents_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "shift_swaps" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "shift_swaps" ADD CONSTRAINT "shift_swaps_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "payment_intents" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "payment_intents" ADD CONSTRAINT "payment_intents_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 DO $$ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'baseline_tenant') THEN
 		CREATE ROLE baseline_tenant NOLOGIN NOSUPERUSER NOBYPASSRLS;
@@ -655,6 +663,18 @@ ALTER TABLE "employee_documents" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "employee_documents";
 --> statement-breakpoint
 CREATE POLICY tenant_isolation ON "employee_documents" AS PERMISSIVE FOR ALL TO baseline_tenant USING (tenant_id = app_tenant_current()) WITH CHECK (tenant_id = app_tenant_current());
+--> statement-breakpoint
+ALTER TABLE "shift_swaps" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+DROP POLICY IF EXISTS tenant_isolation ON "shift_swaps";
+--> statement-breakpoint
+CREATE POLICY tenant_isolation ON "shift_swaps" AS PERMISSIVE FOR ALL TO baseline_tenant USING (tenant_id = app_tenant_current()) WITH CHECK (tenant_id = app_tenant_current());
+--> statement-breakpoint
+ALTER TABLE "payment_intents" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+DROP POLICY IF EXISTS tenant_isolation ON "payment_intents";
+--> statement-breakpoint
+CREATE POLICY tenant_isolation ON "payment_intents" AS PERMISSIVE FOR ALL TO baseline_tenant USING (tenant_id = app_tenant_current()) WITH CHECK (tenant_id = app_tenant_current());
 --> statement-breakpoint
 ALTER TABLE "tenants" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint

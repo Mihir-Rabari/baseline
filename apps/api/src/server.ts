@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { getEnv } from '@packages/config/env';
-import { JobService, startMembershipExpiryScheduler } from './services/job.service.js';
+import { BookingService } from './services/booking.service.js';
+import { JobService, expireHoldsForAllClubs, startHoldExpiryScheduler, startMembershipExpiryScheduler } from './services/job.service.js';
 
 async function start() {
   const env = getEnv();
@@ -30,7 +31,13 @@ async function start() {
       host: env.HOST,
     });
     // Background jobs: the timer is cleared by the shutdown handler above.
-    stopJobs = startMembershipExpiryScheduler(new JobService(app.db), app.log);
+    const stopMembership = startMembershipExpiryScheduler(new JobService(app.db), app.log);
+    const holds = new BookingService(app.db, { timezone: env.CLUB_TIMEZONE });
+    const stopHolds = startHoldExpiryScheduler(() => expireHoldsForAllClubs(app.db, () => holds.expireHolds(), app.log), app.log);
+    stopJobs = () => {
+      stopMembership();
+      stopHolds();
+    };
     app.log.info(`🚀 API Server running at: ${address}`);
     app.log.info(`📚 Swagger Documentation at: ${address}/api/docs`);
     app.log.info(`📊 Prometheus Metrics at: ${address}/metrics`);

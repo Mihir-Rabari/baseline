@@ -16,7 +16,7 @@ export function mockBreakdown(period: ReportPeriod): ReportBreakdown {
     bar: { tabsSettled: days * 6, revenuePaise: days * 6 * 90000, averageTabPaise: 90000, topItems: [{ name: 'Cold coffee', qty: days * 9, amountPaise: days * 9 * 20000 }] },
     inventory: { stockValuePaise: 18500000, unitsSold: days * 14, lowStock: [{ name: 'Grip tape', sku: 'GRP-01', stockQty: 2, reorderLevel: 5 }] },
     members: { newMembers: days * 2, activeMemberships: 120, expiringSoon: 6, byPlan: [{ plan: 'Gold', active: 40 }, { plan: 'Silver', active: 80 }] },
-    payroll: { activeEmployees: 9, monthlyPayrollPaise: 5400000, pendingLeave: 2, byDepartment: [{ department: 'FRONT_DESK', employees: 4, monthlyPaise: 2000000 }, { department: 'BAR', employees: 5, monthlyPaise: 3400000 }] },
+    payroll: { activeEmployees: 9, monthlyPayrollPaise: 5400000, pendingLeave: 2, byDepartment: [{ department: 'FRONT_DESK', employees: 4, monthlyPaise: 2000000 }, { department: 'BAR', employees: 5, monthlyPaise: 3400000 }], runs: [{ month: '2030-03', status: 'PAID', payslips: 9, netPaise: 5300000, leaveDeductionPaise: 100000, unpaidLeaveDays: 2 }], approvedLeaveDays: 5 },
   });
 }
 

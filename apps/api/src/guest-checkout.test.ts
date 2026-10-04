@@ -63,6 +63,7 @@ describe('Guest booking checkout (#67)', () => {
       const body = CreatePublicBookingResponseSchema.parse(response.json());
       expect(body.booking).toMatchObject({ kind: 'STANDARD', channel: 'ONLINE', paymentStatus: 'PAID', status: 'CONFIRMED', member: null });
       expect(body.paidPaise).toBe(body.booking.pricePaise);
+      expect(body.booking.paidPaise).toBe(body.booking.pricePaise);
       expect(body.duePaise).toBe(0);
       const rows = await paidFor(body.booking.id);
       expect(rows).toHaveLength(1);
@@ -77,6 +78,7 @@ describe('Guest booking checkout (#67)', () => {
     const body = CreatePublicBookingResponseSchema.parse(response.json());
     const fee = promiseFeePaise(body.booking.pricePaise);
     expect(body.booking.paymentStatus).toBe('PARTIAL');
+    expect(body.booking.paidPaise).toBe(fee);
     expect(fee).toBe(Math.ceil(body.booking.pricePaise * 0.2));
     expect(body).toMatchObject({ paidPaise: fee, duePaise: body.booking.pricePaise - fee });
     const rows = await paidFor(body.booking.id);

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UuidSchema, EmailSchema, IsoDateTimeSchema } from './common.js';
+import { UuidSchema, EmailSchema, IsoDateTimeSchema, IsoDateTimeOutSchema } from './common.js';
 import { PaiseSchema, TimeOfDaySchema } from './domain-common.js';
 import { BookingSchema } from './bookings.js';
 import { ImageRefSchema } from './uploads.js';
@@ -92,6 +92,15 @@ export const PROMISE_FEE_PCT = 20;
 export const promiseFeePaise = (pricePaise: number): number =>
   Math.min(pricePaise, Math.max(1, Math.ceil((pricePaise * PROMISE_FEE_PCT) / 100)));
 
+/**
+ * What has been paid on a booking and what is still due at the club. PARTIAL only comes from a cash
+ * booking that paid the promise fee, so the paid amount follows from the price.
+ */
+export const bookingPayment = (booking: { paymentStatus: string; pricePaise: number }): { paidPaise: number; duePaise: number } => {
+  const paidPaise = booking.paymentStatus === 'PAID' ? booking.pricePaise : booking.paymentStatus === 'PARTIAL' ? promiseFeePaise(booking.pricePaise) : 0;
+  return { paidPaise, duePaise: booking.paymentStatus === 'PARTIAL' ? booking.pricePaise - paidPaise : 0 };
+};
+
 /** The payment choices on the checkout dialog. UPI and card pay in full; cash pays the promise fee. */
 export const CheckoutMethodEnum = z.enum(['UPI', 'CARD', 'CASH']);
 export type CheckoutMethod = z.infer<typeof CheckoutMethodEnum>;
@@ -114,3 +123,46 @@ export const CreatePublicBookingResponseSchema = z.object({
   message: z.string(),
 });
 export type CreatePublicBookingResponse = z.infer<typeof CreatePublicBookingResponseSchema>;
+
+/** The state of a guest checkout. A PENDING intent holds the slot until `expiresAt`. */
+export const PaymentIntentStatusEnum = z.enum(['PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED']);
+export type PaymentIntentStatusValue = z.infer<typeof PaymentIntentStatusEnum>;
+
+/** POST /public/bookings/holds: same details as a direct booking; the amount is always server-computed. */
+export const CreateBookingHoldRequestSchema = CreatePublicBookingRequestSchema;
+export type CreateBookingHoldRequest = z.infer<typeof CreateBookingHoldRequestSchema>;
+
+export const PaymentIntentSchema = z.object({
+  id: UuidSchema,
+  status: PaymentIntentStatusEnum,
+  method: CheckoutMethodEnum,
+  /** What must be paid now: the full price, or the promise fee for cash. */
+  amountPaise: z.number().int().positive(),
+  totalPaise: z.number().int().positive(),
+  /** What remains to be paid at the venue once this intent succeeds. */
+  duePaise: z.number().int().min(0),
+  expiresAt: IsoDateTimeOutSchema,
+  /** Present once the payment succeeded and the booking exists. */
+  booking: BookingSchema.nullable(),
+});
+export type PaymentIntent = z.infer<typeof PaymentIntentSchema>;
+
+/**
+ * POST /public/payments/webhook, sent by the gateway. The `x-signature` header is the hex
+ * HMAC-SHA256 of `${intentId}.${event}.${amountPaise}.${reference}` under PAYMENT_WEBHOOK_SECRET.
+ */
+export const PaymentWebhookRequestSchema = z.object({
+  intentId: UuidSchema,
+  event: z.enum(['payment.succeeded', 'payment.failed']),
+  amountPaise: z.number().int().min(0),
+  reference: z.string().trim().min(1).max(128),
+});
+export type PaymentWebhookRequest = z.infer<typeof PaymentWebhookRequestSchema>;
+
+export const PaymentWebhookResponseSchema = z.object({
+  intentId: UuidSchema,
+  status: PaymentIntentStatusEnum,
+  /** True when this delivery repeated one that was already applied. */
+  duplicate: z.boolean(),
+});
+export type PaymentWebhookResponse = z.infer<typeof PaymentWebhookResponseSchema>;

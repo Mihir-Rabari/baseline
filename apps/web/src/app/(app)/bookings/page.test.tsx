@@ -101,4 +101,17 @@ describe('bookings page', () => {
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Cancel Tennis/ })).not.toBeInTheDocument();
   });
+
+  it('shows paid and due on a part-paid booking only', () => {
+    state.mine = page([booking('b1', 30, { paymentStatus: 'PARTIAL' }), booking('b2', 40, { paymentStatus: 'PAID' }), booking('b3', 50)]);
+    render(<BookingsPage />);
+    expect(screen.getAllByText(/^Paid /)).toHaveLength(1);
+    expect(screen.getByText('Paid ₹120, due ₹480')).toBeInTheDocument();
+  });
+
+  it('shows paid and due to the front desk on the day list too', () => {
+    state.staff = true; state.day = page([booking('b1', 3, { paymentStatus: 'PARTIAL', pricePaise: 100000 })]);
+    render(<BookingsPage />);
+    expect(screen.getByText('Paid ₹200, due ₹800')).toBeInTheDocument();
+  });
 });

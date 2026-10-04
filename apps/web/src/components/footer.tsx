@@ -6,7 +6,7 @@ export function Footer() {
     <footer className="border-t bg-muted/20 py-8 text-xs text-muted-foreground">
       <div className="container flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-foreground">CourtOS</span>
+          <span className="font-semibold text-foreground">Baseline</span>
           <span>&middot;</span>
           <span>The Sports Club Operating System</span>
         </div>

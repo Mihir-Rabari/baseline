@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { pgTable, varchar, text, uuid, date, index, integer, smallint, uniqueIndex } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { pk, tstz, createdAt, paise } from './_columns.js';
@@ -23,6 +24,8 @@ export const employees = pgTable(
     monthlySalaryPaise: paise('monthly_salary_paise').notNull().default(0),
     hiredOn: date('hired_on', { mode: 'string' }).notNull(),
     photoUrl: varchar('photo_url', { length: 512 }),
+    /** Yearly leave allowance in days (all leave types together). */
+    leaveAllowanceDays: smallint('leave_allowance_days').notNull().default(24),
     status: varchar('status', { length: 12 }).$type<'ACTIVE' | 'INACTIVE'>().notNull().default('ACTIVE'),
     createdAt: createdAt(),
   },
@@ -136,6 +139,8 @@ export const payslips = pgTable(
     payableDays: smallint('payable_days').notNull(),
     basePaise: paise('base_paise').notNull(),
     unpaidLeaveDays: smallint('unpaid_leave_days').notNull().default(0),
+    /** Leave days beyond the yearly allowance this month; a suggestion the owner can apply or ignore. */
+    suggestedUnpaidLeaveDays: smallint('suggested_unpaid_leave_days').notNull().default(0),
     leaveDeductionPaise: paise('leave_deduction_paise').notNull().default(0),
     bonusPaise: paise('bonus_paise').notNull().default(0),
     otherDeductionPaise: paise('other_deduction_paise').notNull().default(0),
@@ -170,3 +175,43 @@ export const employeeDocuments = pgTable(
   },
   (t) => [index('idx_employee_documents_employee').on(t.employeeId, t.createdAt)]
 );
+
+export type ShiftSwapStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'APPROVED' | 'REJECTED';
+
+/**
+ * A request to hand a shift to a colleague, optionally in exchange for one of theirs. PENDING waits for
+ * the colleague, ACCEPTED waits for the owner; APPROVED is the only state that moves shifts. At most one
+ * open (PENDING or ACCEPTED) swap per shift.
+ */
+export const shiftSwaps = pgTable(
+  'shift_swaps',
+  {
+    tenantId: tenantId(),
+    id: pk(),
+    shiftId: uuid('shift_id')
+      .notNull()
+      .references(() => staffShifts.id, { onDelete: 'cascade' }),
+    requestedShiftId: uuid('requested_shift_id').references(() => staffShifts.id, { onDelete: 'cascade' }),
+    proposerEmployeeId: uuid('proposer_employee_id')
+      .notNull()
+      .references(() => employees.id, { onDelete: 'cascade' }),
+    targetEmployeeId: uuid('target_employee_id')
+      .notNull()
+      .references(() => employees.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 12 }).$type<ShiftSwapStatus>().notNull().default('PENDING'),
+    note: varchar('note', { length: 500 }),
+    respondedAt: tstz('responded_at'),
+    decidedBy: uuid('decided_by').references(() => users.id, { onDelete: 'set null' }),
+    decidedAt: tstz('decided_at'),
+    decisionNote: varchar('decision_note', { length: 500 }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('idx_shift_swaps_status').on(t.status, t.createdAt),
+    index('idx_shift_swaps_proposer').on(t.proposerEmployeeId),
+    index('idx_shift_swaps_target').on(t.targetEmployeeId),
+    uniqueIndex('uq_shift_swaps_open_shift').on(t.shiftId).where(sql`${t.status} in ('PENDING', 'ACCEPTED')`),
+    uniqueIndex('uq_shift_swaps_open_requested').on(t.requestedShiftId).where(sql`${t.status} in ('PENDING', 'ACCEPTED')`),
+  ]
+);
+// SQL (0017): CHECK (proposer_employee_id <> target_employee_id).

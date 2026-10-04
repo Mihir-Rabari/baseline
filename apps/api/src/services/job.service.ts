@@ -260,3 +260,49 @@ export function startMembershipExpiryScheduler(
   timer.unref();
   return () => clearInterval(timer);
 }
+
+/**
+ * Releases expired booking holds once for every ACTIVE club, each inside that club's own database scope,
+ * so a club's holds are only ever read and released as that club. One club failing does not stop the rest.
+ */
+export async function expireHoldsForAllClubs(
+  db: DatabaseInstance,
+  expire: () => Promise<number>,
+  log?: Logger
+): Promise<number> {
+  const clubs = await runUnscoped(async () => db.select({ id: tenants.id }).from(tenants).where(eq(tenants.status, 'ACTIVE')));
+  let released = 0;
+  for (const club of clubs) {
+    try {
+      released += await runInTenant(club.id, expire);
+    } catch (err) {
+      log?.error({ err, tenantId: club.id }, 'Booking hold expiry failed for club');
+    }
+  }
+  return released;
+}
+
+export const HOLD_EXPIRY_INTERVAL_MS = 60 * 1000;
+
+/** Releases unpaid guest-checkout holds on a timer. Returns a function that stops it. */
+export function startHoldExpiryScheduler(
+  expire: () => Promise<number>,
+  log: Logger,
+  intervalMs: number = HOLD_EXPIRY_INTERVAL_MS
+): () => void {
+  let running = false;
+  const timer = setInterval(() => {
+    if (running) return;
+    running = true;
+    expire()
+      .then((released) => {
+        if (released > 0) log.info({ released }, 'Released expired booking holds');
+      })
+      .catch((err: unknown) => log.error({ err }, 'Booking hold expiry failed'))
+      .finally(() => {
+        running = false;
+      });
+  }, intervalMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}

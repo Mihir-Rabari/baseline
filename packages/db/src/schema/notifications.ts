@@ -11,7 +11,8 @@ export type NotificationType =
   | 'ONLINE_ORDER'
   | 'LEAVE_REQUEST'
   | 'LEAVE_DECIDED'
-  | 'KITCHEN_READY';
+  | 'KITCHEN_READY'
+  | 'SHIFT_SWAP';
 
 /**
  * One row per recipient (fan-out at creation). Pairs with the existing

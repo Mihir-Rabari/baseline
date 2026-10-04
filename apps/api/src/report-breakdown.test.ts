@@ -68,6 +68,8 @@ describe('Report breakdown (#63)', () => {
     expect(report.members.byPlan.reduce((n, p) => n + p.active, 0)).toBe(report.members.activeMemberships);
     expect(report.payroll.byDepartment.reduce((n, d) => n + d.employees, 0)).toBe(report.payroll.activeEmployees);
     expect(report.inventory.lowStock.every((p) => p.stockQty <= p.reorderLevel)).toBe(true);
+    expect(report.payroll.approvedLeaveDays).toBeGreaterThanOrEqual(0);
+    expect(report.payroll.runs.every((r) => /^\d{4}-\d{2}$/.test(r.month) && r.payslips >= 0)).toBe(true);
   });
 
   it('an empty range is all zeros, not an error', async (ctx) => {
@@ -119,10 +121,12 @@ describe('breakdownCsvRows (unit)', () => {
         bar: { tabsSettled: 0, revenuePaise: 0, averageTabPaise: 0, topItems: [] },
         inventory: { stockValuePaise: 0, unitsSold: 0, lowStock: [] },
         members: { newMembers: 0, activeMemberships: 0, expiringSoon: 0, byPlan: [] },
-        payroll: { activeEmployees: 0, monthlyPayrollPaise: 0, pendingLeave: 0, byDepartment: [] },
+        payroll: { activeEmployees: 0, monthlyPayrollPaise: 0, pendingLeave: 0, byDepartment: [], runs: [{ month: '2030-03', status: 'PAID', payslips: 3, netPaise: 250000, leaveDeductionPaise: 0, unpaidLeaveDays: 1 }], approvedLeaveDays: 4 },
       })
     );
     expect(csv).toContain('Bookings,Total,2,1500.5');
+    expect(csv).toContain('Payroll runs,"2030-03 (PAID, 1 unpaid leave days)",3,2500');
+    expect(csv).toContain('Payroll,Approved leave days in range,4,');
     expect(csv).toContain('Top products,"\'=HYPERLINK(""x"")",1,1');
   });
 });

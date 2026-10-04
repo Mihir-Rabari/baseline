@@ -45,6 +45,8 @@ export const BookingSchema = z.object({
   basePricePaise: PaiseSchema,
   discountPct: PctSchema,
   pricePaise: PaiseSchema,
+  /** Net amount received so far (payments minus refunds); `pricePaise - paidPaise` is due at the venue. */
+  paidPaise: PaiseSchema,
   paymentStatus: BookingPaymentStatusEnum,
   socialSessionId: UuidSchema.nullable(),
   createdAt: IsoDateTimeOutSchema,

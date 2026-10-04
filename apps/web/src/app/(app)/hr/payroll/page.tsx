@@ -47,6 +47,12 @@ function SlipDialog({ slip, open, onClose }: { slip: Payslip; open: boolean; onC
         <Field id="slip-bonus" label="Bonus (₹)" inputMode="decimal" value={bonus} onChange={(e) => setBonus(e.target.value)} />
         <Field id="slip-deduction" label="Other deduction (₹)" inputMode="decimal" value={deduction} onChange={(e) => setDeduction(e.target.value)} />
       </div>
+      {slip.suggestedUnpaidLeaveDays > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/40 p-3 text-sm">
+          <p>Suggested: <strong>{slip.suggestedUnpaidLeaveDays} unpaid {slip.suggestedUnpaidLeaveDays === 1 ? 'day' : 'days'}</strong>, because this month&apos;s leave goes past the yearly allowance. You can change it.</p>
+          <Button type="button" size="sm" variant="outline" disabled={leave === String(slip.suggestedUnpaidLeaveDays)} onClick={() => setLeave(String(slip.suggestedUnpaidLeaveDays))}>Use suggestion</Button>
+        </div>
+      )}
       <Field id="slip-note" label="Note on the payslip" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
     </FormDialog>
   );
@@ -116,7 +122,7 @@ function RunDetail({ runId, onBack }: { runId: string; onBack: () => void }) {
               <TableBody>
                 {data.payslips.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.employeeName}<span className="block text-xs font-normal text-muted-foreground">{s.payableDays}/{s.daysInMonth} days · {s.shiftsWorked}/{s.shiftsScheduled} shifts{!s.bankConfigured && ' · no bank details'}</span></TableCell>
+                    <TableCell className="font-medium">{s.employeeName}<span className="block text-xs font-normal text-muted-foreground">{s.payableDays}/{s.daysInMonth} days · {s.shiftsWorked}/{s.shiftsScheduled} shifts{!s.bankConfigured && ' · no bank details'}{s.suggestedUnpaidLeaveDays > 0 && s.unpaidLeaveDays !== s.suggestedUnpaidLeaveDays && ` · suggest ${s.suggestedUnpaidLeaveDays} unpaid ${s.suggestedUnpaidLeaveDays === 1 ? 'day' : 'days'}`}</span></TableCell>
                     <TableCell className="text-right"><Money paise={s.basePaise} /></TableCell>
                     <TableCell className="text-right"><Money paise={-s.leaveDeductionPaise} /></TableCell>
                     <TableCell className="text-right"><Money paise={s.bonusPaise} /></TableCell>

@@ -14,7 +14,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="container flex h-16 items-center gap-8">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="text-primary font-bold">CourtOS</span>
+          <span className="text-primary font-bold">Baseline</span>
           <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Club OS</span>
         </Link>
 

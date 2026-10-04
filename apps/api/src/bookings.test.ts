@@ -172,6 +172,7 @@ describe("booking error mapping (unit)", () => {
       basePricePaise: 60000,
       discountPct: 30,
       pricePaise: 42000,
+      paidPaise: 0,
       paymentStatus: "UNPAID" as const,
       socialSessionId: null,
       createdAt: new Date("2026-10-09T10:00:00.000Z"),

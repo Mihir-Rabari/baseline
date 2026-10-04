@@ -65,6 +65,9 @@ export const EmployeeSchema = z.object({
   hiredOn: DateOnlySchema,
   status: z.string(),
   leaveDaysThisYear: z.number().int().min(0),
+  /** Yearly allowance, and what is left after approved and pending leave this year (never below 0). */
+  leaveAllowanceDays: z.number().int().min(0),
+  leaveRemainingDays: z.number().int().min(0),
   photoUrl: z.string().nullable().optional(),
 });
 export type Employee = z.infer<typeof EmployeeSchema>;
@@ -98,6 +101,8 @@ export const CreateEmployeeRequestSchema = z.object({
   userId: UuidSchema.optional(),
   /** One of our uploads or an https link; null removes the photo. */
   photoUrl: ImageRefSchema.nullable().optional(),
+  /** Days of leave per calendar year, all types together. */
+  leaveAllowanceDays: z.number().int().min(0).max(366).optional(),
 });
 export type CreateEmployeeRequest = z.infer<typeof CreateEmployeeRequestSchema>;
 
@@ -131,6 +136,20 @@ export const LeaveRequestSchema = z.object({
 });
 export type LeaveRequest = z.infer<typeof LeaveRequestSchema>;
 export const LeaveRequestPageSchema = createPaginatedResponseSchema(LeaveRequestSchema);
+
+/** One employee's leave allowance for a calendar year. `remainingDays` = allowance - approved - pending, never below 0. */
+export const LeaveBalanceSchema = z.object({
+  year: z.number().int(),
+  allowanceDays: z.number().int().min(0),
+  takenDays: z.number().int().min(0),
+  pendingDays: z.number().int().min(0),
+  remainingDays: z.number().int().min(0),
+});
+export type LeaveBalance = z.infer<typeof LeaveBalanceSchema>;
+
+/** GET /me/leave: the page of requests plus the balance for the current year (null without an employee record). */
+export const MyLeavePageSchema = LeaveRequestPageSchema.extend({ balance: LeaveBalanceSchema.nullable() });
+export type MyLeavePage = z.infer<typeof MyLeavePageSchema>;
 
 /** GET /hr/leave */
 export const LeaveListQuerySchema = PaginationQuerySchema.extend({
@@ -246,6 +265,8 @@ export const PayslipSchema = z.object({
   payableDays: z.number().int(),
   basePaise: PaiseSchema,
   unpaidLeaveDays: z.number().int().min(0),
+  /** Leave beyond the yearly allowance this month. A suggestion: set `unpaidLeaveDays` to apply it. */
+  suggestedUnpaidLeaveDays: z.number().int().min(0),
   leaveDeductionPaise: PaiseSchema,
   bonusPaise: PaiseSchema,
   otherDeductionPaise: PaiseSchema,
@@ -313,3 +334,59 @@ export const UploadEmployeeDocumentQuerySchema = z.object({
   fileName: z.string().trim().min(1).max(120),
 });
 export type UploadEmployeeDocumentQuery = z.infer<typeof UploadEmployeeDocumentQuerySchema>;
+
+// ---- Shift swaps ----
+
+export const ShiftSwapStatusEnum = z.enum(['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'APPROVED', 'REJECTED']);
+export type ShiftSwapStatus = z.infer<typeof ShiftSwapStatusEnum>;
+
+const SwapShiftSchema = z.object({ id: UuidSchema, roleLabel: z.string(), startsAt: IsoDateTimeOutSchema, endsAt: IsoDateTimeOutSchema });
+
+export const ShiftSwapSchema = z.object({
+  id: UuidSchema,
+  status: ShiftSwapStatusEnum,
+  /** Which side the caller is on in GET /me/shift-swaps; null in the owner's list. */
+  role: z.enum(['PROPOSER', 'TARGET']).nullable(),
+  /** The proposer's shift, handed to the colleague. */
+  shift: SwapShiftSchema,
+  /** The colleague's shift the proposer takes in exchange; null when the shift is simply handed over. */
+  requestedShift: SwapShiftSchema.nullable(),
+  proposer: z.object({ id: UuidSchema, fullName: z.string() }),
+  target: z.object({ id: UuidSchema, fullName: z.string() }),
+  note: z.string().nullable(),
+  decisionNote: z.string().nullable(),
+  respondedAt: NullableIsoDateTimeOutSchema,
+  decidedAt: NullableIsoDateTimeOutSchema,
+  createdAt: IsoDateTimeOutSchema,
+});
+export type ShiftSwap = z.infer<typeof ShiftSwapSchema>;
+export const ShiftSwapListSchema = z.array(ShiftSwapSchema);
+
+/** GET /me/colleagues: who a swap can be offered to (active staff other than you). */
+export const ColleagueSchema = z.object({ id: UuidSchema, fullName: z.string(), position: z.string() });
+export type Colleague = z.infer<typeof ColleagueSchema>;
+export const ColleagueListSchema = z.array(ColleagueSchema);
+
+/** POST /me/shift-swaps */
+export const CreateShiftSwapRequestSchema = z.object({
+  shiftId: UuidSchema,
+  targetEmployeeId: UuidSchema,
+  requestedShiftId: UuidSchema.optional(),
+  note: z.string().trim().max(500).optional(),
+});
+export type CreateShiftSwapRequest = z.infer<typeof CreateShiftSwapRequestSchema>;
+
+/** POST /me/shift-swaps/:id/respond (the colleague) */
+export const ShiftSwapResponseRequestSchema = z.object({ response: z.enum(['ACCEPT', 'DECLINE']) });
+export type ShiftSwapResponseRequest = z.infer<typeof ShiftSwapResponseRequestSchema>;
+
+/** POST /shift-swaps/:id/decision (the owner) */
+export const ShiftSwapDecisionRequestSchema = z.object({
+  decision: z.enum(['APPROVED', 'REJECTED']),
+  note: z.string().trim().max(500).optional(),
+});
+export type ShiftSwapDecisionRequest = z.infer<typeof ShiftSwapDecisionRequestSchema>;
+
+/** GET /shift-swaps */
+export const ShiftSwapListQuerySchema = z.object({ status: ShiftSwapStatusEnum.optional() });
+export type ShiftSwapListQuery = z.infer<typeof ShiftSwapListQuerySchema>;
