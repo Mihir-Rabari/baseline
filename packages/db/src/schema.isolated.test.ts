@@ -28,9 +28,9 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
       expect(before).toHaveLength(0);
       await migrate(db, options);
       const firstJournal = await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`;
-      expect(firstJournal).toHaveLength(16);
+      expect(firstJournal).toHaveLength(17);
       const firstTables = await isolated`SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`;
-      expect(firstTables).toHaveLength(56);
+      expect(firstTables).toHaveLength(57);
       expect(firstTables.map((row) => row.tablename)).toEqual(expect.arrayContaining([
         'users', 'system_settings', 'members', 'bookings', 'court_occupancies', 'payments', 'kitchen_tickets',
       ]));
@@ -43,6 +43,10 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
         WHERE table_schema = 'public' AND table_name = 'employees' AND column_name = 'photo_url'`;
       expect(photoColumn).toHaveLength(1);
       expect(photoColumn[0].character_maximum_length).toBe(512);
+
+      const documentsTable = await isolated`SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'employee_documents' ORDER BY column_name`;
+      expect(documentsTable.map((row) => row.column_name)).toEqual(expect.arrayContaining(['employee_id', 'storage_key', 'size_bytes']));
 
       await migrate(db, options);
       expect(await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`).toEqual(firstJournal);
