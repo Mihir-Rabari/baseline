@@ -19,6 +19,7 @@ import { reportRoutes } from './reports.js';
 import { shiftRoutes } from './shifts.js';
 import { hrRoutes } from './hr.js';
 import { financeRoutes } from './finance.js';
+import { tenantRoutes } from './tenants.js';
 
 export const v1Routes: FastifyPluginAsyncZod = async (fastify) => {
   await fastify.register(systemRoutes);
@@ -41,4 +42,5 @@ export const v1Routes: FastifyPluginAsyncZod = async (fastify) => {
   await fastify.register(shiftRoutes);
   await fastify.register(hrRoutes);
   await fastify.register(financeRoutes);
+  await fastify.register(tenantRoutes);
 };
