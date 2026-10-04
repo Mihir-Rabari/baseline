@@ -56,11 +56,24 @@ function Consumer() {
       <span data-testid="can-read-users">{String(auth.hasPermission('users:read'))}</span>
       <button onClick={() => auth.login({ email: 'user@example.com', password: 'pw' })}>login</button>
       <button onClick={() => auth.logout()}>logout</button>
+      <button onClick={() => auth.refreshSession({ background: true })}>refresh profile</button>
     </div>
   );
 }
 
 describe('AuthProvider (@app/web)', () => {
+  it('keeps authenticated content visible while refreshing saved profile details', async () => {
+    vi.mocked(api.auth.getSession).mockResolvedValueOnce(mockSessionResponse(mockUser));
+    render(<AuthProvider><Consumer /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
+    let resolve!: (value: SessionResponse) => void;
+    vi.mocked(api.auth.getSession).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    await act(async () => { screen.getByText('refresh profile').click(); });
+    expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    expect(screen.getByTestId('user-email')).toHaveTextContent(mockUser.email);
+    await act(async () => { resolve(mockSessionResponse({ ...mockUser, email: 'saved@example.com' })); });
+    expect(screen.getByTestId('user-email')).toHaveTextContent('saved@example.com');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

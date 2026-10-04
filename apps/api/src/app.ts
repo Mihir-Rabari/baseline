@@ -10,6 +10,7 @@ import { getEnv } from '@packages/config/env';
 // Plugins
 import configPlugin from './plugins/config.js';
 import helmetPlugin from './plugins/helmet.js';
+import tenantPlugin from './plugins/tenant.js';
 import corsPlugin from './plugins/cors.js';
 import rateLimitPlugin from './plugins/rate-limit.js';
 import swaggerPlugin from './plugins/swagger.js';
@@ -17,6 +18,7 @@ import metricsPlugin from './plugins/metrics.js';
 import servicesPlugin from './plugins/services.js';
 import authPlugin from './plugins/auth.js';
 import iamPlugin from './plugins/iam.js';
+import agentPlugin from './plugins/agent.js';
 import emailPlugin from './plugins/email.js';
 import errorHandlerPlugin from './plugins/error-handler.js';
 
@@ -77,6 +79,20 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
     reply.header('x-request-id', request.id);
   });
 
+  // Browsers send `Content-Type: application/json` on body-less POSTs (e.g. /bar/tabs/:id/send);
+  // Fastify rejects that with 400 by default, so treat an empty JSON body as no body.
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_request, body, done) => {
+    const text = typeof body === 'string' ? body : body.toString('utf8');
+    if (text.trim() === '') return done(null, undefined);
+    try {
+      done(null, JSON.parse(text));
+    } catch {
+      const error = new Error('Body is not valid JSON') as Error & { statusCode: number };
+      error.statusCode = 400;
+      done(error, undefined);
+    }
+  });
+
   // Configure Zod validation & serialization compilers
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -89,8 +105,10 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
   app.register(swaggerPlugin);
   app.register(metricsPlugin);
   app.register(servicesPlugin);
+  app.register(tenantPlugin);
   app.register(authPlugin);
   app.register(iamPlugin);
+  app.register(agentPlugin);
   app.register(emailPlugin);
   app.register(errorHandlerPlugin);
 

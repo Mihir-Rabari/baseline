@@ -131,7 +131,7 @@ export default function BookingsPage() {
   if (!user) return null;
   const staff = hasPermission('bookings:read');
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title={staff ? 'Bookings' : 'My bookings'} description={staff ? 'Every court booking for the chosen date.' : 'Your upcoming and past court sessions.'} />
       {staff ? <DayBookings onCancel={setTarget} /> : <MyBookings onCancel={setTarget} />}
       <CancelDialog booking={target} onClose={() => setTarget(null)} />

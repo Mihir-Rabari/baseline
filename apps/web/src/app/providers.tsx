@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { shouldRetryQuery } from '@/lib/query-retry';
 import { AuthProvider } from '@/contexts/auth-context';
 
 import { ThemeProvider } from '@/components/theme-provider';
@@ -16,6 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 5 * 1000,
             refetchOnWindowFocus: false,
+            retry: shouldRetryQuery,
           },
         },
       })

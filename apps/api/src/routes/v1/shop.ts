@@ -190,6 +190,27 @@ export const shopRoutes: FastifyPluginAsyncZod = async (fastify) => {
     async (request, reply) => reply.send(await shop.updateProduct(request.params.id, request.body))
   );
 
+  fastify.delete(
+    '/products/:id',
+    {
+      preHandler: [requirePermission('products:update')],
+      schema: {
+        description: 'Delete or deactivate a product (owner)',
+        tags: ['Shop'],
+        params: IdParamSchema,
+        response: { 200: z.object({ success: z.boolean(), message: z.string(), deactivated: z.boolean().optional() }), ...errorResponses },
+      },
+    },
+    async (request, reply) => {
+      const result = await shop.deleteProduct(request.params.id);
+      return reply.send({
+        success: true,
+        message: result.deactivated ? 'Product has order history and was deactivated' : 'Product deleted successfully',
+        deactivated: result.deactivated,
+      });
+    }
+  );
+
   fastify.post(
     '/products/:id/restock',
     {
@@ -426,7 +447,7 @@ export const shopRoutes: FastifyPluginAsyncZod = async (fastify) => {
     {
       preHandler: [requireStaffOrSelf('orders:update', 'orders:create:self')],
       schema: {
-        description: 'Pay an unpaid order. Staff pick any method; a member can pay their own order by UPI.',
+        description: 'Pay an unpaid order. Staff pick any method; a member can pay their own order by UPI or card.',
         tags: ['Shop'],
         params: IdParamSchema,
         body: PayOrderRequestSchema,
@@ -439,7 +460,7 @@ export const shopRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const staff = await can(request, 'orders:update');
       if (!staff) {
         const own = await can(request, 'orders:create:self', access.ownerUserId);
-        if (!own || request.body.method !== 'UPI') return forbidden(request, reply, 'orders:pay:self');
+        if (!own || !['UPI', 'CARD'].includes(request.body.method)) return forbidden(request, reply, 'orders:pay:self');
       }
       const result = await shop.payOrder(request.params.id, {
         method: request.body.method,

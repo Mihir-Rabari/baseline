@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { UuidSchema, IsoDateTimeOutSchema, NullableIsoDateTimeOutSchema } from './common.js';
+import { UuidSchema, IsoDateTimeSchema, IsoDateTimeOutSchema, NullableIsoDateTimeOutSchema } from './common.js';
+import { CategoryCodeSchema } from './categories.js';
+import { ImageRefSchema } from './uploads.js';
 import { PaginationQuerySchema, createPaginatedResponseSchema } from './pagination.js';
 import {
   DateOnlySchema,
@@ -13,7 +15,8 @@ import {
 
 // ---- Tables and menu ----
 
-export const MenuCategoryEnum = z.enum(['DRINK', 'FOOD', 'SNACK']);
+/** A MENU-scope category code; the API checks it against the managed `categories` list. */
+export const MenuCategoryEnum = CategoryCodeSchema;
 export const BarStationEnum = z.enum(['BAR', 'KITCHEN']);
 
 export const BarTableStatusEnum = z.enum(['FREE', 'OCCUPIED']);
@@ -23,6 +26,7 @@ export const BarTableSchema = z.object({
   name: z.string(),
   seats: z.number().int().positive(),
   status: BarTableStatusEnum,
+  isActive: z.boolean().optional(),
   openTab: z
     .object({
       id: UuidSchema,
@@ -36,6 +40,32 @@ export const BarTableSchema = z.object({
 export type BarTable = z.infer<typeof BarTableSchema>;
 export const BarTableListSchema = z.array(BarTableSchema);
 
+/** GET /bar/tables: owners can include tables that have been switched off. */
+export const BarTableQuerySchema = z.object({
+  includeInactive: z.enum(['true', 'false']).optional(),
+});
+export type BarTableQuery = z.infer<typeof BarTableQuerySchema>;
+
+/** POST /bar/tables */
+export const CreateBarTableRequestSchema = z.object({
+  name: z.string().trim().min(1).max(32),
+  seats: z.number().int().min(1).max(50),
+});
+export type CreateBarTableRequest = z.infer<typeof CreateBarTableRequestSchema>;
+
+/** PUT /bar/tables/:id: any subset, plus isActive. */
+export const UpdateBarTableRequestSchema = CreateBarTableRequestSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+export type UpdateBarTableRequest = z.infer<typeof UpdateBarTableRequestSchema>;
+
+/** DELETE /bar/tables/:id: a table that has hosted tabs is deactivated instead of deleted. */
+export const DeleteBarTableResponseSchema = z.object({
+  deleted: z.boolean(),
+  deactivated: z.boolean(),
+});
+export type DeleteBarTableResponse = z.infer<typeof DeleteBarTableResponseSchema>;
+
 export const MenuItemSchema = z.object({
   id: UuidSchema,
   name: z.string(),
@@ -44,6 +74,7 @@ export const MenuItemSchema = z.object({
   pricePaise: PaiseSchema,
   discountable: z.boolean(),
   isAvailable: z.boolean(),
+  imageUrl: z.string().nullable().optional(),
 });
 export type MenuItem = z.infer<typeof MenuItemSchema>;
 export const MenuItemListSchema = z.array(MenuItemSchema);
@@ -61,6 +92,7 @@ export const CreateMenuItemRequestSchema = z.object({
   station: BarStationEnum,
   pricePaise: PositivePaiseSchema,
   discountable: z.boolean().optional(),
+  imageUrl: ImageRefSchema.nullable().optional(),
 });
 export type CreateMenuItemRequest = z.infer<typeof CreateMenuItemRequestSchema>;
 
@@ -357,3 +389,66 @@ export const UpdateBarTableBookingRequestSchema = z
   );
 export type UpdateBarTableBookingRequest = z.infer<typeof UpdateBarTableBookingRequestSchema>;
 
+
+// ---- Bar table bookings (reservations shown on the floor timeline) ----
+
+export const TableBookingStatusEnum = z.enum(['BOOKED', 'SEATED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']);
+export type TableBookingStatus = z.infer<typeof TableBookingStatusEnum>;
+
+export const TableBookingSchema = z.object({
+  id: UuidSchema,
+  tableId: UuidSchema,
+  tableName: z.string(),
+  guestName: z.string(),
+  memberId: UuidSchema.nullable(),
+  partySize: z.number().int().min(1),
+  notes: z.string().nullable(),
+  status: TableBookingStatusEnum,
+  startsAt: IsoDateTimeOutSchema,
+  endsAt: IsoDateTimeOutSchema,
+});
+export type TableBooking = z.infer<typeof TableBookingSchema>;
+export const TableBookingListSchema = z.array(TableBookingSchema);
+
+/** GET /bar/bookings: one club day, or up to two weeks from `date`. */
+export const TableBookingQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
+  days: z.coerce.number().int().min(1).max(14).default(1),
+  tableId: UuidSchema.optional(),
+  includeClosed: z.enum(['true', 'false']).optional(),
+});
+export type TableBookingQuery = z.infer<typeof TableBookingQuerySchema>;
+
+const MAX_BOOKING_MS = 12 * 60 * 60 * 1000;
+const bookingRange = (v: { startsAt?: string; endsAt?: string }) =>
+  !v.startsAt || !v.endsAt || (Date.parse(v.endsAt) > Date.parse(v.startsAt) && Date.parse(v.endsAt) - Date.parse(v.startsAt) <= MAX_BOOKING_MS);
+const RANGE_MESSAGE = { message: 'The booking must end after it starts and last at most 12 hours', path: ['endsAt'] };
+
+/** POST /bar/bookings */
+export const CreateTableBookingRequestSchema = z
+  .object({
+    tableId: UuidSchema,
+    guestName: z.string().trim().min(1).max(255),
+    memberId: UuidSchema.optional(),
+    partySize: z.number().int().min(1).max(50).default(2),
+    notes: z.string().trim().max(500).optional(),
+    startsAt: IsoDateTimeSchema,
+    endsAt: IsoDateTimeSchema,
+  })
+  .refine(bookingRange, RANGE_MESSAGE);
+export type CreateTableBookingRequest = z.infer<typeof CreateTableBookingRequestSchema>;
+
+/** PUT /bar/bookings/:id: move (tableId/startsAt/endsAt), resize, edit details or change status. */
+export const UpdateTableBookingRequestSchema = z
+  .object({
+    tableId: UuidSchema,
+    guestName: z.string().trim().min(1).max(255),
+    partySize: z.number().int().min(1).max(50),
+    notes: z.string().trim().max(500).nullable(),
+    status: TableBookingStatusEnum,
+    startsAt: IsoDateTimeSchema,
+    endsAt: IsoDateTimeSchema,
+  })
+  .partial()
+  .refine(bookingRange, RANGE_MESSAGE);
+export type UpdateTableBookingRequest = z.infer<typeof UpdateTableBookingRequestSchema>;

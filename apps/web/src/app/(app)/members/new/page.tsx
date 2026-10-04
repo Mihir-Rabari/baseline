@@ -31,7 +31,7 @@ export default function NewMemberPage() {
     defaultValues: { fullName: '', phone: '', email: '', dateOfBirth: '', planId: '', paymentMethod: 'CASH' },
   });
   if (!user) return null;
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <PageHeader title="New member" description="Register a member and collect their membership payment." />
     {!(hasPermission('members:create') && hasPermission('memberships:create')) ? <EmptyState title="Registration is unavailable" description="Ask the front desk to register this member." /> : <>
       {plans.isPending ? <Skeleton className="h-80" /> : plans.error ? <PageError error={plans.error} onRetry={() => { void plans.refetch(); }} /> : !plans.data?.some((plan) => plan.isActive) ? <EmptyState title="No membership plans available" description="Ask the owner to add a plan before registering members." /> :

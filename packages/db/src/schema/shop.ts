@@ -3,7 +3,8 @@ import { users } from './auth.js';
 import { members } from './members.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
 
-export type ProductCategory = 'RACKET' | 'BALL' | 'SHOE' | 'ACCESSORY' | 'APPAREL';
+/** A `categories.code` in the PRODUCT scope. */
+export type ProductCategory = string;
 export type OrderChannel = 'POS' | 'ONLINE';
 export type Fulfilment = 'COUNTER' | 'PICKUP' | 'DELIVERY';
 export type OrderStatus =

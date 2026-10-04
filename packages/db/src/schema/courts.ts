@@ -17,7 +17,8 @@ import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
 
 export type BookingKind = 'STANDARD' | 'SOCIAL' | 'TRIAL';
 export type BookingStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
-export type BookingPaymentStatus = 'UNPAID' | 'PAID' | 'WAIVED' | 'REFUNDED';
+/** PARTIAL: a cash booking that has paid its promise fee; the rest is due at the venue. */
+export type BookingPaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID' | 'WAIVED' | 'REFUNDED';
 export type BookingChannel = 'DESK' | 'PHONE' | 'ONLINE' | 'WEBSITE_TRIAL';
 export type OccupancyKind = 'BOOKING' | 'SOCIAL' | 'MAINTENANCE';
 
@@ -44,6 +45,7 @@ export const courts = pgTable(
     name: varchar('name', { length: 64 }).notNull().unique(), // "Tennis Court 1"
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: smallint('sort_order').notNull().default(0),
+    imageUrl: varchar('image_url', { length: 512 }),
     createdAt: createdAt(),
   },
   (t) => [index('idx_courts_type').on(t.courtTypeId)]

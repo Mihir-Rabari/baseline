@@ -79,6 +79,11 @@ export const envSchema = z.object({
   // Accepts `true`/`false`, a hop count ("1"), or a comma-separated CIDR allowlist.
   TRUST_PROXY: z.string().default('false'),
 
+  // Multi-tenancy. Clubs are reached at `<slug>.<PLATFORM_DOMAIN>` or at a verified custom domain.
+  // PLATFORM_CNAME_TARGET is the hostname custom domains must point their CNAME at.
+  PLATFORM_DOMAIN: z.string().trim().toLowerCase().optional(),
+  PLATFORM_CNAME_TARGET: z.string().trim().toLowerCase().optional(),
+
   // PostgreSQL Database
   DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/app_db'),
   DATABASE_HOST: z.string().default('localhost'),
@@ -124,6 +129,11 @@ export const envSchema = z.object({
     .regex(/^([^<>@]+<)?[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+>?$/, 'Expected an email address, optionally with a display name')
     .optional()
     .default('noreply@example.com'),
+
+  // AI agent (chat assistant that acts as the signed-in user). Disabled until a key is set.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  AGENT_MODEL: z.string().default('claude-sonnet-5-5'),
+  AGENT_MAX_TOOL_STEPS: z.coerce.number().int().min(1).max(12).default(6),
 
   // Authentication & Sessions (Phase 2)
   SESSION_SECRET: z.string().min(16).default(DEV_PLACEHOLDERS.SESSION_SECRET),

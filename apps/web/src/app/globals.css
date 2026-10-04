@@ -181,6 +181,31 @@
       display: none !important;
     }
 
+    /* Radix Dialog Print Styles (Issue #78) */
+    [data-radix-portal] > div:first-child:not([role="dialog"]),
+    [data-radix-overlay] {
+      display: none !important;
+    }
+
+    div[role="dialog"] {
+      position: static !important;
+      transform: none !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: #ffffff !important;
+      color: #09090b !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: visible !important;
+    }
+
+    /* When printing a dialog receipt, hide non-dialog body contents */
+    body:has(div[role="dialog"]) > *:not([data-radix-portal]) {
+      display: none !important;
+    }
+
     /* Prevent page splits across item lines or receipt sections */
     article,
     section,

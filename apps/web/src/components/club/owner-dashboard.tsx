@@ -1,5 +1,6 @@
 'use client';
 
+import { OwnerOverviewPanel } from './owner-overview';
 import React from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -80,6 +81,7 @@ export function OwnerDashboard({ report }: { report: DashboardReport }) {
         <Link href="/orders" className="underline underline-offset-4">View orders</Link>
       </section>}
     </div>
+    <OwnerOverviewPanel />
     <ClubSiteLink />
   </div>;
 }

@@ -418,7 +418,25 @@ describe('Shop and inventory (M-11)', () => {
       expect(res.statusCode).toBe(403);
     });
 
-    it('a member can pay their own order only by UPI', async (ctx) => {
+    it('checkout: payNow by card records a card payment for the server-computed total, and card pay works on an unpaid order (#68)', async (ctx) => {
+      if (!hasDatabase) return ctx.skip();
+      const p = await makeProduct({ pricePaise: 12345 });
+      const res = await call(memberA, 'POST', '/orders/online', { items: [{ productId: p.id, qty: 2 }], fulfilment: 'PICKUP', payNow: { method: 'CARD' } });
+      expect(res.statusCode, res.body).toBe(201);
+      const o = res.json();
+      expect(o.paymentStatus).toBe('PAID');
+      const [pay] = await db.select().from(payments).where(eq(payments.sourceId, o.id));
+      expect(pay).toMatchObject({ source: 'SHOP', method: 'CARD', amountPaise: o.totalPaise });
+      expect(o.totalPaise).toBe(o.subtotalPaise - o.discountPaise + o.deliveryFeePaise);
+      // Cash at pickup: placed unpaid; the member cannot mark it paid by cash, and another member cannot pay it at all.
+      const unpaid = (await call(memberA, 'POST', '/orders/online', { items: [{ productId: p.id, qty: 1 }], fulfilment: 'PICKUP' })).json();
+      expect(unpaid.paymentStatus).toBe('UNPAID');
+      expect((await call(memberB, 'POST', `/orders/${unpaid.id}/pay`, { method: 'CARD' })).statusCode).toBe(403);
+      expect((await call(memberA, 'POST', `/orders/${unpaid.id}/pay`, { method: 'CARD' })).statusCode).toBe(200);
+      expect((await call(memberA, 'POST', '/orders/online', { items: [{ productId: p.id, qty: 1 }], fulfilment: 'PICKUP', payNow: { method: 'CASH' } })).statusCode).toBe(400);
+    });
+
+    it('a member can pay their own order by UPI or card, never by cash (#68)', async (ctx) => {
       if (!hasDatabase) return ctx.skip();
       const p = await makeProduct({ pricePaise: 20000 });
       const placed = await call(memberA, 'POST', '/orders/online', {
@@ -981,7 +999,8 @@ describe('Shop and inventory (M-11)', () => {
 
     it('public products reject bad query values with 400', async (ctx) => {
       if (!hasDatabase) return ctx.skip();
-      expect((await call(null, 'GET', '/public/products?category=GUNS')).statusCode).toBe(400);
+      expect((await call(null, 'GET', '/public/products?category=GUNS')).json().data).toEqual([]); // unknown but well-formed: empty filter
+      expect((await call(null, 'GET', '/public/products?category=guns')).statusCode).toBe(400); // malformed code
       expect((await call(null, 'GET', '/public/products?limit=1000')).statusCode).toBe(400);
     });
 

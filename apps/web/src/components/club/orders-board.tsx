@@ -12,16 +12,20 @@ import { KanbanBoard } from '@/components/club/views';
 
 export type NextStatus = 'READY' | 'COLLECTED' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
 
-const COLUMNS = [
+export const COLUMNS = [
   { id: 'PLACED', title: 'Placed' },
   { id: 'READY', title: 'Ready for pickup' },
   { id: 'OUT_FOR_DELIVERY', title: 'Out for delivery' },
   { id: 'DONE', title: 'Done' },
+  { id: 'POS', title: 'POS / Counter' },
   { id: 'CANCELLED', title: 'Cancelled' },
 ];
 
-const columnOf = (order: Order) =>
-  ['COMPLETED', 'COLLECTED', 'DELIVERED'].includes(order.status) ? 'DONE' : order.status;
+export const columnOf = (order: Order) => {
+  if (order.status === 'CANCELLED') return 'CANCELLED';
+  if (order.channel === 'POS') return 'POS';
+  return ['COMPLETED', 'COLLECTED', 'DELIVERED'].includes(order.status) ? 'DONE' : order.status;
+};
 
 /** The next steps staff can take on an online order. */
 export function nextSteps(order: Order): NextStatus[] {
@@ -34,6 +38,7 @@ export function nextSteps(order: Order): NextStatus[] {
 
 /** The status an order moves to when dropped in a column, or null when that move is not allowed. */
 export function statusForDrop(order: Order, column: string): NextStatus | null {
+  if (order.channel !== 'ONLINE' || column === 'POS' || column === 'CANCELLED') return null;
   const wanted = column === 'DONE' ? (order.status === 'OUT_FOR_DELIVERY' ? 'DELIVERED' : 'COLLECTED') : column;
   return nextSteps(order).find((step) => step === wanted) ?? null;
 }
@@ -49,7 +54,7 @@ export function OrdersBoard({
   onAdvance: (order: Order, next: NextStatus) => void;
 }) {
   return (
-    <div className="w-full overflow-x-auto pb-4 pt-1">
+    <div className="w-full min-w-0 pb-4 pt-1">
       <KanbanBoard
         columns={COLUMNS}
         items={orders}

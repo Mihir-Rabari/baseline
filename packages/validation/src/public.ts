@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UuidSchema, EmailSchema, IsoDateTimeSchema } from './common.js';
 import { PaiseSchema, TimeOfDaySchema } from './domain-common.js';
 import { BookingSchema } from './bookings.js';
+import { ImageRefSchema } from './uploads.js';
 import { PhoneSchema } from './members.js';
 
 /** GET /public/club */
@@ -12,11 +13,12 @@ export const UpdateClubProfileRequestSchema = z
     tagline: z.string().trim().max(200).optional(),
     phone: z.string().trim().max(32).optional(),
     address: z.string().trim().max(300).optional(),
+    logoUrl: ImageRefSchema.nullable().optional(),
   })
   .refine((v) => Object.values(v).some((value) => value !== undefined), { message: 'Provide at least one field to change', path: ['name'] });
 export type UpdateClubProfileRequest = z.infer<typeof UpdateClubProfileRequestSchema>;
 
-export const ClubProfileSchema = z.object({ name: z.string(), tagline: z.string(), phone: z.string(), address: z.string() });
+export const ClubProfileSchema = z.object({ name: z.string(), tagline: z.string(), phone: z.string(), address: z.string(), logoUrl: z.string().nullable().optional() });
 export type ClubProfile = z.infer<typeof ClubProfileSchema>;
 
 export const PublicClubSchema = z.object({
@@ -24,6 +26,7 @@ export const PublicClubSchema = z.object({
   tagline: z.string(),
   phone: z.string(),
   address: z.string(),
+  logoUrl: z.string().nullable().optional(),
   hours: z.object({ open: TimeOfDaySchema, close: TimeOfDaySchema }),
   timezone: z.string(),
   courtTypes: z.array(
@@ -81,3 +84,33 @@ export const CreateTrialBookingResponseSchema = z.object({
   message: z.string(),
 });
 export type CreateTrialBookingResponse = z.infer<typeof CreateTrialBookingResponseSchema>;
+
+/** Share of the price a guest pays up-front when they choose cash. */
+export const PROMISE_FEE_PCT = 20;
+
+/** The promise fee for a price: 20% rounded up to a whole paisa, at least 1 and never above the price. */
+export const promiseFeePaise = (pricePaise: number): number =>
+  Math.min(pricePaise, Math.max(1, Math.ceil((pricePaise * PROMISE_FEE_PCT) / 100)));
+
+/** The payment choices on the checkout dialog. UPI and card pay in full; cash pays the promise fee. */
+export const CheckoutMethodEnum = z.enum(['UPI', 'CARD', 'CASH']);
+export type CheckoutMethod = z.infer<typeof CheckoutMethodEnum>;
+
+/** POST /public/bookings: a guest books and pays in one step. */
+export const CreatePublicBookingRequestSchema = z.object({
+  courtId: UuidSchema,
+  startsAt: IsoDateTimeSchema,
+  name: z.string().trim().min(1).max(200),
+  phone: PhoneSchema,
+  email: EmailSchema.optional(),
+  method: CheckoutMethodEnum,
+});
+export type CreatePublicBookingRequest = z.infer<typeof CreatePublicBookingRequestSchema>;
+
+export const CreatePublicBookingResponseSchema = z.object({
+  booking: BookingSchema,
+  paidPaise: z.number().int().min(0),
+  duePaise: z.number().int().min(0),
+  message: z.string(),
+});
+export type CreatePublicBookingResponse = z.infer<typeof CreatePublicBookingResponseSchema>;

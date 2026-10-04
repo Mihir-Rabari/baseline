@@ -501,7 +501,7 @@ export default function CrmPage() {
                                       urgency === 'overdue'
                                         ? 'text-destructive font-medium'
                                         : urgency === 'today'
-                                        ? 'text-amber-600 dark:text-amber-400 font-medium'
+                                        ? 'text-warning font-medium'
                                         : 'text-muted-foreground'
                                     }`}
                                   >
@@ -819,8 +819,8 @@ export default function CrmPage() {
 
                 {mutation.error && <PageError error={mutation.error} />}
                 {memberLink && (
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-                    <p className="font-medium text-emerald-800 dark:text-emerald-300">
+                  <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
+                    <p className="font-medium text-success">
                       Converted successfully!
                     </p>
                     <Link className="underline font-semibold" href={memberLink}>

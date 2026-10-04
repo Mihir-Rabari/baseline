@@ -1,10 +1,28 @@
-import { DashboardReportSchema, SharedDashboardReportSchema, type ReportRange, type CreateReportShareResponse } from '@packages/validation';
+import { DashboardReportSchema, ReportBreakdownSchema, SharedDashboardReportSchema, type ReportBreakdown, type ReportRange, type CreateReportShareResponse } from '@packages/validation';
 import { z } from 'zod';
 import { API_BASE_URL, ApiError, fetchApi, mock, USE_MOCKS } from './api-client';
 import { clubToday } from './member-form';
 
-export function mockDashboard(range: ReportRange) {
-  const days = range === 'today' ? 1 : range === 'week' ? 7 : 30;
+/** A preset range, or an explicit club-date window. */
+export type ReportPeriod = ReportRange | { from: string; to: string };
+export const periodQuery = (period: ReportPeriod) => (typeof period === 'string' ? `range=${period}` : `from=${period.from}&to=${period.to}`);
+
+export function mockBreakdown(period: ReportPeriod): ReportBreakdown {
+  const days = typeof period === 'string' ? (period === 'today' ? 1 : period === 'week' ? 7 : 30) : Math.max(1, Math.round((Date.parse(period.to) - Date.parse(period.from)) / 86_400_000) + 1);
+  return ReportBreakdownSchema.parse({
+    range: typeof period === 'string' ? period : 'custom', from: typeof period === 'string' ? clubToday() : period.from, to: typeof period === 'string' ? clubToday() : period.to, generatedAt: new Date().toISOString(),
+    bookings: { total: days * 12, cancelled: days, bookedValuePaise: days * 12 * 80000, bySport: [{ sport: 'Padel', count: days * 7, amountPaise: days * 7 * 90000 }, { sport: 'Tennis', count: days * 5, amountPaise: days * 5 * 60000 }], byChannel: [{ channel: 'DESK', count: days * 8 }, { channel: 'ONLINE', count: days * 4 }], byCourt: [{ court: 'Padel 1', count: days * 4 }, { court: 'Tennis 1', count: days * 3 }] },
+    orders: { count: days * 8, revenuePaise: days * 8 * 120000, byChannel: [{ channel: 'POS', count: days * 6, amountPaise: days * 6 * 100000 }, { channel: 'ONLINE', count: days * 2, amountPaise: days * 2 * 180000 }], topProducts: [{ name: 'Padel balls (3)', qty: days * 5, amountPaise: days * 5 * 40000 }] },
+    bar: { tabsSettled: days * 6, revenuePaise: days * 6 * 90000, averageTabPaise: 90000, topItems: [{ name: 'Cold coffee', qty: days * 9, amountPaise: days * 9 * 20000 }] },
+    inventory: { stockValuePaise: 18500000, unitsSold: days * 14, lowStock: [{ name: 'Grip tape', sku: 'GRP-01', stockQty: 2, reorderLevel: 5 }] },
+    members: { newMembers: days * 2, activeMemberships: 120, expiringSoon: 6, byPlan: [{ plan: 'Gold', active: 40 }, { plan: 'Silver', active: 80 }] },
+    payroll: { activeEmployees: 9, monthlyPayrollPaise: 5400000, pendingLeave: 2, byDepartment: [{ department: 'FRONT_DESK', employees: 4, monthlyPaise: 2000000 }, { department: 'BAR', employees: 5, monthlyPaise: 3400000 }] },
+  });
+}
+
+export function mockDashboard(period: ReportPeriod) {
+  const range: ReportRange = typeof period === 'string' ? period : 'month';
+  const days = typeof period === 'string' ? (range === 'today' ? 1 : range === 'week' ? 7 : 30) : Math.max(1, Math.round((Date.parse(period.to) - Date.parse(period.from)) / 86_400_000) + 1);
   const to = clubToday();
   const start = new Date(`${to}T12:00:00Z`);
   start.setUTCDate(start.getUTCDate() - days + 1);
@@ -24,10 +42,13 @@ export function mockDashboard(range: ReportRange) {
 const shares = new Map<string, { range: ReportRange; expiresAt: string }>();
 const SharedViewSchema = SharedDashboardReportSchema.extend({ expiresAt: z.string().datetime().optional() });
 export const reportApi = {
-  dashboard: async (range: ReportRange) => DashboardReportSchema.parse(USE_MOCKS ? await mock(mockDashboard(range)) : await fetchApi(`/api/v1/reports/dashboard?range=${range}`)),
-  exportUrl: (range: ReportRange) => `${API_BASE_URL}/api/v1/reports/export.csv?range=${range}`,
-  share: async (range: ReportRange): Promise<CreateReportShareResponse> => {
-    if (!USE_MOCKS) return fetchApi('/api/v1/reports/shares', { method: 'POST', body: JSON.stringify({ defaultRange: range, expiresInDays: 7 }) });
+  dashboard: async (period: ReportPeriod) => DashboardReportSchema.parse(USE_MOCKS ? await mock(mockDashboard(period)) : await fetchApi(`/api/v1/reports/dashboard?${periodQuery(period)}`)),
+  breakdown: async (period: ReportPeriod) => ReportBreakdownSchema.parse(USE_MOCKS ? await mock(mockBreakdown(period)) : await fetchApi(`/api/v1/reports/breakdown?${periodQuery(period)}`)),
+  pdfUrl: (period: ReportPeriod, type: 'summary' | 'breakdown' = 'summary') => `${API_BASE_URL}/api/v1/reports/export.pdf?${periodQuery(period)}${type === 'summary' ? '' : `&type=${type}`}`,
+  exportUrl: (period: ReportPeriod, type: 'summary' | 'breakdown' | 'payments' | 'bookings' | 'orders' | 'bar' | 'inventory' | 'members' | 'payroll' = 'summary') => `${API_BASE_URL}/api/v1/reports/export.csv?${periodQuery(period)}${type === 'summary' ? '' : `&type=${type}`}`,
+  share: async (period: ReportPeriod): Promise<CreateReportShareResponse> => {
+    const range: ReportRange = typeof period === 'string' ? period : 'month';
+    if (!USE_MOCKS) return fetchApi('/api/v1/reports/shares', { method: 'POST', body: JSON.stringify({ ...(typeof period === 'string' ? { defaultRange: period } : { from: period.from, to: period.to }), expiresInDays: 7 }) });
     const token = crypto.randomUUID(); const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
     shares.set(token, { range, expiresAt });
     window.localStorage.setItem(`mock-report-share:${token}`, JSON.stringify({ range, expiresAt }));

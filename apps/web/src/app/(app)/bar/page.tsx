@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useBarTables } from '@/hooks/use-bar';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
+import { TableBookings } from '@/components/club/table-bookings';
 import { PageError } from '@/components/club/page-error';
 import { MemberSearch } from '@/components/club/member-search';
 import { Money } from '@/components/club/money';
@@ -37,15 +38,16 @@ export default function BarFloorPage() {
       close(); router.push(`/bar/tabs/${tab.id}`);
     } catch { /* The dialog keeps the entered details and displays the actionable API error. */ }
   };
-  return <div className="space-y-6">
+  return <div className="space-y-8">
     <PageHeader title="Bar floor" description="Open a table or continue an existing tab." actions={<>
+      {hasPermission('bar:manage') && hasPermission('reports:read') && <Button asChild variant="outline"><Link href="/bar/tables">Manage tables</Link></Button>}
       {hasPermission('bar:kitchen') && <Button asChild variant="outline"><Link href="/bar/kitchen">Kitchen</Link></Button>}
       {canRead && <Button asChild variant="outline"><Link href="/bar/earnings">Earnings</Link></Button>}
     </>} />
     {!canRead ? <EmptyState title="Bar access required" description="Ask the owner for access to the bar floor." /> :
       tables.isPending ? <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">{Array.from({ length: 10 }, (_, i) => <Skeleton key={i} className="h-40" />)}</div> :
       tables.isError ? <PageError error={tables.error} onRetry={() => tables.refetch()} /> :
-      !tables.data?.length ? <EmptyState title="No tables configured" description="Ask the owner to add bar tables." /> :
+      !tables.data?.length ? <EmptyState title="No tables configured" description={hasPermission('reports:read') ? 'Use Manage tables to add the first table.' : 'Ask the owner to add bar tables.'} /> :
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">{tables.data.map((table) => {
         const content = <><span className="text-lg font-semibold">{table.name}</span><Badge variant={table.openTab ? 'warning' : 'outline'}>{table.openTab ? 'Occupied' : 'Free'}</Badge>
           {table.openTab ? <><span className="text-sm">#{table.openTab.tabNumber} · {table.openTab.label}</span><Money paise={table.openTab.totalPaise} /><span className="text-xs text-muted-foreground">Open {minutesSince(table.openTab.openedAt)} min</span></> : <span className="text-sm text-muted-foreground">{table.seats} seats</span>}</>;
@@ -75,6 +77,8 @@ export default function BarFloorPage() {
         }}
       />
     )}
+
+    {canRead && tables.data && <TableBookings tables={tables.data} canManage={canManage} />}
     <Dialog open={Boolean(selected)} onOpenChange={(value) => { if (!value && !open.isPending) close(); }}>
       <DialogContent><DialogHeader><DialogTitle>Open tab · {selected?.name}</DialogTitle><DialogDescription>Choose a member for their discount, or enter a guest name.</DialogDescription></DialogHeader>
         <form onSubmit={openTab} className="space-y-4">

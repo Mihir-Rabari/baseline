@@ -22,6 +22,19 @@ describe('members page', () => {
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
+  it('switches between list, cards and board, and asks for the larger page only for the board', () => {
+    window.localStorage.clear();
+    render(<MembersPage />);
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(screen.queryAllByRole('row')).toHaveLength(0);
+    expect(screen.getByRole('link', { name: /Aarav Mehta/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    expect(state.params).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, limit: 100 }));
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(state.params).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 20 }));
+    window.localStorage.clear();
+  });
   it('hides registration without create permission', () => {
     state.create = false;
     render(<MembersPage />);

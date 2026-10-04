@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { UuidSchema, IsoDateTimeSchema, IsoDateTimeOutSchema } from './common.js';
-import { DateOnlySchema, PaiseSchema, TimeOfDaySchema } from './domain-common.js';
+import { ImageRefSchema } from './uploads.js';
+import { DateOnlySchema, NonNegativePaiseSchema, PaiseSchema, PositivePaiseSchema, TimeOfDaySchema } from './domain-common.js';
 
 /** GET /courts */
 export const CourtSchema = z.object({
@@ -11,9 +12,70 @@ export const CourtSchema = z.object({
   baseRatePaise: PaiseSchema,
   socialCapacity: z.number().int().min(0).nullable(),
   isActive: z.boolean(),
+  courtTypeId: UuidSchema.optional(),
+  sortOrder: z.number().int().optional(),
+  imageUrl: z.string().nullable().optional(),
 });
 export type Court = z.infer<typeof CourtSchema>;
 export const CourtListSchema = z.array(CourtSchema);
+
+// ---- Court management (owner) ----
+
+/** GET /court-types: the sports a court can be assigned to. */
+export const CourtTypeSchema = z.object({
+  id: UuidSchema,
+  code: z.string(),
+  name: z.string(),
+  baseRatePaise: PaiseSchema,
+  socialFeePaise: PaiseSchema,
+  trialFeePaise: PaiseSchema,
+  socialCapacity: z.number().int().min(0),
+  isActive: z.boolean(),
+});
+export type CourtType = z.infer<typeof CourtTypeSchema>;
+export const CourtTypeListSchema = z.array(CourtTypeSchema);
+
+/** POST /court-types: a new sport. `code` is permanent. */
+export const CreateCourtTypeRequestSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(2)
+    .max(32)
+    .regex(/^[A-Z][A-Z0-9_]*$/, 'Use capital letters, digits and underscores'),
+  name: z.string().trim().min(1).max(64),
+  baseRatePaise: PositivePaiseSchema,
+  socialFeePaise: NonNegativePaiseSchema.optional(),
+  trialFeePaise: NonNegativePaiseSchema.optional(),
+  socialCapacity: z.number().int().min(0).max(200).optional(),
+  isActive: z.boolean().optional(),
+});
+export type CreateCourtTypeRequest = z.infer<typeof CreateCourtTypeRequestSchema>;
+
+/** PUT /court-types/:id: any subset except the code. */
+export const UpdateCourtTypeRequestSchema = CreateCourtTypeRequestSchema.omit({ code: true }).partial();
+export type UpdateCourtTypeRequest = z.infer<typeof UpdateCourtTypeRequestSchema>;
+
+/** POST /courts */
+export const CreateCourtRequestSchema = z.object({
+  name: z.string().trim().min(1).max(64),
+  courtTypeId: UuidSchema,
+  sortOrder: z.number().int().min(0).max(1000).optional(),
+  isActive: z.boolean().optional(),
+  imageUrl: ImageRefSchema.nullable().optional(),
+});
+export type CreateCourtRequest = z.infer<typeof CreateCourtRequestSchema>;
+
+/** PUT /courts/:id: any subset. */
+export const UpdateCourtRequestSchema = CreateCourtRequestSchema.partial();
+export type UpdateCourtRequest = z.infer<typeof UpdateCourtRequestSchema>;
+
+/** DELETE /courts/:id: a court with booking history is deactivated instead of deleted. */
+export const DeleteCourtResponseSchema = z.object({
+  deleted: z.boolean(),
+  deactivated: z.boolean(),
+});
+export type DeleteCourtResponse = z.infer<typeof DeleteCourtResponseSchema>;
 
 // ---- Availability (5.1) ----
 

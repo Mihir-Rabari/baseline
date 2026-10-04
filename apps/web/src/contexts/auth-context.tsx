@@ -15,7 +15,7 @@ interface AuthContextType {
   login: (data: LoginRequest) => Promise<void>;
   signup: (data: SignupRequest) => Promise<void>;
   logout: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  refreshSession: (options?: { background?: boolean }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,10 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const takeTicket = () => ++latestRequest.current;
   const isCurrent = (ticket: number) => mounted.current && ticket === latestRequest.current;
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (options?: { background?: boolean }) => {
     const ticket = ++latestRequest.current;
     try {
-      setIsLoading(true);
+      if (!options?.background) setIsLoading(true);
       const res = await api.auth.getSession();
       if (!mounted.current || ticket !== latestRequest.current) return;
       setUser(res.user);

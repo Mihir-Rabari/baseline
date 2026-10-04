@@ -25,6 +25,7 @@ const site: ClubSite = {
   ],
   products: [{ id: 'x1', name: 'Club Cap', category: 'ACCESSORY', pricePaise: 29900, inStock: true }],
   freeToday: { BADMINTON: 12, PADEL: 4 },
+  branding: null,
 };
 const render_ = async (slug: string) => render(await ClubSitePage({ params: Promise.resolve({ slug }) }));
 
@@ -66,6 +67,15 @@ describe('club website /site/:slug', () => {
     expect(screen.getAllByRole('link', { name: /Book a trial/ }).every((a) => a.getAttribute('href') === '/play')).toBe(true);
     expect(screen.getByRole('link', { name: 'See membership' })).toHaveAttribute('href', '#membership');
     expect(screen.getByRole('link', { name: 'Send an enquiry' })).toHaveAttribute('href', '/contact');
+  });
+
+  it("applies the club's palette as theme variables and shows its logo, ignoring unsafe values", async () => {
+    state.site = { ...site, branding: { logoUrl: 'https://cdn.example.org/logo.png', primaryColor: '#ff0000', secondaryColor: 'red; background:url(//evil)', accentColor: null } };
+    const { container } = await render_('baseline-sports-club');
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue('--primary')).toBe('0 100% 50%');
+    expect(root.style.getPropertyValue('--secondary')).toBe('');
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://cdn.example.org/logo.png');
   });
 
   it('leaves out sections that have no data instead of showing empty ones', async () => {

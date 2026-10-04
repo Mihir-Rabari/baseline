@@ -16,7 +16,7 @@ import {
   QrCode,
   ShoppingBag,
 } from 'lucide-react';
-import type { MemberLookupItem, PaymentMethod, PublicProduct, Product } from '@packages/validation';
+import type { MemberLookupItem, PaymentMethod, PublicProduct, Product, Order } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { useShopProducts, useShopQuote } from '@/hooks/use-shop';
 import { useShopCart } from '@/hooks/use-shop-cart';
@@ -31,6 +31,7 @@ import {
 } from '@/lib/pos-filter';
 import { MemberSearch } from '@/components/club/member-search';
 import { Money } from '@/components/club/money';
+import { OrderDetailDialog } from '@/components/club/order-detail-dialog';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
@@ -83,6 +84,8 @@ export default function PosPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [tenderedInput, setTenderedInput] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchInputId = useId();
@@ -125,6 +128,8 @@ export default function PosPage() {
       }),
     onSuccess: (order) => {
       toast.success(`Order ${order.orderNumber} paid successfully`);
+      setCompletedOrder(order);
+      setShowReceipt(true);
       cart.clear();
       setMember(null);
       setCustomerName('');
@@ -219,7 +224,7 @@ export default function PosPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Counter sale"
@@ -621,7 +626,7 @@ export default function PosPage() {
                   </span>
                 </div>
                 {quote.data.discountPaise > 0 && (
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                  <div className="flex justify-between text-success font-medium">
                     <span>
                       Member discount ({quote.data.discountPct}%)
                     </span>
@@ -663,7 +668,7 @@ export default function PosPage() {
                           : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                       <span>{label}</span>
                       <span className="text-[9px] opacity-75 font-mono">{key}</span>
                     </button>
@@ -722,11 +727,19 @@ export default function PosPage() {
                   ))}
                 </div>
 
-                {/* Change calculation */}
-                {tenderedPaise > 0 && (
+                {/* Change or Split balance calculation */}
+                {tenderedPaise > 0 && tenderedPaise < totalPaise && (
+                  <div className="flex items-center justify-between rounded bg-background p-2 border">
+                    <span className="font-medium text-muted-foreground">Remaining balance</span>
+                    <span className="font-bold text-primary">
+                      <Money paise={totalPaise - tenderedPaise} />
+                    </span>
+                  </div>
+                )}
+                {tenderedPaise >= totalPaise && (
                   <div className="flex items-center justify-between rounded bg-background p-2 border">
                     <span className="font-medium text-muted-foreground">Change to return</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-bold text-success">
                       <Money paise={cashChangePaise} />
                     </span>
                   </div>
@@ -819,6 +832,18 @@ export default function PosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Order Receipt Dialog */}
+      <OrderDetailDialog
+        order={completedOrder}
+        open={showReceipt}
+        onOpenChange={(open) => {
+          setShowReceipt(open);
+          if (!open) {
+            setCompletedOrder(null);
+          }
+        }}
+      />
     </div>
   );
 }

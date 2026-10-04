@@ -4,6 +4,7 @@ import type {
   CreateEmployeeRequest,
   CreateLeaveRequest,
   Employee,
+  EmployeeProfile,
   EmployeeListQuery,
   LeaveDecisionRequest,
   LeaveListQuery,
@@ -78,7 +79,19 @@ export class HrService {
       hiredOn: row.hiredOn,
       status: row.status,
       leaveDaysThisYear: leaveDays,
+      photoUrl: row.photoUrl,
     };
+  }
+
+  async getEmployeeProfile(id: string): Promise<EmployeeProfile> {
+    const [row] = await this.db.select().from(employees).where(eq(employees.id, id)).limit(1);
+    if (!row) throw new DomainError('NOT_FOUND', 404, 'Employee not found.');
+    const leave = await this.leaveDaysThisYear([row.id]);
+    const [pending] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(leaveRequests)
+      .where(and(eq(leaveRequests.employeeId, row.id), eq(leaveRequests.status, 'PENDING')));
+    return { ...this.toEmployee(row, leave.get(row.id) ?? 0), email: row.email, phone: row.phone, pendingLeaveRequests: pending?.count ?? 0 };
   }
 
   async listEmployees(query: EmployeeListQuery): Promise<Employee[]> {
@@ -123,6 +136,7 @@ export class HrService {
           monthlySalaryPaise: input.monthlySalaryPaise,
           hiredOn: input.hiredOn,
           userId: input.userId ?? null,
+          photoUrl: input.photoUrl ?? null,
         })
         .returning();
       return this.toEmployee(row, 0);

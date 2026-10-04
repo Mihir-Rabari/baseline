@@ -7,6 +7,8 @@ import {
   memberships,
   membershipEvents,
   courtTypes,
+  categories,
+  DEFAULT_CATEGORIES,
   courts,
   socialWindows,
   products,
@@ -180,6 +182,11 @@ export async function seedCourtOs(db: DatabaseInstance, options: SeedCourtOsOpti
   // 1. Plans
   for (const p of PLANS) {
     await db.insert(plans).values(p).onConflictDoNothing({ target: plans.code });
+  }
+
+  // 1b. Product and menu categories
+  for (const c of DEFAULT_CATEGORIES) {
+    await db.insert(categories).values(c).onConflictDoNothing({ target: [categories.scope, categories.code] });
   }
 
   // 2. Court types and courts

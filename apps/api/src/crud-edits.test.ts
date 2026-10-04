@@ -105,9 +105,9 @@ describe('Edit endpoints: member details and club profile', () => {
     it('owner changes some fields, keeps the rest, and the public site shows the result', async (ctx) => {
       if (!ready) return ctx.skip();
       const first = await call('PUT', '/club/profile', owner, { name: 'Edit Test Club', tagline: 'First tagline', phone: '+91 90000 00001', address: '1 Test Street' });
-      expect(ClubProfileSchema.parse(first.json())).toEqual({ name: 'Edit Test Club', tagline: 'First tagline', phone: '+91 90000 00001', address: '1 Test Street' });
+      expect(ClubProfileSchema.parse(first.json())).toEqual({ name: 'Edit Test Club', tagline: 'First tagline', phone: '+91 90000 00001', address: '1 Test Street', logoUrl: null });
       const second = await call('PUT', '/club/profile', owner, { tagline: 'Second tagline' });
-      expect(second.json()).toEqual({ name: 'Edit Test Club', tagline: 'Second tagline', phone: '+91 90000 00001', address: '1 Test Street' });
+      expect(second.json()).toEqual({ name: 'Edit Test Club', tagline: 'Second tagline', phone: '+91 90000 00001', address: '1 Test Street', logoUrl: null });
       const pub = await call('GET', '/public/club', null);
       expect(pub.json()).toMatchObject({ name: 'Edit Test Club', tagline: 'Second tagline', phone: '+91 90000 00001', address: '1 Test Street' });
     });

@@ -69,6 +69,10 @@ export class PermissionCatalog {
       { id: 'profile:update:self', namespace: 'profile', action: 'update:self', description: 'Update own profile information', isSystem: true },
       { id: 'notifications:read:self', namespace: 'notifications', action: 'read:self', description: 'View own notifications', isSystem: true },
       { id: 'notifications:update:self', namespace: 'notifications', action: 'update:self', description: 'Manage own notifications', isSystem: true },
+
+      // AI agent
+      { id: 'agent:use', namespace: 'agent', action: 'use', description: 'Chat with the AI agent', isSystem: true },
+      { id: 'agent:act', namespace: 'agent', action: 'act', description: 'Let the AI agent stage and execute write actions on your behalf', isSystem: true },
     ];
 
     for (const perm of baseline) {

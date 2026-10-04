@@ -13,6 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { KitchenCards } from '@/components/club/kitchen-views';
+import { ViewSwitcher, useViewPreference, type ViewKind } from '@/components/club/views';
+
+const KITCHEN_VIEWS: ViewKind[] = ['board', 'cards'];
 import {
   type KitchenFilters,
   type StationFilter,
@@ -33,6 +37,7 @@ const columns: Array<{ status: 'NEW' | 'PREPARING' | 'READY'; label: string; act
 export default function KitchenPage() {
   const { user, hasPermission } = useAuth();
   const { tickets, advance, canRead } = useKitchen();
+  const [view, setView] = useViewPreference('kitchen', KITCHEN_VIEWS, 'board');
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<KitchenFilters>(() => {
@@ -83,6 +88,25 @@ export default function KitchenPage() {
     return count;
   }, [filters]);
 
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        if (filters.query) {
+          setFilters((prev) => ({ ...prev, query: '' }));
+        } else {
+          searchInputRef.current?.blur();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filters.query]);
+
   const resetFilters = () => {
     setFilters(DEFAULT_KITCHEN_FILTERS);
   };
@@ -108,16 +132,19 @@ export default function KitchenPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Kitchen & Bar Tickets"
         description="Live order display with station routing, time warnings, and service tracking."
         actions={
-          hasPermission('bar:read') && (
-            <Button asChild variant="outline">
-              <Link href="/bar">Bar floor</Link>
-            </Button>
-          )
+          <>
+            <ViewSwitcher views={KITCHEN_VIEWS} value={view} onChange={setView} />
+            {hasPermission('bar:read') && (
+              <Button asChild variant="outline">
+                <Link href="/bar">Bar floor</Link>
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -147,11 +174,12 @@ export default function KitchenPage() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Search Bar */}
               <div className="relative min-w-64 flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
+                  ref={searchInputRef}
                   id="kitchen-search"
                   aria-label="Search tickets"
-                  placeholder="Search by ticket #, tab, table, or item..."
+                  placeholder="Search by ticket #, tab, table, or item... (Press / to focus)"
                   value={filters.query}
                   onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
                   className="pl-9 pr-8"
@@ -296,6 +324,8 @@ export default function KitchenPage() {
                 </Button>
               }
             />
+          ) : view === 'cards' ? (
+            <KitchenCards tickets={filteredTickets} isPending={advance.isPending} activePendingId={advance.variables?.id} onMove={move} />
           ) : (
             <div
               className={`grid gap-4 ${
@@ -344,12 +374,12 @@ export default function KitchenPage() {
 
                               <div className="flex items-center gap-1.5">
                                 <Clock
-                                  className={`h-4 w-4 ${isUrgent ? 'text-amber-500 animate-pulse' : 'text-muted-foreground'}`}
+                                  className={`h-4 w-4 ${isUrgent ? 'text-warning animate-pulse' : 'text-muted-foreground'}`}
                                   aria-hidden="true"
                                 />
                                 <span
                                   className={`tabular text-xs font-medium ${
-                                    isUrgent ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'
+                                    isUrgent ? 'text-warning font-semibold' : 'text-muted-foreground'
                                   }`}
                                 >
                                   Waiting {ticket.minutesWaiting} min {isUrgent && '(Priority)'}
