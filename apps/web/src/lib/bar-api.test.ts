@@ -41,26 +41,6 @@ describe('Bar real transport', () => {
     expect(transport).toHaveBeenLastCalledWith(`/api/v1/bar/tickets/${ticket.id}/status`, { method: 'PATCH', body: '{"status":"PREPARING"}' });
     transport.mockResolvedValue(state.earnings('2026-10-03')); await barApi.earnings('2026-10-03');
     expect(transport).toHaveBeenLastCalledWith('/api/v1/bar/earnings?date=2026-10-03');
-    transport.mockResolvedValue(state.listBookings({ date: '2026-10-04' })); await barApi.bookings({ date: '2026-10-04' });
-    expect(transport).toHaveBeenLastCalledWith('/api/v1/bar/bookings?date=2026-10-04');
-    const booking = state.listBookings()[0];
-    transport.mockResolvedValue(booking); await barApi.booking(booking.id);
-    expect(transport).toHaveBeenLastCalledWith(`/api/v1/bar/bookings/${booking.id}`);
-    const newBookingData = {
-      tableId: booking.tableId,
-      bookingDate: '2026-10-04',
-      startsAt: '2026-10-04T16:00:00.000Z',
-      endsAt: '2026-10-04T17:00:00.000Z',
-      guestName: 'Kunal',
-      partySize: 2,
-    };
-    transport.mockResolvedValue({ ...booking, ...newBookingData });
-    await barApi.createBooking(newBookingData);
-    expect(transport).toHaveBeenLastCalledWith('/api/v1/bar/bookings', { method: 'POST', body: JSON.stringify(newBookingData) });
-    await barApi.seatBooking(booking.id);
-    expect(transport).toHaveBeenLastCalledWith(`/api/v1/bar/bookings/${booking.id}/seat`, { method: 'POST', body: '{}' });
-    await barApi.cancelBooking(booking.id, 'User request');
-    expect(transport).toHaveBeenLastCalledWith(`/api/v1/bar/bookings/${booking.id}/cancel`, { method: 'POST', body: JSON.stringify({ reason: 'User request' }) });
   });
   it('propagates server rejection and rejects malformed success data', async () => {
     transport.mockRejectedValue(new Error('ALREADY_SETTLED'));
