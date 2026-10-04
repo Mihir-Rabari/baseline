@@ -85,7 +85,7 @@ export default function OrdersPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0 max-w-full">
       <PageHeader
         title={staff ? 'Orders & Shop Fulfilment' : 'My orders'}
         description={
@@ -100,12 +100,12 @@ export default function OrdersPage() {
         <EmptyState title="Orders are unavailable" description="Ask the front desk for order information." />
       ) : (
         <>
-          {/* Filter Bar */}
-          <div className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
+          {/* Filter Bar (Issue #72) */}
+          <div className="space-y-3 rounded-lg border bg-card p-4 shadow-sm min-w-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {/* Search input */}
-              <div className="relative min-w-60 flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   id="orders-search"
                   aria-label="Search orders"
@@ -121,64 +121,66 @@ export default function OrdersPage() {
                     onClick={() => setSearch('')}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" aria-hidden />
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
 
-              {/* Channel filter pills */}
-              {staff && (
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-muted-foreground">Channel:</span>
-                  <div
-                    role="group"
-                    aria-label="Channel filter"
-                    className="inline-flex rounded-md border bg-background p-0.5 shadow-sm"
-                  >
-                    {(
-                      [
-                        { value: 'ALL', label: 'All' },
-                        { value: 'ONLINE', label: 'Online' },
-                        { value: 'POS', label: 'POS / Counter' },
-                      ] as const
-                    ).map((opt) => {
-                      const active = channel === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setChannel(opt.value)}
-                          className={`inline-flex h-8 items-center rounded px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                            active
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
+              {/* Channel filter pills & Reset button */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {staff && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">Channel:</span>
+                    <div
+                      role="group"
+                      aria-label="Channel filter"
+                      className="inline-flex rounded-md border bg-background p-0.5 shadow-sm"
+                    >
+                      {(
+                        [
+                          { value: 'ALL', label: 'All' },
+                          { value: 'ONLINE', label: 'Online' },
+                          { value: 'POS', label: 'POS / Counter' },
+                        ] as const
+                      ).map((opt) => {
+                        const active = channel === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setChannel(opt.value)}
+                            className={`inline-flex h-8 items-center rounded px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                              active
+                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Reset Filters */}
-              {isFiltered && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={resetFilters}
-                  className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  aria-label="Reset all filters"
-                >
-                  <RotateCcw className="h-4 w-4" aria-hidden />
-                  Reset
-                </Button>
-              )}
+                {/* Reset Filters */}
+                {isFiltered && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={resetFilters}
+                    className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    aria-label="Reset all filters"
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                    Reset
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* List View Status Tabs */}
+            {/* List View Status Tabs (Non-wrapping, scrollable tab row) */}
             {!board && staff && (
               <div className="border-t pt-3">
                 <Tabs
@@ -188,13 +190,15 @@ export default function OrdersPage() {
                     setPage(1);
                   }}
                 >
-                  <TabsList className="h-auto flex-wrap justify-start gap-1 bg-muted/60 p-1">
-                    {STATUS_TABS.map((tab) => (
-                      <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
+                  <div className="overflow-x-auto no-scrollbar pb-0.5">
+                    <TabsList className="h-9 w-max justify-start gap-1 bg-muted/60 p-1">
+                      {STATUS_TABS.map((tab) => (
+                        <TabsTrigger key={tab.value} value={tab.value} className="whitespace-nowrap px-3 text-xs">
+                          {tab.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </div>
                 </Tabs>
               </div>
             )}
