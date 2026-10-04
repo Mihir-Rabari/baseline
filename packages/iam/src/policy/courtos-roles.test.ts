@@ -67,6 +67,53 @@ describe('CourtOS permission catalog', () => {
   });
 });
 
+describe('AI agent permissions', () => {
+  it('registers agent:use and agent:act in the catalog and mirrors them in the db seed', () => {
+    for (const id of ['agent:use', 'agent:act']) {
+      expect(permissionCatalog.isRegistered(id), id).toBe(true);
+      expect(BASELINE_PERMISSIONS.some((p) => p.id === id), `seed ${id}`).toBe(true);
+    }
+  });
+
+  it('every baseline role bundle may use and act through the agent', () => {
+    const who = { MEMBER: memberA, FRONT_DESK: frontDesk, BAR_STAFF: barStaff, OWNER: owner };
+    for (const [role, subject] of Object.entries(who)) {
+      expect(can(subject, role, 'agent:use'), `${role} use`).toBe(true);
+      expect(can(subject, role, 'agent:act'), `${role} act`).toBe(true);
+    }
+    for (const policy of ['ExternalUserPolicy', 'AdministratorPolicy']) {
+      const stmts = IamConfig.policies[policy].statements as PolicyStatement[];
+      for (const action of ['agent:use', 'agent:act']) {
+        const r = PolicyEngine.evaluate({ identity: memberA, action, statements: stmts });
+        expect(r.allowed, `${policy} ${action}`).toBe(true);
+      }
+    }
+  });
+
+  it('denies an identity without agent:use (adversarial)', () => {
+    const noAgent: PolicyStatement[] = [
+      { effect: 'allow', actions: ['profile:read:self'], resources: ['*'] },
+    ];
+    for (const action of ['agent:use', 'agent:act']) {
+      expect(PolicyEngine.evaluate({ identity: memberA, action, statements: noAgent }).allowed, action).toBe(false);
+    }
+    expect(PolicyEngine.evaluate({ identity: memberA, action: 'agent:use', statements: [] }).allowed).toBe(false);
+  });
+
+  it('an explicit deny on agent:act beats the role allow, and suspended accounts are denied', () => {
+    const deny: PolicyStatement = { effect: 'deny', actions: ['agent:act'], resources: ['*'] };
+    expect(can(memberA, 'MEMBER', 'agent:act', undefined, [deny])).toBe(false);
+    expect(can(memberA, 'MEMBER', 'agent:use', undefined, [deny])).toBe(true);
+    const blocked = identity('ffffffff-ffff-4fff-8fff-ffffffffffff', 'SUSPENDED');
+    expect(can(blocked, 'MEMBER', 'agent:use')).toBe(false);
+  });
+
+  it('does not grant the agent any capability beyond the caller (no namespace wildcard)', () => {
+    expect(can(memberA, 'MEMBER', 'bookings:override')).toBe(false);
+    expect(can(memberA, 'MEMBER', 'admin:access')).toBe(false);
+  });
+});
+
 describe('invoice and roster permissions (S-04, S-05)', () => {
   it('members read only their own invoices and never the staff list or the roster', () => {
     expect(can(memberA, 'MEMBER', 'invoices:read:self', memberA.id)).toBe(true);

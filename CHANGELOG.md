@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **AI chat agent.** Acts as the signed-in user through the normal API route guards (never beyond the caller's permissions); read tools run immediately, write tools are staged as pending actions requiring confirmation; conversations are private per user.
+- **`agent:use` and `agent:act` permissions**, declared in the permission catalog, db seed and `IamConfig`, and granted to every baseline role bundle, `ExternalUserPolicy` and `AdministratorPolicy`. The seed adds them to already-seeded baseline policies.
+- **`FeatureConfig.enableAgent`** and the `ANTHROPIC_API_KEY`, `AGENT_MODEL`, `AGENT_MAX_TOOL_STEPS` environment variables.
+- **`skills/agent/SKILL.md`** documenting the agent architecture, how to add a tool, and testing rules.
+
+---
+
 ## [1.3.0] - 2026-09-05
 
 ### Added

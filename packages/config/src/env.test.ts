@@ -40,6 +40,26 @@ describe('Environment Configuration (@packages/config)', () => {
   });
 });
 
+describe('Agent environment', () => {
+  it('applies defaults and leaves the API key unset', () => {
+    const env = envSchema.parse({});
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(env.AGENT_MODEL).toBe('claude-sonnet-5-5');
+    expect(env.AGENT_MAX_TOOL_STEPS).toBe(6);
+  });
+
+  it('coerces AGENT_MAX_TOOL_STEPS and accepts the range bounds', () => {
+    expect(envSchema.parse({ AGENT_MAX_TOOL_STEPS: '1' }).AGENT_MAX_TOOL_STEPS).toBe(1);
+    expect(envSchema.parse({ AGENT_MAX_TOOL_STEPS: '12' }).AGENT_MAX_TOOL_STEPS).toBe(12);
+  });
+
+  it('rejects AGENT_MAX_TOOL_STEPS outside 1-12 or non-integer', () => {
+    for (const bad of ['0', '13', '-1', '2.5', 'abc']) {
+      expect(envSchema.safeParse({ AGENT_MAX_TOOL_STEPS: bad }).success, bad).toBe(false);
+    }
+  });
+});
+
 describe('Production secret guard', () => {
   const baseProdEnv = {
     NODE_ENV: 'production',

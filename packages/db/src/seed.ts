@@ -56,6 +56,10 @@ export const BASELINE_PERMISSIONS = [
   { id: 'notifications:read:self', namespace: 'notifications', action: 'read:self', description: 'View own notifications', isSystem: true },
   { id: 'notifications:update:self', namespace: 'notifications', action: 'update:self', description: 'Manage own notifications', isSystem: true },
 
+  // AI agent (mirror of the baseline list in packages/iam/src/catalog/permission-catalog.ts)
+  { id: 'agent:use', namespace: 'agent', action: 'use', description: 'Chat with the AI agent', isSystem: true },
+  { id: 'agent:act', namespace: 'agent', action: 'act', description: 'Let the AI agent stage and execute write actions on your behalf', isSystem: true },
+
   // CourtOS domain permissions.
   // MIRROR of COURTOS_PERMISSION_NAMESPACES in packages/iam/src/catalog/permission-catalog.ts
   // (a parity test in packages/iam fails if they drift).
@@ -157,6 +161,24 @@ export async function seedDomainIam(db: DatabaseInstance): Promise<void> {
   console.log('[DB] ✅ Synced CourtOS domain policies and roles.');
 }
 
+const AGENT_ACTIONS = ['agent:use', 'agent:act'];
+
+/**
+ * Upgrade path for databases seeded before the AI agent existed: the baseline policies are
+ * only created when missing, so append the agent actions once (idempotent: a re-run finds them).
+ */
+async function ensureAgentActions(db: DatabaseInstance, policyId: string): Promise<void> {
+  const existing = await db.select().from(policyStatements).where(eq(policyStatements.policyId, policyId));
+  const granted = new Set(existing.filter((s) => s.effect === 'allow').flatMap((s) => s.actions as string[]));
+  if (AGENT_ACTIONS.every((a) => granted.has(a))) return;
+  await db.insert(policyStatements).values({
+    policyId,
+    effect: 'allow',
+    actions: AGENT_ACTIONS.filter((a) => !granted.has(a)),
+    resources: ['*'],
+  });
+}
+
 export async function runSeeds(): Promise<void> {
   console.log('[DB] Seeding foundational system records & IAM bootstrap...');
   const db = getDb();
@@ -237,10 +259,12 @@ export async function runSeeds(): Promise<void> {
       await db.insert(policyStatements).values({
         policyId: adminPolicy.id,
         effect: 'allow',
-        actions: ['admin:access', 'users:*', 'roles:*', 'groups:*', 'policies:*', 'permissions:*'],
+        actions: ['admin:access', 'users:*', 'roles:*', 'groups:*', 'policies:*', 'permissions:*', 'agent:use', 'agent:act'],
         resources: ['*'],
       });
       console.log('[DB] ✅ Created baseline AdministratorPolicy.');
+    } else {
+      await ensureAgentActions(db, adminPolicy.id);
     }
 
     // 3b. ExternalUserPolicy
@@ -269,10 +293,14 @@ export async function runSeeds(): Promise<void> {
           'profile:update:self',
           'notifications:read:self',
           'notifications:update:self',
+          'agent:use',
+          'agent:act',
         ],
         resources: ['*'],
       });
       console.log('[DB] ✅ Created baseline ExternalUserPolicy.');
+    } else {
+      await ensureAgentActions(db, externalPolicy.id);
     }
 
     // 4. Baseline Roles Seed (ADMIN)
