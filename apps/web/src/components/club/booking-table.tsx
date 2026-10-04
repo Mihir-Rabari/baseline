@@ -1,14 +1,22 @@
 'use client';
 
 import React from 'react';
-import type { Booking } from '@packages/validation';
+import { bookingPayment, type Booking } from '@packages/validation';
 import { formatDateTime } from '@/lib/format';
 import { canCancel } from '@/lib/booking-history';
 import { Money } from '@/components/club/money';
+import { formatMoney } from '@/lib/format';
 import { StatusBadge } from '@/components/club/status-badge';
 import { Button } from '@/components/ui/button';
 import { CardGrid } from '@/components/club/views';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+/** For a part-paid booking, what was paid and what is left to pay at the club. */
+export function PaidDue({ booking }: { booking: Booking }) {
+  const { paidPaise, duePaise } = bookingPayment(booking);
+  if (booking.paymentStatus !== 'PARTIAL') return null;
+  return <span className="block text-xs text-muted-foreground">Paid {formatMoney(paidPaise)}, due {formatMoney(duePaise)}</span>;
+}
 
 export function BookingTable({ bookings, showWho, onCancel }: { bookings: Booking[]; showWho?: boolean; onCancel?: (booking: Booking) => void }) {
   return (
@@ -29,7 +37,7 @@ export function BookingTable({ bookings, showWho, onCancel }: { bookings: Bookin
             <TableCell className="tabular">{formatDateTime(booking.startsAt)}</TableCell>
             {showWho && <TableCell>{booking.member?.fullName ?? booking.guest?.name ?? 'Walk-in'}</TableCell>}
             <TableCell>{booking.court.name}</TableCell>
-            <TableCell className="text-right"><Money paise={booking.pricePaise} /></TableCell>
+            <TableCell className="text-right"><Money paise={booking.pricePaise} /><PaidDue booking={booking} /></TableCell>
             <TableCell><StatusBadge kind="booking" value={booking.status} /></TableCell>
             {onCancel && (
               <TableCell className="text-right">
@@ -54,7 +62,7 @@ export function BookingCards({ bookings, showWho, onCancel }: { bookings: Bookin
           <div className="flex items-start justify-between gap-2"><p className="font-medium">{booking.court.name}</p><StatusBadge kind="booking" value={booking.status} /></div>
           <p className="tabular">{formatDateTime(booking.startsAt)}</p>
           {showWho && <p className="text-muted-foreground">{booking.member?.fullName ?? booking.guest?.name ?? 'Walk-in'}</p>}
-          <div className="flex items-center justify-between gap-2"><span className="tabular font-medium"><Money paise={booking.pricePaise} /></span>
+          <div className="flex items-center justify-between gap-2"><span className="tabular font-medium"><Money paise={booking.pricePaise} /><PaidDue booking={booking} /></span>
             {onCancel && canCancel(booking) && <Button size="sm" variant="outline" onClick={() => onCancel(booking)}>Cancel</Button>}</div>
         </div>
       ))}
