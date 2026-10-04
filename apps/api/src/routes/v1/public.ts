@@ -10,7 +10,7 @@ import {
   CreatePublicBookingResponseSchema,
   CreateBookingHoldRequestSchema, PaymentIntentSchema, PaymentWebhookRequestSchema, PaymentWebhookResponseSchema,
   type PaymentIntent,
-  promiseFeePaise, CreateTrialBookingResponseSchema,
+  bookingPayment, CreateTrialBookingResponseSchema,
   SharedReportParamSchema, SharedReportQuerySchema, SharedReportResponseSchema,
 } from '@packages/validation';
 import { DomainError } from '../../lib/domain-error.js';
@@ -133,7 +133,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (fastify) => {
       courtId, startsAt: new Date(startsAt), guest: { name, phone, email }, channel: 'ONLINE', kind: 'STANDARD',
       payNow: { method }, promiseFee: method === 'CASH',
     });
-    const paidPaise = booking.paymentStatus === 'PAID' ? booking.pricePaise : booking.paymentStatus === 'PARTIAL' ? promiseFeePaise(booking.pricePaise) : 0;
+    const { paidPaise } = bookingPayment(booking);
     const duePaise = booking.pricePaise - paidPaise;
     request.log.info({ bookingId: booking.id, courtId, method }, 'Guest booking created');
     return reply.status(201).send({

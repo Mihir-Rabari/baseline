@@ -48,6 +48,17 @@ vi.mock('sonner', () => ({
   },
 }));
 
+/** Opens the payment dialog and returns it. */
+async function openPayment() {
+  fireEvent.click(screen.getByRole('button', { name: 'Take payment' }));
+  return screen.findByRole('dialog', { name: 'Take payment' });
+}
+async function takePayment(method?: 'UPI' | 'Card' | 'Cash') {
+  const dialog = await openPayment();
+  if (method) fireEvent.click(within(dialog).getByRole('radio', { name: method }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Pay ₹/ }));
+}
+
 function mount() {
   const client = new QueryClient({
     defaultOptions: {
@@ -60,11 +71,6 @@ function mount() {
       <PosPage />
     </QueryClientProvider>
   );
-}
-
-async function confirmPayment() {
-  const dialog = await screen.findByRole('dialog', { name: 'Take payment' });
-  fireEvent.click(within(dialog).getByRole('button', { name: /^Pay/ }));
 }
 
 describe('Counter sale POS (Issue #71)', () => {
@@ -92,15 +98,8 @@ describe('Counter sale POS (Issue #71)', () => {
     // Add item by clicking product card
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
 
-    // Select UPI payment method
-    fireEvent.click(screen.getByRole('button', { name: /UPI/ }));
-
-    // The pay button opens the shared payment dialog, preselected with the chosen method
-    fireEvent.click(screen.getByRole('button', { name: 'Pay UPI' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Take payment' });
-    expect(within(dialog).getByRole('radio', { name: 'UPI' })).toBeChecked();
-    expect(shopApi.pos).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Pay/ }));
+    // Take payment: choose UPI in the shared payment dialog and pay
+    await takePayment('UPI');
 
     await waitFor(() =>
       expect(shopApi.pos).toHaveBeenCalledWith({
@@ -152,7 +151,7 @@ describe('Counter sale POS (Issue #71)', () => {
     expect(searchInput).toHaveValue('');
   });
 
-  it('calculates cash change when cash tendered is entered', () => {
+  it('calculates cash change when cash tendered is entered', async () => {
     state.quote = {
       items: [{ productId: products[0].id, name: products[0].name, qty: 1, unitPricePaise: 650000, discountPct: 0, lineTotalPaise: 650000, inStock: true }],
       subtotalPaise: 650000,
@@ -165,7 +164,8 @@ describe('Counter sale POS (Issue #71)', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
 
-    // Default payment method is Cash
+    // The dialog starts on Cash, which asks what was handed over
+    await openPayment();
     expect(screen.getByText('Cash Tendered')).toBeInTheDocument();
 
     const tenderedInput = screen.getByPlaceholderText('6500.00');
@@ -183,8 +183,7 @@ describe('Counter sale POS (Issue #71)', () => {
     mount();
 
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
-    await confirmPayment();
+    await takePayment('Cash');
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('insufficient stock')
@@ -203,8 +202,7 @@ describe('Counter sale POS (Issue #71)', () => {
     const customerInput = screen.getByLabelText('Walk-in customer name (optional)');
     fireEvent.change(customerInput, { target: { value: 'Rahul Sharma' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
-    await confirmPayment();
+    await takePayment('Cash');
 
     await waitFor(() =>
       expect(shopApi.pos).toHaveBeenCalledWith({
@@ -216,7 +214,7 @@ describe('Counter sale POS (Issue #71)', () => {
     );
   });
 
-  it('calculates remaining balance when partial cash tender is entered for split payment', () => {
+  it('calculates remaining balance when partial cash tender is entered for split payment', async () => {
     state.quote = {
       items: [
         {
@@ -239,6 +237,7 @@ describe('Counter sale POS (Issue #71)', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
 
+    await openPayment();
     const tenderedInput = screen.getByPlaceholderText('6500.00');
     fireEvent.change(tenderedInput, { target: { value: '2000' } });
 
@@ -278,8 +277,7 @@ describe('Counter sale POS (Issue #71)', () => {
 
     mount();
     fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
-    await confirmPayment();
+    await takePayment('Cash');
 
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'ORD-000099' })).toBeInTheDocument()
@@ -303,6 +301,69 @@ describe('Counter sale POS (Issue #71)', () => {
     state.allowed = false;
     mount();
     expect(screen.getByText('Counter sales are unavailable')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Pay cash' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Take payment' })).not.toBeInTheDocument();
+  });
+
+  it('takes the full amount for every method at the counter, with no promise fee or balance left', async () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
+    const dialog = await openPayment();
+    for (const method of ['UPI', 'Card', 'Cash'] as const) {
+      fireEvent.click(within(dialog).getByRole('radio', { name: method }));
+      expect(within(dialog).getByText('Pay now').nextSibling).toHaveTextContent('₹6,500');
+      expect(within(dialog).queryByText('Pay later')).not.toBeInTheDocument();
+      expect(within(dialog).queryByText(/promise fee/)).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'Pay ₹6,500' })).toBeInTheDocument();
+    }
+    expect(shopApi.pos).not.toHaveBeenCalled();
+  });
+
+  it('sells nothing when the payment dialog is cancelled, and keeps the cart', async () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
+    const dialog = await openPayment();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(shopApi.pos).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Quantity for Control tennis racket')).toHaveTextContent('1');
+  });
+
+  it('cannot take payment for an empty cart', () => {
+    mount();
+    expect(screen.getByRole('button', { name: 'Take payment' })).toBeDisabled();
+  });
+
+  it('opens payment on the chosen method from the keyboard shortcuts', async () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
+    fireEvent.keyDown(window, { key: 'F9' });
+    const dialog = await screen.findByRole('dialog', { name: 'Take payment' });
+    expect(within(dialog).getByRole('radio', { name: 'Card' })).toBeChecked();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true });
+    expect(await screen.findByRole('dialog', { name: 'Take payment' })).toBeInTheDocument();
+    expect(shopApi.pos).not.toHaveBeenCalled();
+  });
+
+  it('does not open payment from a shortcut when the cart is empty', () => {
+    mount();
+    fireEvent.keyDown(window, { key: 'F8' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('closes the payment dialog and shows the receipt after a sale', async () => {
+    vi.mocked(shopApi.pos).mockResolvedValue({
+      id: 'order-7', orderNumber: 'ORD-000007', channel: 'POS', fulfilment: 'COUNTER', status: 'COMPLETED', member: null, customerName: null, deliveryAddress: null,
+      items: [{ productId: products[0].id, name: products[0].name, qty: 1, unitPricePaise: 650000, discountPct: 0, lineTotalPaise: 650000 }],
+      subtotalPaise: 650000, discountPaise: 0, deliveryFeePaise: 0, totalPaise: 650000, paymentStatus: 'PAID', createdAt: '2026-10-04T05:00:00.000Z',
+    } as Awaited<ReturnType<typeof shopApi.pos>>);
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
+    await takePayment('Card');
+    expect(await screen.findByRole('heading', { name: 'ORD-000007' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Take payment' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Print receipt' })).toBeInTheDocument();
+    expect(shopApi.pos).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: 'CARD' }));
   });
 });

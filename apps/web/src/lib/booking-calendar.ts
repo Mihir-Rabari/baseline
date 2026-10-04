@@ -16,13 +16,13 @@ export function slotTime(instant: string, timezone: string) {
 }
 export function bookingPayload(selection: SlotSelection, staff: boolean, participant: {
   mode: 'MEMBER' | 'GUEST'; memberId?: string; name: string; phone: string; payment: string;
-}, social: boolean) {
+}, social: boolean, selfPayNow?: 'UPI' | 'CARD' | 'CASH') {
   if (staff && participant.mode === 'MEMBER' && !participant.memberId) throw new Error('Choose a member before booking.');
   const subject = !staff ? {} : participant.mode === 'MEMBER'
     ? { memberId: participant.memberId } : { guest: { name: participant.name, phone: participant.phone } };
   const base = { ...selection, ...subject };
   if (social) return JoinSocialRequestSchema.parse(base);
   return CreateBookingRequestSchema.parse({ ...base, channel: staff ? 'DESK' : 'ONLINE',
-    ...(participant.payment !== 'LATER' ? { payNow: { method: participant.payment } } : {}),
+    ...(staff && participant.payment !== 'LATER' ? { payNow: { method: participant.payment } } : !staff && selfPayNow ? { payNow: { method: selfPayNow } } : {}),
   });
 }

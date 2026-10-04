@@ -92,6 +92,15 @@ export const PROMISE_FEE_PCT = 20;
 export const promiseFeePaise = (pricePaise: number): number =>
   Math.min(pricePaise, Math.max(1, Math.ceil((pricePaise * PROMISE_FEE_PCT) / 100)));
 
+/**
+ * What has been paid on a booking and what is still due at the club. PARTIAL only comes from a cash
+ * booking that paid the promise fee, so the paid amount follows from the price.
+ */
+export const bookingPayment = (booking: { paymentStatus: string; pricePaise: number }): { paidPaise: number; duePaise: number } => {
+  const paidPaise = booking.paymentStatus === 'PAID' ? booking.pricePaise : booking.paymentStatus === 'PARTIAL' ? promiseFeePaise(booking.pricePaise) : 0;
+  return { paidPaise, duePaise: booking.paymentStatus === 'PARTIAL' ? booking.pricePaise - paidPaise : 0 };
+};
+
 /** The payment choices on the checkout dialog. UPI and card pay in full; cash pays the promise fee. */
 export const CheckoutMethodEnum = z.enum(['UPI', 'CARD', 'CASH']);
 export type CheckoutMethod = z.infer<typeof CheckoutMethodEnum>;

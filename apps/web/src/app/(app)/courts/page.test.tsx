@@ -22,13 +22,8 @@ vi.mock('@/hooks/use-availability', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+function payInDialog(label = 'Pay ₹600') { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: label })); }
 function chooseFree() { fireEvent.click(screen.getByRole('button', { name: 'Tennis Court 1, 8:30 am, ₹600' })); }
-/** A member's booking goes through the shared payment dialog. */
-async function payInDialog(label: string | RegExp = /^Pay /) {
-  const dialog = await screen.findByRole('dialog', { name: 'Pay for your session' });
-  fireEvent.click(within(dialog).getByRole('button', { name: label }));
-  return dialog;
-}
 function guest() {
   fireEvent.change(screen.getByLabelText('Guest name'), { target: { value: 'Riya Patel' } });
   fireEvent.change(screen.getByLabelText('Guest phone'), { target: { value: '9876543210' } });
@@ -39,42 +34,43 @@ describe('booking calendar', () => {
     Object.assign(state, { staff: false, read: true, book: true, data: AvailabilitySchema.parse(fixture), error: null, pending: false, fetching: false, submitting: false });
     state.mutation.mockResolvedValue({ court: { name: 'Tennis Court 1' }, startsAt: fixture.courts[0].slots[0].startsAt });
   });
-  it('a member pays in the payment dialog: UPI in full, with no staff fields, and the selection clears after success', async () => {
+  it('books for the caller without staff fields and clears selection after success', async () => {
     render(<CourtsPage />); chooseFree();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Pay for your session' });
-    expect(dialog).toHaveTextContent('Tennis Court 1');
-    expect(within(dialog).getByRole('radio', { name: 'UPI' })).toBeChecked();
-    expect(state.mutation).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Pay ₹600' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book court' })); payInDialog();
     await waitFor(() => expect(state.mutation).toHaveBeenCalledWith({ social: false, data: { courtId: fixture.courts[0].courtId, startsAt: fixture.courts[0].slots[0].startsAt, channel: 'ONLINE', payNow: { method: 'UPI' } } }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument());
     expect(screen.queryByLabelText('Guest name')).not.toBeInTheDocument();
   });
-  it('cash in the member dialog shows the 20% promise fee and books with a cash payNow', async () => {
+  it('shows what a member pays now and what is left for the club before booking, per method', async () => {
     render(<CourtsPage />); chooseFree();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Pay for your session' });
-    fireEvent.click(within(dialog).getByLabelText('Cash'));
-    expect(dialog).toHaveTextContent('A 20% promise fee holds your booking');
-    expect(dialog).toHaveTextContent('Pay later');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Pay ₹120' }));
-    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ payNow: { method: 'CASH' } }) })));
-  });
-  it('a failed payment keeps the dialog open with the server message and charges nothing twice', async () => {
-    state.mutation.mockRejectedValue(new ApiError('Payment declined', 402, 'PAYMENT_FAILED'));
-    render(<CourtsPage />); chooseFree();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
-    const dialog = await payInDialog();
-    await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('Payment declined'));
-    expect(screen.getByRole('dialog', { name: 'Pay for your session' })).toBeInTheDocument();
-  });
-  it('a free session (full member discount) books directly without a payment dialog', async () => {
-    const free = structuredClone(fixture); free.courts[0].slots[0].pricePaise = 0; state.data = AvailabilitySchema.parse(free);
-    render(<CourtsPage />);
-    fireEvent.click(screen.getByRole('button', { name: /^Tennis Court 1, 8:30 am/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
-    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith({ social: false, data: expect.not.objectContaining({ payNow: expect.anything() }) }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Pay now').nextSibling).toHaveTextContent('₹600');
+    expect(within(dialog).queryByText('Pay later')).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Cash' }));
+    expect(within(dialog).getByText('Pay now').nextSibling).toHaveTextContent('₹120');
+    expect(within(dialog).getByText('Pay later').nextSibling).toHaveTextContent('₹480');
+    expect(within(dialog).getByText(/20% promise fee/)).toBeInTheDocument();
+    expect(state.mutation).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pay ₹120' }));
+    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ channel: 'ONLINE', payNow: { method: 'CASH' } }) })));
+  });
+  it('keeps the payment dialog open with the reason when the booking is refused, and sends nothing on cancel', async () => {
+    state.mutation.mockRejectedValue(new ApiError('Payment provider is unavailable', 502, 'PAYMENT_FAILED'));
+    render(<CourtsPage />); chooseFree();
+    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
+    payInDialog();
+    expect(await within(await screen.findByRole('dialog')).findByRole('alert')).toHaveTextContent('Payment provider is unavailable');
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(state.mutation).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Book court' })).toBeInTheDocument();
+  });
+  it('books a free session straight away and never opens payment for staff', async () => {
+    const free = structuredClone(fixture); free.courts[0].slots[0].pricePaise = 0; state.data = free;
+    render(<CourtsPage />); fireEvent.click(screen.getByRole('button', { name: /Tennis Court 1, 8:30 am/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book court' }));
+    await waitFor(() => expect(state.mutation).toHaveBeenCalledWith({ social: false, data: { courtId: fixture.courts[0].courtId, startsAt: fixture.courts[0].slots[0].startsAt, channel: 'ONLINE' } }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('validates walk-in details, retries and includes immediate payment for staff', async () => {
@@ -105,24 +101,22 @@ describe('booking calendar', () => {
   });
   it('refetches and clears a slot lost to a concurrent booking', async () => {
     state.mutation.mockRejectedValue(new ApiError('Taken', 409, 'SLOT_TAKEN'));
-    render(<CourtsPage />); chooseFree(); fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' })); await payInDialog();
+    render(<CourtsPage />); chooseFree(); fireEvent.click(screen.getByRole('button', { name: 'Book court' })); payInDialog();
     await waitFor(() => expect(state.refetch).toHaveBeenCalledOnce());
-    expect(screen.queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Book court' })).not.toBeInTheDocument();
   });
   it('shows daily-limit errors and prevents booking when quota is already used', async () => {
     state.mutation.mockRejectedValue(new ApiError('Daily quota reached', 422, 'DAILY_LIMIT_REACHED'));
-    const { rerender } = render(<CourtsPage />); chooseFree(); fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
-    const dialog = await payInDialog();
-    await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('Daily quota reached'));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    const { rerender } = render(<CourtsPage />); chooseFree(); fireEvent.click(screen.getByRole('button', { name: 'Book court' })); payInDialog();
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Daily quota reached'));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     state.data = { ...fixture, limits: { usedToday: 2, maxPerDay: 2 } }; rerender(<CourtsPage />);
-    expect(screen.getByRole('button', { name: 'Continue to payment' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Book court' })).toBeDisabled();
   });
   it('blocks confirmation while submitting, fetching new prices or after a slot becomes occupied', () => {
     const { rerender } = render(<CourtsPage />); chooseFree();
-    state.fetching = true; rerender(<CourtsPage />); expect(screen.getByRole('button', { name: 'Continue to payment' })).toBeDisabled();
+    state.fetching = true; rerender(<CourtsPage />); expect(screen.getByRole('button', { name: 'Book court' })).toBeDisabled();
     state.fetching = false; state.submitting = true; rerender(<CourtsPage />); expect(screen.getByRole('button', { name: 'Confirming…' })).toBeDisabled();
     expect(screen.getByLabelText('Date')).toBeDisabled();
     state.submitting = false;

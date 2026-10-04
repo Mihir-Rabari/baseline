@@ -22,7 +22,7 @@ function booking(id: string, hoursFromNow: number, extra: Record<string, unknown
   const start = new Date(Date.now() + hoursFromNow * HOUR);
   return { id, court: { id: 'c1', name: 'Tennis Court 1', type: 'TENNIS' }, kind: 'STANDARD', member: { id: 'm1', memberCode: 'CC-1', fullName: 'Aarav Mehta', planCode: 'GOLD' }, guest: null,
     startsAt: start.toISOString(), endsAt: new Date(start.getTime() + HOUR).toISOString(), bookingDate: '2026-10-09', status: 'CONFIRMED', cancelledLate: false,
-    channel: 'ONLINE', basePricePaise: 60000, discountPct: 0, pricePaise: 60000, paidPaise: 0, paymentStatus: 'UNPAID', socialSessionId: null, createdAt: start.toISOString(), ...extra };
+    channel: 'ONLINE', basePricePaise: 60000, discountPct: 0, pricePaise: 60000, paymentStatus: 'UNPAID', socialSessionId: null, createdAt: start.toISOString(), ...extra };
 }
 const page = (rows: unknown[]) => ({ data: rows, meta: { page: 1, limit: 100, totalItems: rows.length, totalPages: 1, hasNextPage: false, hasPrevPage: false } });
 
@@ -40,16 +40,6 @@ describe('bookings page', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Past' }));
     expect(state.scope).toHaveBeenLastCalledWith('past');
     expect(screen.queryByRole('button', { name: /^Cancel Tennis/ })).not.toBeInTheDocument();
-  });
-
-  it('shows "Paid X, due Y" on partially paid bookings in the list and card views, and nothing on others (#68)', () => {
-    state.mine = page([booking('b1', 30, { paymentStatus: 'PARTIAL', paidPaise: 12000 }), booking('b2', 31, { paymentStatus: 'PAID', paidPaise: 60000 }), booking('b3', 32)]);
-    render(<BookingsPage />);
-    expect(screen.getAllByText('Paid ₹120, due ₹480')).toHaveLength(1);
-    expect(screen.queryByText(/^Paid ₹600/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /cards/i }));
-    expect(screen.getAllByText('Paid ₹120, due ₹480')).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: /list/i })); // the view choice is remembered between tests
   });
 
   it('explains the free window and cancels the chosen booking', async () => {
@@ -110,5 +100,18 @@ describe('bookings page', () => {
     render(<BookingsPage />);
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Cancel Tennis/ })).not.toBeInTheDocument();
+  });
+
+  it('shows paid and due on a part-paid booking only', () => {
+    state.mine = page([booking('b1', 30, { paymentStatus: 'PARTIAL' }), booking('b2', 40, { paymentStatus: 'PAID' }), booking('b3', 50)]);
+    render(<BookingsPage />);
+    expect(screen.getAllByText(/^Paid /)).toHaveLength(1);
+    expect(screen.getByText('Paid ₹120, due ₹480')).toBeInTheDocument();
+  });
+
+  it('shows paid and due to the front desk on the day list too', () => {
+    state.staff = true; state.day = page([booking('b1', 3, { paymentStatus: 'PARTIAL', pricePaise: 100000 })]);
+    render(<BookingsPage />);
+    expect(screen.getByText('Paid ₹200, due ₹800')).toBeInTheDocument();
   });
 });
