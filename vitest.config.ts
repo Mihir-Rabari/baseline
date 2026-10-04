@@ -28,7 +28,7 @@ export default defineConfig({
     // localStorage) to render under @testing-library/react. The rest of the workspace
     // (API, packages) is server-side code that runs faster and more realistically under
     // plain node, so only apps/web opts into jsdom rather than flipping it globally.
-    environmentMatchGlobs: [['apps/web/**', 'jsdom']],
+    environmentMatchGlobs: [['tests/apps/web/**', 'jsdom']],
     // Absolute, like the alias above — a relative path here resolves against the running
     // process's cwd when Vite discovers this config by walking upward from elsewhere
     // (e.g. `pnpm --filter <pkg> test` from that package's own directory), not against

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useId, useMemo } from 'react';
+import { Thumb } from '@/components/ui/thumb';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -481,7 +482,7 @@ export default function PosPage() {
                           : 'bg-card'
                       }`}
                     >
-                      <div className="space-y-1 w-full">
+                      <div className="space-y-1 w-full"><Thumb src={p.imageUrl} name={p.name} className="mb-2 aspect-[4/3] w-full" />
                         <div className="flex items-center justify-between gap-1">
                           <span className="font-mono text-[10px] text-muted-foreground uppercase">
                             {p.sku}

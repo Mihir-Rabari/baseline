@@ -32,6 +32,12 @@ const INVOICE_COLUMNS: KanbanColumn[] = [
   { id: 'VOID', title: 'Void' },
 ];
 
+/** Where an invoice may be dragged; the drop opens the invoice so the change is confirmed there. */
+const INVOICE_MOVES: Record<string, string[]> = {
+  DRAFT: ['SENT', 'VOID'],
+  SENT: ['PAID', 'VOID'],
+};
+
 export function InvoicesCards({
   invoices,
   onPreview,
@@ -123,6 +129,8 @@ export function InvoicesBoard({
       idOf={(inv) => inv.id}
       columnOf={(inv) => inv.status}
       emptyLabel="No invoices"
+      canDrop={(inv, to) => (INVOICE_MOVES[inv.status] ?? []).includes(to)}
+      onMove={onPreview ? (inv) => onPreview(inv) : undefined}
       renderCard={(inv) => (
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">

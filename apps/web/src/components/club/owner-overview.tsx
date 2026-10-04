@@ -8,15 +8,16 @@ import { ops } from '@/lib/ops';
 import { formatMoney } from '@/lib/format';
 import { clubTimeLabel } from '@/lib/table-bookings';
 import { humanize } from '@/components/club/ops-bits';
+import { CalendarClock, UserCheck, Wallet, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function Card({ title, href, linkLabel, children }: { title: string; href: string; linkLabel: string; children: React.ReactNode }) {
+function Card({ title, icon: Icon, href, linkLabel, children }: { title: string; icon: LucideIcon; href: string; linkLabel: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-4" aria-label={title}>
+    <section className="space-y-3 rounded-xl border bg-card p-5" aria-label={title}>
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <Link href={href} className="text-xs text-muted-foreground underline-offset-4 hover:underline">{linkLabel}</Link>
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><Icon className="size-4 text-primary" aria-hidden />{title}</h3>
+        <Link href={href} className="text-xs font-medium text-primary underline-offset-4 hover:underline">{linkLabel}</Link>
       </div>
       {children}
     </section>
@@ -28,7 +29,7 @@ const Empty = ({ children }: { children: React.ReactNode }) => <p className="tex
 export function OverviewCards({ data }: { data: OwnerOverview }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <Card title="Up next on court" href="/bookings" linkLabel="All bookings">
+      <Card icon={CalendarClock} title="Up next on court" href="/bookings" linkLabel="All bookings">
         {data.upcomingBookings.length === 0 ? <Empty>No upcoming bookings.</Empty> : (
           <ul className="divide-y">
             {data.upcomingBookings.map((b) => (
@@ -40,7 +41,7 @@ export function OverviewCards({ data }: { data: OwnerOverview }) {
           </ul>
         )}
       </Card>
-      <Card title="On shift now" href="/shifts" linkLabel="Shifts">
+      <Card icon={UserCheck} title="On shift now" href="/shifts" linkLabel="Shifts">
         <div className="flex flex-wrap gap-2 text-xs">
           <Badge variant="outline">{data.staffOnShiftCount} clocked in</Badge>
           <Badge variant={data.pendingOrders > 0 ? 'warning' : 'outline'}>{data.pendingOrders} open {data.pendingOrders === 1 ? 'order' : 'orders'}</Badge>
@@ -57,7 +58,7 @@ export function OverviewCards({ data }: { data: OwnerOverview }) {
           </ul>
         )}
       </Card>
-      <Card title="Latest payments" href="/reports" linkLabel="Reports">
+      <Card icon={Wallet} title="Latest payments" href="/reports" linkLabel="Reports">
         {data.recentPayments.length === 0 ? <Empty>No payments recorded yet.</Empty> : (
           <ul className="divide-y">
             {data.recentPayments.map((p, i) => (

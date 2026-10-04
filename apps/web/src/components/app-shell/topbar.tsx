@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { LogOut, Menu, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import {
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
-import { NotificationBell } from '@/components/app-shell/notification-bell';
 import { useProfileAvatar } from '@/hooks/use-profile-avatar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -62,7 +61,6 @@ export function Topbar({
       </Button>
 
       <div className="ml-auto flex items-center gap-2">
-        {user && <NotificationBell />}
         <ThemeToggle />
 
         {user && (
@@ -86,10 +84,10 @@ export function Topbar({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/dashboard?tab=profile">Profile</Link>
+                <Link href="/dashboard?tab=profile"><UserRound className="mr-2 size-4" aria-hidden />Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logout()}>Sign out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => logout()}><LogOut className="mr-2 size-4" aria-hidden />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}

@@ -71,7 +71,10 @@ export const profileAvatarRoutes: FastifyPluginAsyncZod = async (fastify) => {
     preHandler: [requirePermission('profile:read:self', (req) => ({ resourceOwnerId: (req.params as { userId: string }).userId }))],
     schema: { tags: ['Profile'], security: [{ CookieAuth: [] }], description: 'Read private profile photo; own account or ROOT only', params: z.object({ userId: z.string().uuid() }).strict(), response: { 200: z.any(), ...errors, 404: HttpErrorResponseSchema } },
   }, async (request, reply) => {
-    reply.header('Cache-Control', 'private, no-store').header('X-Content-Type-Options', 'nosniff');
+    // The web app loads this in an <img> from another origin; helmet's default `same-origin` policy
+    // makes the browser block it (ERR_BLOCKED_BY_RESPONSE.NotSameOrigin). The route is still
+    // cookie-authenticated and owner-only, so allowing embedding exposes nothing.
+    reply.header('Cache-Control', 'private, no-store').header('X-Content-Type-Options', 'nosniff').header('Cross-Origin-Resource-Policy', 'cross-origin');
     try {
       const image = await readAvatar(fastify, request.tenantId, request.params.userId);
       if (!image) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Profile photo not found', code: 'AVATAR_NOT_FOUND', requestId: request.id, timestamp: new Date().toISOString() });

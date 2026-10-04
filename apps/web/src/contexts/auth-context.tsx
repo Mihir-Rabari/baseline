@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { api } from '@/lib/api-client';
+import { api, SESSION_EXPIRED_EVENT } from '@/lib/api-client';
 import type { AuthUser, AuthSessionInfo, LoginRequest, SignupRequest } from '@packages/validation';
 
 interface AuthContextType {
@@ -57,8 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     mounted.current = true;
     void refreshSession();
+    // Any request answered 401 means the cookie no longer maps to a session: re-check once, quietly.
+    // If the session really is gone, refreshSession clears the user and the (app) layout sends them to login.
+    const onExpired = () => { refreshSession({ background: true }).catch(() => undefined); };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
     return () => {
       mounted.current = false;
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
     };
   }, [refreshSession]);
 

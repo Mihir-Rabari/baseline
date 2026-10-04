@@ -28,15 +28,15 @@ export function checkoutTerms(method: CheckoutMethod, totalPaise: number, cash: 
 }
 
 /** The three payment choices as a radio group, with the consequence of the chosen one spelled out. */
-export function PaymentMethodPicker({ value, onChange, totalPaise, cash, disabled }: {
-  value: CheckoutMethod; onChange: (method: CheckoutMethod) => void; totalPaise: number; cash: CashTerms; disabled?: boolean;
+export function PaymentMethodPicker({ value, onChange, totalPaise, cash, disabled, allowCash = true }: {
+  value: CheckoutMethod; onChange: (method: CheckoutMethod) => void; totalPaise: number; cash: CashTerms; disabled?: boolean; /** Guests cannot pay cash, so their checkout hides it. */ allowCash?: boolean;
 }) {
   const terms = checkoutTerms(value, totalPaise, cash);
   return (
     <fieldset className="space-y-3" disabled={disabled}>
       <legend className="text-sm font-medium">Payment method</legend>
       <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-3 gap-2">
-        {OPTIONS.map(({ method, label, icon: Icon }) => (
+        {OPTIONS.filter((option) => allowCash || option.method !== 'CASH').map(({ method, label, icon: Icon }) => (
           <label key={method} className={cn('flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border p-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring', value === method ? 'border-primary bg-primary/5' : 'hover:bg-muted')}>
             <input type="radio" name="payment-method" value={method} checked={value === method} onChange={() => onChange(method)} className="sr-only" />
             <Icon className="h-4 w-4" aria-hidden="true" />

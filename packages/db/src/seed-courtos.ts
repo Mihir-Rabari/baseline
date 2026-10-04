@@ -1,4 +1,5 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { tenantBranding, DEFAULT_TENANT_ID } from './schema/tenants.js';
 import { hashPassword } from '@packages/shared/crypto';
 import type { DatabaseInstance } from './client.js';
 import { runUnscoped } from './tenant-scope.js';
@@ -319,6 +320,27 @@ export async function seedCourtOs(db: DatabaseInstance, options: SeedCourtOsOpti
   }
   // Keep member_code_seq ahead of the seeded codes so new registrations never collide.
   await runUnscoped(async () => await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), ${MEMBER_COUNT}::bigint))`));
+
+  // 11. Demo imagery. Only fills rows that have none, so images an Owner uploaded are never replaced.
+  // These are stable https links (a seeded photo per record, a generated avatar per person and logo).
+  const photo = (seed: string, w = 800, h = 600) => `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
+  for (const court of await db.select({ id: courts.id, name: courts.name }).from(courts).where(isNull(courts.imageUrl))) {
+    await db.update(courts).set({ imageUrl: photo(`court-${court.name}`) }).where(eq(courts.id, court.id));
+  }
+  for (const product of await db.select({ id: products.id, sku: products.sku }).from(products).where(isNull(products.imageUrl))) {
+    await db.update(products).set({ imageUrl: photo(`product-${product.sku}`, 600, 600) }).where(eq(products.id, product.id));
+  }
+  for (const item of await db.select({ id: menuItems.id, name: menuItems.name }).from(menuItems).where(isNull(menuItems.imageUrl))) {
+    await db.update(menuItems).set({ imageUrl: photo(`menu-${item.name}`, 600, 600) }).where(eq(menuItems.id, item.id));
+  }
+  for (const employee of await db.select({ id: employees.id, email: employees.email }).from(employees).where(isNull(employees.photoUrl))) {
+    await db.update(employees).set({ photoUrl: `https://i.pravatar.cc/300?u=${encodeURIComponent(employee.email ?? employee.id)}` }).where(eq(employees.id, employee.id));
+  }
+  const logoUrl = 'https://api.dicebear.com/9.x/initials/svg?seed=Baseline%20Sports%20Club&backgroundColor=0b7a53&textColor=ffffff&fontWeight=700';
+  await runUnscoped(async () => {
+    await db.insert(tenantBranding).values({ tenantId: DEFAULT_TENANT_ID, logoUrl }).onConflictDoNothing({ target: tenantBranding.tenantId });
+    await db.update(tenantBranding).set({ logoUrl }).where(and(eq(tenantBranding.tenantId, DEFAULT_TENANT_ID), isNull(tenantBranding.logoUrl)));
+  });
 
   log('✅ CourtOS demo data seeded (plans, courts, products, menu, tables, employees, members).');
 }

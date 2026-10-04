@@ -34,7 +34,6 @@ import {
   LEAD_STATUSES,
   LEAD_SOURCES,
   filterLeads,
-  groupLeadsByStatus,
   getFollowUpUrgency,
 } from '@/lib/crm-filter';
 import { api } from '@/lib/api-client';
@@ -44,6 +43,7 @@ import { clubToday, memberFormSchema } from '@/lib/member-form';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
+import { KanbanBoard } from '@/components/club/views';
 import { StatTile } from '@/components/club/stat-tile';
 import { StatusBadge } from '@/components/club/status-badge';
 import { PlanPicker } from '@/components/club/plan-picker';
@@ -210,7 +210,22 @@ export default function CrmPage() {
     source: sourceFilter,
     dueTodayOnly: dueToday,
   });
-  const groupedLeads = groupLeadsByStatus(filteredLeadsList);
+
+  // Dragging a lead between open stages updates it directly. WON needs a plan and payment and
+  // LOST needs a reason, so those open the lead's detail panel instead.
+  function moveLead(lead: (typeof allLeads)[number], to: string) {
+    if (to === lead.status) return;
+    if (to === 'WON' || to === 'LOST') {
+      openLeadDetail(lead.id);
+      return;
+    }
+    const parsed = UpdateLeadRequestSchema.safeParse({ status: to });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+    mutation.mutate(() => crmApi.update(lead.id, parsed.data));
+  }
 
   const openLeadDetail = (leadId: string) => {
     mutation.reset();
@@ -420,113 +435,72 @@ export default function CrmPage() {
             />
           ) : viewMode === 'board' ? (
             /* KANBAN BOARD VIEW */
-            <div
-              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 overflow-x-auto pb-4"
-              aria-label="Leads Kanban Board"
-            >
-              {LEAD_STATUSES.map((column) => {
-                const columnLeads = groupedLeads[column.key] ?? [];
+            <KanbanBoard
+              columns={LEAD_STATUSES.map((s) => ({ id: s.key, title: s.label }))}
+              items={filteredLeadsList}
+              idOf={(lead) => lead.id}
+              columnOf={(lead) => lead.status}
+              emptyLabel="No leads"
+              onMove={manage ? moveLead : undefined}
+              renderCard={(lead) => {
+                const urgency = getFollowUpUrgency(lead.nextFollowUpAt, lead.status);
                 return (
-                  <div
-                    key={column.key}
-                    className="flex flex-col rounded-xl border bg-muted/30 p-3 min-w-[230px]"
+                  <button
+                    type="button"
+                    onClick={() => openLeadDetail(lead.id)}
+                    className="group w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-xs text-foreground uppercase tracking-wider">
-                          {column.label}
-                        </span>
-                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-mono">
-                          {columnLeads.length}
-                        </Badge>
-                      </div>
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="font-semibold text-sm group-hover:text-primary transition-colors">{lead.name}</p>
+                      <span className="text-[10px] uppercase font-mono text-muted-foreground shrink-0">
+                        {lead.source.replaceAll('_', ' ')}
+                      </span>
                     </div>
-
-                    <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[600px] pr-0.5">
-                      {columnLeads.length === 0 ? (
-                        <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-                          No {column.label.toLowerCase()} leads
-                        </div>
+                    {(lead.phone || lead.email) && (
+                      <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+                        {lead.phone && (
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Phone className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+                            <span className="truncate">{lead.phone}</span>
+                          </div>
+                        )}
+                        {lead.email && (
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Mail className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+                            <span className="truncate">{lead.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {lead.interestedPlan && (
+                      <div className="mt-2">
+                        <Badge variant="outline" className="text-[10px] font-normal py-0">{lead.interestedPlan.name}</Badge>
+                      </div>
+                    )}
+                    <div className="mt-2.5 flex items-center justify-between border-t pt-2 text-[11px]">
+                      {lead.nextFollowUpAt && !['WON', 'LOST'].includes(lead.status) ? (
+                        <span
+                          className={`flex items-center gap-1 ${
+                            urgency === 'overdue'
+                              ? 'text-destructive font-medium'
+                              : urgency === 'today'
+                              ? 'text-warning font-medium'
+                              : 'text-muted-foreground'
+                          }`}
+                        >
+                          <Clock className="h-4 w-4" aria-hidden="true" />
+                          {formatDateTime(lead.nextFollowUpAt)}
+                        </span>
                       ) : (
-                        columnLeads.map((lead) => {
-                          const urgency = getFollowUpUrgency(lead.nextFollowUpAt, lead.status);
-                          return (
-                            <button
-                              key={lead.id}
-                              type="button"
-                              onClick={() => openLeadDetail(lead.id)}
-                              className="group w-full rounded-lg border bg-card p-3 text-left shadow-xs transition-all hover:border-primary/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              <div className="flex items-start justify-between gap-1">
-                                <p className="font-semibold text-sm group-hover:text-primary transition-colors">
-                                  {lead.name}
-                                </p>
-                                <span className="text-[10px] uppercase font-mono text-muted-foreground shrink-0">
-                                  {lead.source.replaceAll('_', ' ')}
-                                </span>
-                              </div>
-
-                              {(lead.phone || lead.email) && (
-                                <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
-                                  {lead.phone && (
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      <Phone className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-                                      <span className="truncate">{lead.phone}</span>
-                                    </div>
-                                  )}
-                                  {lead.email && (
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      <Mail className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-                                      <span className="truncate">{lead.email}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {lead.interestedPlan && (
-                                <div className="mt-2">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] font-normal py-0"
-                                  >
-                                    {lead.interestedPlan.name}
-                                  </Badge>
-                                </div>
-                              )}
-
-                              <div className="mt-2.5 flex items-center justify-between border-t pt-2 text-[11px]">
-                                {lead.nextFollowUpAt && !['WON', 'LOST'].includes(lead.status) ? (
-                                  <span
-                                    className={`flex items-center gap-1 ${
-                                      urgency === 'overdue'
-                                        ? 'text-destructive font-medium'
-                                        : urgency === 'today'
-                                        ? 'text-warning font-medium'
-                                        : 'text-muted-foreground'
-                                    }`}
-                                  >
-                                    <Clock className="h-4 w-4" aria-hidden="true" />
-                                    {formatDateTime(lead.nextFollowUpAt)}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">
-                                    {lead.quoteCount > 0
-                                      ? `${lead.quoteCount} ${
-                                          lead.quoteCount === 1 ? 'quote' : 'quotes'
-                                        }`
-                                      : 'No follow-up'}
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })
+                        <span className="text-muted-foreground">
+                          {lead.quoteCount > 0 ? `${lead.quoteCount} ${lead.quoteCount === 1 ? 'quote' : 'quotes'}` : 'No follow-up'}
+                        </span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
-              })}
-            </div>
+              }}
+            />
           ) : (
             /* TABLE LIST VIEW */
             <div className="space-y-4">

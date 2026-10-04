@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { ClubBrand } from '@/components/brand/club-brand';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,16 +54,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
-      <div className="w-full max-w-sm space-y-6">
-        <Card>
+    <div className="flex w-full items-center justify-center">
+      <div className="w-full max-w-md space-y-6">
+        <Card className="px-2 py-4 shadow-sm sm:px-4">
           <form onSubmit={handleSubmit}>
-            <CardHeader>
-              <CardTitle>Sign in</CardTitle>
-              <CardDescription>Welcome back.</CardDescription>
+            <CardHeader className="items-center space-y-3 pb-6 text-center">
+              <ClubBrand size="lg" subtitle={false} className="justify-center" />
+              <div className="space-y-1">
+                <CardTitle className="text-xl">Sign in</CardTitle>
+                <CardDescription>Welcome back. Enter your details to continue.</CardDescription>
+              </div>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               {error && (
                 <p
                   role="alert"
@@ -97,7 +101,7 @@ export default function LoginPage() {
               </div>
             </CardContent>
 
-            <CardFooter className="flex flex-col items-stretch gap-4">
+            <CardFooter className="flex flex-col items-stretch gap-4 pt-2">
               <Button type="submit" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>

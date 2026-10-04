@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { ClubBrand } from '@/components/brand/club-brand';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuth } from '@/hooks/use-auth';
@@ -13,14 +14,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="container flex h-16 items-center gap-8">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="text-primary font-bold">Baseline</span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Club OS</span>
-        </Link>
-
-        <nav className="hidden items-center gap-4 text-xs font-medium text-muted-foreground md:flex">
-          <Link href="/site/baseline-sports-club" className="transition-colors hover:text-foreground">Club site</Link>
-        </nav>
+        <Link href="/" aria-label="Home" className="flex items-center"><ClubBrand name="Baseline" subtitle={false} /></Link>
 
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
@@ -31,7 +25,7 @@ export function SiteHeader() {
           ) : (
             <>
               <Button asChild variant="ghost" size="sm"><Link href="/login">Sign in</Link></Button>
-              <Button asChild size="sm"><Link href="/signup">Join the club</Link></Button>
+              <Button asChild size="sm"><Link href="/signup">Create account</Link></Button>
             </>
           )}
         </div>

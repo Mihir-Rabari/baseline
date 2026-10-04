@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { MessageSquare, Plus, SendHorizontal, Sparkles, Trash2, X } from 'lucide-react';
 import { AGENT_MAX_MESSAGE_LENGTH } from '@packages/validation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -61,9 +61,9 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
       className="relative flex h-full w-full flex-col border-l bg-background shadow-lg sm:max-w-md">
       <header className="space-y-3 border-b px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 id="agent-panel-title" className="text-lg font-semibold">Assistant</h2>
+          <div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles className="size-4" aria-hidden /></span><div><h2 id="agent-panel-title" className="text-lg font-semibold leading-tight">Assistant</h2><p className="text-xs text-muted-foreground">Ask about your club or prepare a change</p></div></div>
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onClick={newChat}>New chat</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={newChat}><Plus className="size-3.5" aria-hidden />New chat</Button>
             <Button variant="ghost" size="icon" aria-label="Close assistant" onClick={onClose}><X className="h-4 w-4" aria-hidden /></Button>
           </div>
         </div>
@@ -75,7 +75,7 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
             {list.map((item) => <option key={item.id} value={item.id}>{item.title || 'Untitled chat'}</option>)}
           </select>
           {conversationId && <Button variant="ghost" size="sm" disabled={remove.isPending}
-            onClick={() => remove.mutate(conversationId, { onSuccess: () => setConversationId(null) })}>Delete chat</Button>}
+            onClick={() => remove.mutate(conversationId, { onSuccess: () => setConversationId(null) })}><Trash2 className="mr-1.5 size-3.5" aria-hidden />Delete chat</Button>}
         </div>}
         {remove.error && <p role="alert" className="text-sm text-destructive">{agentErrorMessage(remove.error, 'Could not delete this chat.')}</p>}
       </header>
@@ -96,7 +96,7 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
           <EmptyState title="Ask about your club" description="The assistant can look things up and prepare changes for you to approve. It sees only what you can see." />
           <ul className="space-y-2" aria-label="Suggested questions">
             {suggestedPrompts(tools).map((prompt) => <li key={prompt}>
-              <Button variant="outline" className="h-auto w-full justify-start whitespace-normal py-2 text-left font-normal" disabled={!canUse || thinking} onClick={() => submit(prompt)}>{prompt}</Button>
+              <Button variant="outline" className="h-auto w-full justify-start whitespace-normal py-2 text-left font-normal" disabled={!canUse || thinking} onClick={() => submit(prompt)}><MessageSquare className="mr-2 size-4 shrink-0 text-primary" aria-hidden />{prompt}</Button>
             </li>)}
           </ul>
         </div>
@@ -119,7 +119,7 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
           className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">Enter to send, Shift+Enter for a new line.</p>
-          <Button type="submit" size="sm" disabled={disabled || !canUse || thinking || draft.trim() === ''}>{thinking ? 'Sending…' : 'Send'}</Button>
+          <Button type="submit" size="sm" disabled={disabled || !canUse || thinking || draft.trim() === ''}>{thinking ? 'Sending…' : <>Send<SendHorizontal className="ml-1.5 size-3.5" aria-hidden /></>}</Button>
         </div>
       </form>
     </div>

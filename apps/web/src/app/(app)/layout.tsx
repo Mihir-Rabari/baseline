@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sidebar } from '@/components/app-shell/sidebar';
 import { Topbar } from '@/components/app-shell/topbar';
+import { ClubBrand } from '@/components/brand/club-brand';
+import { GroupTabs } from '@/components/app-shell/group-tabs';
 import { AgentLauncher } from '@/components/agent/agent-launcher';
 import { cn } from '@/lib/utils';
 
@@ -65,8 +67,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <Link href="/" className="mb-6 flex h-8 items-center px-3 font-semibold tracking-tight">
-          <span>Baseline</span>
+        <Link href="/dashboard" aria-label="Home" className="mb-6 flex h-10 items-center px-3">
+          <ClubBrand />
         </Link>
         <Sidebar onNavigate={() => setMobileNavOpen(false)} />
       </aside>
@@ -85,8 +87,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           mobileNavOpen={mobileNavOpen}
           onToggleMobileNav={() => setMobileNavOpen((open) => !open)}
         />
-        <main className="min-w-0 flex-1 px-4 py-8 lg:px-8">
-          <div className="mx-auto min-w-0 w-full max-w-5xl space-y-8">{children}</div>
+        <main className="min-w-0 flex-1 px-4 py-4 lg:px-6 lg:py-5">
+          <div className="min-w-0 w-full space-y-6"><GroupTabs />{children}</div>
         </main>
       </div>
       <AgentLauncher />

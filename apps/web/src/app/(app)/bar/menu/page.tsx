@@ -14,6 +14,7 @@ import { categoryName, categoryOptions, useCategories } from '@/hooks/use-catego
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Thumb } from '@/components/ui/thumb';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const STATIONS = ['BAR', 'KITCHEN'];
@@ -76,7 +77,7 @@ export default function BarMenuPage() {
           <TableBody>
             {rows.map((item) => (
               <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.name}{!item.discountable && <Badge variant="outline" className="ml-2">No discount</Badge>}</TableCell>
+                <TableCell className="font-medium"><span className="flex items-center gap-3"><Thumb src={item.imageUrl} name={item.name} className="size-9" /><span>{item.name}{!item.discountable && <Badge variant="outline" className="ml-2">No discount</Badge>}</span></span></TableCell>
                 <TableCell>{categoryName(categories.data, item.category)}</TableCell>
                 <TableCell>{humanize(item.station)}</TableCell>
                 <TableCell className="text-right"><Money paise={item.pricePaise} /></TableCell>

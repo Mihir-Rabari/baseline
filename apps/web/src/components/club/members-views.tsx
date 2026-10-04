@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/club/status-badge';
 import { CardGrid, KanbanBoard, type KanbanColumn } from '@/components/club/views';
 import { Badge } from '@/components/ui/badge';
@@ -99,6 +100,7 @@ export function MembersCards({ members }: { members: MemberItem[] }) {
 }
 
 export function MembersBoard({ members }: { members: MemberItem[] }) {
+  const router = useRouter();
   return (
     <KanbanBoard
       columns={MEMBER_COLUMNS}
@@ -106,6 +108,8 @@ export function MembersBoard({ members }: { members: MemberItem[] }) {
       idOf={(m) => m.id}
       columnOf={(m) => m.membership?.expiryState ?? 'NONE'}
       emptyLabel="No members"
+      canDrop={(_member, to) => to === 'ACTIVE'}
+      onMove={(member) => router.push(`/members/${member.id}`)}
       renderCard={(member) => (
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-1">

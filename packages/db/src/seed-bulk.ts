@@ -148,7 +148,7 @@ export async function seedBulk(db: DatabaseInstance, options: SeedBulkOptions = 
     if (!id) throw new Error(`[DB] Member ${u.memberCode} was not created`);
     return id;
   });
-  await runUnscoped(async () => await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), (SELECT COALESCE(MAX(SUBSTRING(member_code FROM 4)::bigint), 0) FROM members)))`));
+  await runUnscoped(async () => await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), (SELECT COALESCE(MAX(SUBSTRING(member_code FROM 4)::bigint), 0) FROM members WHERE member_code ~ '^CC-[0-9]+$')))`));
 
   // 3. Memberships (only for members that have none) with a CREATED event each.
   const haveTerms = new Set<string>();

@@ -132,6 +132,9 @@ export const envSchema = z.object({
 
   // AI agent (chat assistant that acts as the signed-in user). Disabled until a key is set.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  // Alternative provider, used when ANTHROPIC_API_KEY is not set.
+  GROQ_API_KEY: z.string().min(1).optional(),
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
   AGENT_MODEL: z.string().default('claude-sonnet-5-5'),
   AGENT_MAX_TOOL_STEPS: z.coerce.number().int().min(1).max(12).default(6),
 

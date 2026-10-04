@@ -40,7 +40,8 @@ import type {
 } from '@packages/validation';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+export const SESSION_EXPIRED_EVENT = 'app:session-expired';
+export const USE_MOCKS =process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
 export const mock = <T,>(data: T, ms = 300): Promise<T> =>
   new Promise<T>((resolve) => setTimeout(() => resolve(data), ms));
@@ -91,6 +92,12 @@ export async function fetchApi<T>(endpoint: string, options: RequestOptions = {}
     const isJson = contentType && contentType.includes('application/json');
 
     if (!response.ok) {
+      // The session ended server-side (expired, revoked, signed out elsewhere). Tell the AuthProvider so
+      // the UI stops presenting a signed-in user whose every request is rejected. Credential endpoints
+      // are excluded: a 401 there just means the details were wrong.
+      if (response.status === 401 && typeof window !== 'undefined' && !/\/api\/v1\/auth\//.test(url)) {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      }
       if (isJson) {
         const errorData = await response.json();
         throw new ApiError(

@@ -5,6 +5,7 @@ import type { Product } from '@packages/validation';
 import { CardGrid, KanbanBoard, type KanbanColumn } from '@/components/club/views';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Thumb } from '@/components/ui/thumb';
 import { Package, Layers, SlidersHorizontal, History, Trash2 } from 'lucide-react';
 
 const INVENTORY_COLUMNS: KanbanColumn[] = [
@@ -12,6 +13,8 @@ const INVENTORY_COLUMNS: KanbanColumn[] = [
   { id: 'LOW_STOCK', title: 'Low stock' },
   { id: 'IN_STOCK', title: 'In stock' },
 ];
+
+const STOCK_RANK: Record<string, number> = { OUT_OF_STOCK: 0, LOW_STOCK: 1, IN_STOCK: 2 };
 
 export function inventoryStockCategory(product: Product): 'OUT_OF_STOCK' | 'LOW_STOCK' | 'IN_STOCK' {
   if (product.stockQty === 0) return 'OUT_OF_STOCK';
@@ -70,7 +73,7 @@ export function InventoryCards({
               </div>
 
               <div>
-                <h3 className="font-semibold text-foreground">{p.name}</h3>
+                <div className="flex items-center gap-2.5"><Thumb src={p.imageUrl} name={p.name} className="size-10" /><h3 className="font-semibold text-foreground">{p.name}</h3></div>
                 <p className="text-xs capitalize text-muted-foreground">{p.category.toLowerCase()}</p>
               </div>
 
@@ -179,6 +182,8 @@ export function InventoryBoard({
       idOf={(p) => p.id}
       columnOf={inventoryStockCategory}
       emptyLabel="No items"
+      canDrop={(p, to) => canAdjust && STOCK_RANK[to] > STOCK_RANK[inventoryStockCategory(p)]}
+      onMove={canAdjust ? (p) => onRestock(p) : undefined}
       renderCard={(p) => (
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-1">
@@ -193,7 +198,7 @@ export function InventoryBoard({
             </div>
           </div>
 
-          <h4 className="text-sm font-semibold text-foreground leading-snug">{p.name}</h4>
+          <div className="flex items-center gap-2"><Thumb src={p.imageUrl} name={p.name} className="size-8" /><h4 className="text-sm font-semibold text-foreground leading-snug">{p.name}</h4></div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
