@@ -24,6 +24,10 @@ function mount() {
   return render(<QueryClientProvider client={client}><HrWorkspace /></QueryClientProvider>);
 }
 describe('Staff workspace', () => {
+  it('links each employee to their profile', async () => {
+    mount();
+    expect(await screen.findByRole('link', { name: 'Asha Shah' })).toHaveAttribute('href', '/hr/employees/c0000000-0000-4000-8000-000000000001');
+  });
   it('creates an employee, converts rupees to paise and refreshes the employee list', async () => {
     mount(); await screen.findByText('Asha Shah');
     fireEvent.click(screen.getByRole('button', { name: 'Add employee' }));

@@ -241,6 +241,18 @@ export class PayrollService {
 
   // ------------------------------------------------------------------ payslips
 
+  /** Every payslip of one employee, newest month first (owner view; drafts included). */
+  async employeeSlips(employeeId: string): Promise<Payslip[]> {
+    await this.assertEmployee(employeeId);
+    const rows = await this.db
+      .select({ slip: payslips, run: payrollRuns })
+      .from(payslips)
+      .innerJoin(payrollRuns, eq(payrollRuns.id, payslips.runId))
+      .where(eq(payslips.employeeId, employeeId))
+      .orderBy(desc(payrollRuns.month));
+    return Promise.all(rows.map(async (r) => (await this.slipDtos(r.run, [r.slip]))[0]));
+  }
+
   /** Finalised payslips of the employee linked to `userId`. */
   async mySlips(userId: string): Promise<Payslip[]> {
     const rows = await this.db

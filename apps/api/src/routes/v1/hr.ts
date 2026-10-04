@@ -15,6 +15,7 @@ import {
   EmployeeListQuerySchema,
   EmployeeListSchema,
   EmployeeSchema,
+  EmployeeProfileSchema,
   HttpErrorResponseSchema,
   LeaveDecisionRequestSchema,
   LeaveListQuerySchema,
@@ -52,6 +53,20 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
       },
     },
     async (request, reply) => reply.send(await service.listEmployees(request.query))
+  );
+
+  fastify.get(
+    '/hr/employees/:id',
+    {
+      preHandler: [requirePermission('hr:read')],
+      schema: {
+        description: "One employee's profile: details, photo and leave summary. Bank details are a separate masked call.",
+        tags: ['HR'],
+        params: IdParam,
+        response: { 200: EmployeeProfileSchema, ...errors },
+      },
+    },
+    async (request, reply) => reply.header('cache-control', 'no-store').send(await service.getEmployeeProfile(request.params.id))
   );
 
   fastify.post(
@@ -205,6 +220,15 @@ export const hrRoutes: FastifyPluginAsyncZod = async (fastify) => {
       request.log.info({ employeeId: request.params.id, actorId: request.user!.id }, 'Employee bank details updated');
       return reply.header('cache-control', 'no-store').send(result);
     }
+  );
+
+  fastify.get(
+    '/hr/employees/:id/payslips',
+    {
+      preHandler: manage,
+      schema: { description: "All of one employee's payslips, newest month first.", tags: ['HR'], params: IdParam, response: { 200: PayslipListSchema, ...errors } },
+    },
+    async (request, reply) => reply.header('cache-control', 'no-store').send(await payroll.employeeSlips(request.params.id))
   );
 
   fastify.get(
