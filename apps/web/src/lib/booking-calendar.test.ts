@@ -11,7 +11,10 @@ describe('calendar requests and dates', () => {
   });
   it('never includes staff participant or payment fields in a self booking', () => {
     expect(bookingPayload(selection, false, { ...participant, memberId: 'b0000000-0000-4000-8000-000000000001' }, false))
-      .toEqual({ ...selection, channel: 'ONLINE' });
+      .toEqual({ ...selection, channel: 'ONLINE', payNow: { method: 'UPI' } });
+    // Paying later, or a member who picked nothing, sends no payment and never any staff field.
+    expect(bookingPayload(selection, false, { ...participant, payment: 'LATER' }, false)).toEqual({ ...selection, channel: 'ONLINE' });
+    expect(bookingPayload(selection, false, { ...participant, payment: 'CASH' }, false)).toMatchObject({ payNow: { method: 'CASH' } });
   });
   it('validates guest details and requires a selected member for desk bookings', () => {
     expect(() => bookingPayload(selection, true, { ...participant, phone: 'bad' }, false)).toThrow();
