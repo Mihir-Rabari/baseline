@@ -135,6 +135,11 @@ export const envSchema = z.object({
   AGENT_MODEL: z.string().default('claude-sonnet-5-5'),
   AGENT_MAX_TOOL_STEPS: z.coerce.number().int().min(1).max(12).default(6),
 
+  // Guest checkout (#67). The gateway signs its webhooks with this shared secret (HMAC-SHA256);
+  // without it the webhook endpoint is disabled. Unpaid slot holds are released after the TTL.
+  PAYMENT_WEBHOOK_SECRET: z.string().min(16).optional(),
+  PAYMENT_HOLD_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
+
   // Authentication & Sessions (Phase 2)
   SESSION_SECRET: z.string().min(16).default(DEV_PLACEHOLDERS.SESSION_SECRET),
   SESSION_COOKIE_NAME: z.string().default('app_session'),

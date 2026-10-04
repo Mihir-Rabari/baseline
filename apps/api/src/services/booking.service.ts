@@ -7,6 +7,7 @@ import {
   courts,
   members,
   payments,
+  paymentIntents,
   socialSessions,
   socialWindows,
   type BookingChannel,
@@ -125,6 +126,8 @@ export interface BookingListScope {
 
 type Tx = DbExecutor;
 
+export type PaymentIntentRow = typeof paymentIntents.$inferSelect;
+
 const bookingColumns = {
   id: bookings.id,
   courtId: courts.id,
@@ -146,6 +149,7 @@ const bookingColumns = {
   basePricePaise: bookings.basePricePaise,
   discountPct: bookings.discountPct,
   pricePaise: bookings.pricePaise,
+  paidPaise: sql<number>`(select coalesce(sum(${payments.amountPaise}), 0)::int from ${payments} where ${payments.source} = 'COURT' and ${payments.sourceId} = ${bookings.id})`,
   paymentStatus: bookings.paymentStatus,
   socialSessionId: bookings.socialSessionId,
   createdAt: bookings.createdAt,
@@ -172,6 +176,7 @@ type BookingJoinRow = {
   basePricePaise: number;
   discountPct: number;
   pricePaise: number;
+  paidPaise: number;
   paymentStatus: BookingPaymentStatus;
   socialSessionId: string | null;
   createdAt: Date;
@@ -193,6 +198,7 @@ export function toBooking(row: BookingJoinRow): Booking {
     basePricePaise: row.basePricePaise,
     discountPct: row.discountPct,
     pricePaise: row.pricePaise,
+    paidPaise: Number(row.paidPaise),
     paymentStatus: row.paymentStatus,
     socialSessionId: row.socialSessionId,
     createdAt: row.createdAt.toISOString(),
@@ -427,6 +433,163 @@ export class BookingService {
     } catch (error) {
       throw mapBookingDbError(error, 'booking');
     }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Guest checkout holds (#67): hold the slot, wait for the gateway webhook, confirm or release.
+  // ---------------------------------------------------------------------------------------------
+
+  /**
+   * Holds a slot for a guest and records what must be paid now. The amount is computed here from
+   * the server-side price (full for UPI/card, the 20% promise fee for cash); nothing the client
+   * sends can change it. The hold reuses the occupancy exclusion constraint, so a held slot cannot
+   * be booked by anyone else until the hold expires or fails.
+   */
+  async createHold(input: { courtId: string; startsAt: Date; guest: GuestInput; method: PaymentMethod; ttlMinutes: number }): Promise<PaymentIntentRow> {
+    await this.expireHolds();
+    const plan = await this.prepare(
+      { courtId: input.courtId, startsAt: input.startsAt, guest: input.guest, channel: 'ONLINE', kind: 'STANDARD' },
+      'STANDARD'
+    );
+    if (plan.price.pricePaise <= 0) {
+      throw new DomainError('NOT_PAYABLE', 422, 'This session is free; book it directly.');
+    }
+    const amountPaise = input.method === 'CASH' ? promiseFeePaise(plan.price.pricePaise) : plan.price.pricePaise;
+    try {
+      return await this.db.transaction(async (tx) => {
+        await this.lockCourtDay(tx, input.courtId, plan.bookingDate);
+        const [occupancy] = await tx
+          .insert(courtOccupancies)
+          .values({ courtId: input.courtId, startsAt: input.startsAt, endsAt: plan.endsAt, kind: 'BOOKING' })
+          .returning({ id: courtOccupancies.id });
+        const [intent] = await tx
+          .insert(paymentIntents)
+          .values({
+            method: input.method,
+            amountPaise,
+            totalPaise: plan.price.pricePaise,
+            courtId: input.courtId,
+            startsAt: input.startsAt,
+            endsAt: plan.endsAt,
+            basePricePaise: plan.price.basePricePaise,
+            discountPct: plan.price.discountPct,
+            guestName: input.guest.name,
+            guestPhone: input.guest.phone,
+            guestEmail: input.guest.email ?? null,
+            occupancyId: occupancy.id,
+            expiresAt: new Date(this.clock().getTime() + input.ttlMinutes * 60_000),
+          })
+          .returning();
+        return intent;
+      });
+    } catch (error) {
+      throw mapBookingDbError(error, 'booking');
+    }
+  }
+
+  async getIntent(id: string): Promise<PaymentIntentRow | null> {
+    const [row] = await this.db.select().from(paymentIntents).where(eq(paymentIntents.id, id)).limit(1);
+    return row ?? null;
+  }
+
+  /**
+   * Applies a signed `payment.succeeded`. Idempotent: a repeat of the same reference returns the
+   * settled intent unchanged. The amount must equal what the server expected, and the hold must
+   * still be live; otherwise nothing is booked and the caller gets a domain error.
+   */
+  async confirmHold(intentId: string, paid: { amountPaise: number; reference: string }): Promise<{ intent: PaymentIntentRow; duplicate: boolean }> {
+    const now = this.clock();
+    try {
+      return await this.db.transaction(async (tx) => {
+        const [intent] = await tx.select().from(paymentIntents).where(eq(paymentIntents.id, intentId)).for('update').limit(1);
+        if (!intent) throw new DomainError('NOT_FOUND', 404, 'Payment not found.');
+        if (intent.status === 'SUCCEEDED') {
+          if (intent.reference === paid.reference) return { intent, duplicate: true };
+          throw new DomainError('ALREADY_PAID', 409, 'This payment was already settled with a different reference.');
+        }
+        if (intent.status !== 'PENDING') {
+          throw new DomainError('HOLD_EXPIRED', 409, 'This hold is no longer active, so the booking was not made. The payment must be refunded.');
+        }
+        if (intent.expiresAt.getTime() <= now.getTime()) {
+          // The expiry job frees the slot; throwing here rolls this transaction back.
+          throw new DomainError('HOLD_EXPIRED', 409, 'This hold expired before payment arrived, so the booking was not made. The payment must be refunded.');
+        }
+        if (paid.amountPaise !== intent.amountPaise) {
+          throw new DomainError('AMOUNT_MISMATCH', 409, 'The paid amount does not match what was expected.');
+        }
+        const partial = intent.amountPaise < intent.totalPaise;
+        const [booking] = await tx
+          .insert(bookings)
+          .values({
+            courtId: intent.courtId,
+            kind: 'STANDARD',
+            guestName: intent.guestName,
+            guestPhone: intent.guestPhone,
+            guestEmail: intent.guestEmail,
+            startsAt: intent.startsAt,
+            endsAt: intent.endsAt,
+            bookingDate: clubDateOf(intent.startsAt, this.timezone),
+            channel: 'ONLINE',
+            basePricePaise: intent.basePricePaise,
+            discountPct: intent.discountPct,
+            pricePaise: intent.totalPaise,
+            paymentStatus: partial ? 'PARTIAL' : 'PAID',
+          })
+          .returning({ id: bookings.id });
+        if (intent.occupancyId) {
+          await tx.update(courtOccupancies).set({ bookingId: booking.id }).where(eq(courtOccupancies.id, intent.occupancyId));
+        }
+        await new PaymentService(tx).record({
+          source: 'COURT',
+          sourceId: booking.id,
+          amountPaise: intent.amountPaise,
+          method: intent.method,
+          reference: paid.reference,
+        });
+        const [settled] = await tx
+          .update(paymentIntents)
+          .set({ status: 'SUCCEEDED', bookingId: booking.id, reference: paid.reference, updatedAt: now })
+          .where(eq(paymentIntents.id, intent.id))
+          .returning();
+        return { intent: settled, duplicate: false };
+      });
+    } catch (error) {
+      throw mapBookingDbError(error, 'booking');
+    }
+  }
+
+  /** Applies a signed `payment.failed`: the hold is released straight away. */
+  async failHold(intentId: string): Promise<{ intent: PaymentIntentRow; duplicate: boolean }> {
+    const now = this.clock();
+    return this.db.transaction(async (tx) => {
+      const [intent] = await tx.select().from(paymentIntents).where(eq(paymentIntents.id, intentId)).for('update').limit(1);
+      if (!intent) throw new DomainError('NOT_FOUND', 404, 'Payment not found.');
+      if (intent.status === 'SUCCEEDED') {
+        throw new DomainError('ALREADY_PAID', 409, 'This payment already succeeded.');
+      }
+      if (intent.status !== 'PENDING') return { intent, duplicate: true };
+      return { intent: await this.releaseIntent(tx, intent, 'FAILED', now), duplicate: false };
+    });
+  }
+
+  /** Releases every PENDING hold whose time ran out, freeing its slot. Returns how many. */
+  async expireHolds(): Promise<number> {
+    const now = this.clock();
+    return this.db.transaction(async (tx) => {
+      const stale = await tx
+        .select()
+        .from(paymentIntents)
+        .where(and(eq(paymentIntents.status, 'PENDING'), lte(paymentIntents.expiresAt, now)))
+        .for('update', { skipLocked: true });
+      for (const intent of stale) await this.releaseIntent(tx, intent, 'EXPIRED', now);
+      return stale.length;
+    });
+  }
+
+  private async releaseIntent(tx: Tx, intent: PaymentIntentRow, status: 'FAILED' | 'EXPIRED', now: Date): Promise<PaymentIntentRow> {
+    if (intent.occupancyId) await tx.delete(courtOccupancies).where(eq(courtOccupancies.id, intent.occupancyId));
+    const [row] = await tx.update(paymentIntents).set({ status, occupancyId: null, updatedAt: now }).where(eq(paymentIntents.id, intent.id)).returning();
+    return row;
   }
 
   // ---------------------------------------------------------------------------------------------

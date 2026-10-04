@@ -24,7 +24,8 @@
     "pricePaise": 42000,
     "paymentStatus": "PAID",
     "socialSessionId": null,
-    "createdAt": "2026-09-28T09:00:00.000Z"
+    "createdAt": "2026-09-28T09:00:00.000Z",
+    "paidPaise": 42000
   },
   {
     "id": "c0000000-0000-4000-8000-000000000001",
@@ -51,7 +52,8 @@
     "pricePaise": 42000,
     "paymentStatus": "PAID",
     "socialSessionId": null,
-    "createdAt": "2026-09-28T09:00:00.000Z"
+    "createdAt": "2026-09-28T09:00:00.000Z",
+    "paidPaise": 42000
   },
   {
     "id": "c0000000-0000-4000-8000-000000000002",
@@ -78,7 +80,8 @@
     "pricePaise": 42000,
     "paymentStatus": "PAID",
     "socialSessionId": null,
-    "createdAt": "2026-09-28T09:00:00.000Z"
+    "createdAt": "2026-09-28T09:00:00.000Z",
+    "paidPaise": 42000
   },
   {
     "id": "c0000000-0000-4000-8000-000000000003",
@@ -105,7 +108,8 @@
     "pricePaise": 42000,
     "paymentStatus": "PAID",
     "socialSessionId": null,
-    "createdAt": "2026-09-28T09:00:00.000Z"
+    "createdAt": "2026-09-28T09:00:00.000Z",
+    "paidPaise": 42000
   },
   {
     "id": "c0000000-0000-4000-8000-000000000004",
@@ -132,7 +136,8 @@
     "pricePaise": 42000,
     "paymentStatus": "PAID",
     "socialSessionId": null,
-    "createdAt": "2026-09-28T09:00:00.000Z"
+    "createdAt": "2026-09-28T09:00:00.000Z",
+    "paidPaise": 42000
   },
   {
     "id": "c0000000-0000-4000-8000-000000000005",
@@ -159,6 +164,7 @@
     "pricePaise": 42000,
     "paymentStatus": "PAID",
     "socialSessionId": null,
-    "createdAt": "2026-09-28T09:00:00.000Z"
+    "createdAt": "2026-09-28T09:00:00.000Z",
+    "paidPaise": 42000
   }
 ]

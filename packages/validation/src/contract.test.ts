@@ -7,7 +7,7 @@ import {
   CreateMemberResponseSchema,
   BookingSchema,
   CreateBookingRequestSchema,
-  CancelBookingRequestSchema,
+  CancelBookingRequestSchema, bookingPayment,
   CreateTrialBookingRequestSchema,
   CreateTrialBookingResponseSchema,
   AvailabilitySchema,
@@ -99,6 +99,7 @@ const booking = {
   basePricePaise: 60000,
   discountPct: 30,
   pricePaise: 42000,
+  paidPaise: 0,
   paymentStatus: 'UNPAID',
   socialSessionId: null,
   createdAt: '2026-10-09T10:00:00.000Z',
@@ -119,6 +120,7 @@ const trialBooking = {
   basePricePaise: 60000,
   discountPct: 0,
   pricePaise: 19900,
+  paidPaise: 0,
   paymentStatus: 'UNPAID',
   socialSessionId: null,
   createdAt: '2026-10-09T09:00:00.000Z',
@@ -648,5 +650,16 @@ describe('contract schema behaviour', () => {
     expect(TicketListQuerySchema.parse({}).status).toEqual(['NEW', 'PREPARING', 'READY']);
     expect(TicketListQuerySchema.parse({ status: 'READY,SERVED' }).status).toEqual(['READY', 'SERVED']);
     expect(TicketListQuerySchema.safeParse({ status: 'NEW,BOGUS' }).success).toBe(false);
+  });
+});
+
+describe('bookingPayment', () => {
+  it('splits a cash booking into the promise fee paid and the rest due at the club', () => {
+    expect(bookingPayment({ paymentStatus: 'PARTIAL', pricePaise: 100000 })).toEqual({ paidPaise: 20000, duePaise: 80000 });
+    expect(bookingPayment({ paymentStatus: 'PARTIAL', pricePaise: 1 })).toEqual({ paidPaise: 1, duePaise: 0 });
+  });
+  it('has nothing due once paid and nothing paid while unpaid or waived', () => {
+    expect(bookingPayment({ paymentStatus: 'PAID', pricePaise: 50000 })).toEqual({ paidPaise: 50000, duePaise: 0 });
+    for (const paymentStatus of ['UNPAID', 'WAIVED', 'REFUNDED']) expect(bookingPayment({ paymentStatus, pricePaise: 50000 })).toEqual({ paidPaise: 0, duePaise: 0 });
   });
 });

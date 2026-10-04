@@ -11,12 +11,9 @@ import {
   Plus,
   Minus,
   Keyboard,
-  CreditCard,
-  Banknote,
-  QrCode,
   ShoppingBag,
 } from 'lucide-react';
-import type { MemberLookupItem, PaymentMethod, PublicProduct, Product, Order } from '@packages/validation';
+import type { CheckoutMethod, MemberLookupItem, PublicProduct, Product, Order } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { useShopProducts, useShopQuote } from '@/hooks/use-shop';
 import { useShopCart } from '@/hooks/use-shop-cart';
@@ -32,6 +29,7 @@ import {
 import { MemberSearch } from '@/components/club/member-search';
 import { Money } from '@/components/club/money';
 import { OrderDetailDialog } from '@/components/club/order-detail-dialog';
+import { PaymentDialog } from '@/components/club/payment-dialog';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
@@ -81,7 +79,8 @@ export default function PosPage() {
   // Customer & Cart states
   const [member, setMember] = useState<MemberLookupItem | null>(null);
   const [customerName, setCustomerName] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [paying, setPaying] = useState(false);
+  const [startMethod, setStartMethod] = useState<CheckoutMethod>('CASH');
   const [tenderedInput, setTenderedInput] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
@@ -119,7 +118,7 @@ export default function PosPage() {
 
   // Payment mutation
   const pay = useMutation({
-    mutationFn: (method: PaymentMethod) =>
+    mutationFn: (method: CheckoutMethod) =>
       shopApi.pos({
         items,
         memberId: member?.id,
@@ -137,9 +136,6 @@ export default function PosPage() {
       client.invalidateQueries({ queryKey: ['products'] });
       client.invalidateQueries({ queryKey: ['orders'] });
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
   });
 
   // Calculate cash change
@@ -147,6 +143,93 @@ export default function PosPage() {
   const tenderedPaise = Math.round((parseFloat(tenderedInput) || 0) * 100);
   const cashChangePaise = calculateCashChange(totalPaise, tenderedPaise);
   const quickCashNotes = useMemo(() => getQuickCashNotesPaise(totalPaise), [totalPaise]);
+
+  const canTakePayment =
+    items.length > 0 &&
+    !pay.isPending &&
+    !quote.isPending &&
+    !quote.isFetching &&
+    !quote.error &&
+    !quote.data?.items.some((line) => !line.inStock);
+  const openPayment = (method: CheckoutMethod = 'CASH') => {
+    if (!canTakePayment || paying) return;
+    setStartMethod(method);
+    setPaying(true);
+  };
+  const closePayment = () => {
+    if (pay.isPending) return;
+    setPaying(false);
+    setTenderedInput('');
+  };
+
+  const cashTender = (method: CheckoutMethod) => method !== 'CASH' ? null : (
+      <div className="space-y-2.5 rounded-lg border bg-muted/40 p-3 text-xs">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="tendered-input" className="text-xs font-medium">
+            Cash Tendered
+          </Label>
+          {tenderedInput && (
+            <button
+              type="button"
+              onClick={() => setTenderedInput('')}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+              ₹
+            </span>
+            <Input
+              id="tendered-input"
+              type="number"
+              step="any"
+              min="0"
+              placeholder={(totalPaise / 100).toFixed(2)}
+              value={tenderedInput}
+              onChange={(e) => setTenderedInput(e.target.value)}
+              className="h-8 pl-6 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Quick cash notes pills */}
+        <div className="flex flex-wrap gap-1">
+          {quickCashNotes.map((notePaise) => (
+            <button
+              key={notePaise}
+              type="button"
+              onClick={() => setTenderedInput((notePaise / 100).toString())}
+              className="rounded border bg-background px-2 py-0.5 text-[10px] font-medium hover:bg-muted"
+            >
+              {notePaise === totalPaise ? 'Exact' : `₹${notePaise / 100}`}
+            </button>
+          ))}
+        </div>
+
+        {/* Change or Split balance calculation */}
+        {tenderedPaise > 0 && tenderedPaise < totalPaise && (
+          <div className="flex items-center justify-between rounded bg-background p-2 border">
+            <span className="font-medium text-muted-foreground">Remaining balance</span>
+            <span className="font-bold text-primary">
+              <Money paise={totalPaise - tenderedPaise} />
+            </span>
+          </div>
+        )}
+        {tenderedPaise >= totalPaise && (
+          <div className="flex items-center justify-between rounded bg-background p-2 border">
+            <span className="font-medium text-muted-foreground">Change to return</span>
+            <span className="font-bold text-success">
+              <Money paise={cashChangePaise} />
+            </span>
+          </div>
+        )}
+      </div>
+  );
 
   // Handle barcode / SKU scanner input on Enter
   const handleBarcodeSubmit = (e: React.FormEvent) => {
@@ -196,30 +279,22 @@ export default function PosPage() {
         }
       } else if (event.key === 'F8' || (event.altKey && event.key === '1')) {
         event.preventDefault();
-        setPaymentMethod('CASH');
+        openPayment('CASH');
       } else if (event.key === 'F9' || (event.altKey && event.key === '2')) {
         event.preventDefault();
-        setPaymentMethod('CARD');
+        openPayment('CARD');
       } else if (event.key === 'F10' || (event.altKey && event.key === '3')) {
         event.preventDefault();
-        setPaymentMethod('UPI');
+        openPayment('UPI');
       } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
-        if (
-          items.length > 0 &&
-          !pay.isPending &&
-          !quote.isPending &&
-          !quote.error &&
-          !quote.data?.items.some((line) => !line.inStock)
-        ) {
-          pay.mutate(paymentMethod);
-        }
+        openPayment(startMethod);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [q, items.length, pay, paymentMethod, quote]);
+  }, [q, canTakePayment, paying, startMethod]);
 
   if (!user) return null;
 
@@ -644,109 +719,6 @@ export default function PosPage() {
               </div>
             )}
 
-            {/* Payment Method Selector */}
-            <div className="space-y-2 pt-2 border-t">
-              <Label className="text-xs">Payment Method</Label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(
-                  [
-                    { method: 'CASH', label: 'Cash', icon: Banknote, key: 'F8' },
-                    { method: 'CARD', label: 'Card', icon: CreditCard, key: 'F9' },
-                    { method: 'UPI', label: 'UPI', icon: QrCode, key: 'F10' },
-                  ] as const
-                ).map(({ method, label, icon: Icon, key }) => {
-                  const isSelected = paymentMethod === method;
-                  return (
-                    <button
-                      key={method}
-                      type="button"
-                      disabled={pay.isPending}
-                      onClick={() => setPaymentMethod(method)}
-                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        isSelected
-                          ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                      <span>{label}</span>
-                      <span className="text-[9px] opacity-75 font-mono">{key}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Cash Tender Calculator */}
-            {paymentMethod === 'CASH' && cart.lines.length > 0 && (
-              <div className="space-y-2.5 rounded-lg border bg-muted/40 p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="tendered-input" className="text-xs font-medium">
-                    Cash Tendered
-                  </Label>
-                  {tenderedInput && (
-                    <button
-                      type="button"
-                      onClick={() => setTenderedInput('')}
-                      className="text-[10px] text-muted-foreground hover:text-foreground"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₹
-                    </span>
-                    <Input
-                      id="tendered-input"
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder={(totalPaise / 100).toFixed(2)}
-                      value={tenderedInput}
-                      onChange={(e) => setTenderedInput(e.target.value)}
-                      className="h-8 pl-6 text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Quick cash notes pills */}
-                <div className="flex flex-wrap gap-1">
-                  {quickCashNotes.map((notePaise) => (
-                    <button
-                      key={notePaise}
-                      type="button"
-                      onClick={() => setTenderedInput((notePaise / 100).toString())}
-                      className="rounded border bg-background px-2 py-0.5 text-[10px] font-medium hover:bg-muted"
-                    >
-                      {notePaise === totalPaise ? 'Exact' : `₹${notePaise / 100}`}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Change or Split balance calculation */}
-                {tenderedPaise > 0 && tenderedPaise < totalPaise && (
-                  <div className="flex items-center justify-between rounded bg-background p-2 border">
-                    <span className="font-medium text-muted-foreground">Remaining balance</span>
-                    <span className="font-bold text-primary">
-                      <Money paise={totalPaise - tenderedPaise} />
-                    </span>
-                  </div>
-                )}
-                {tenderedPaise >= totalPaise && (
-                  <div className="flex items-center justify-between rounded bg-background p-2 border">
-                    <span className="font-medium text-muted-foreground">Change to return</span>
-                    <span className="font-bold text-success">
-                      <Money paise={cashChangePaise} />
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Payment Action Button */}
             <div className="pt-2">
               <Button
@@ -759,15 +731,9 @@ export default function PosPage() {
                   Boolean(quote.error) ||
                   quote.data?.items.some((line) => !line.inStock)
                 }
-                onClick={() => pay.mutate(paymentMethod)}
+                onClick={() => openPayment()}
               >
-                {pay.isPending ? (
-                  'Processing sale…'
-                ) : (
-                  <>
-                    Pay {paymentMethod === 'CASH' ? 'cash' : paymentMethod === 'CARD' ? 'card' : 'UPI'}
-                  </>
-                )}
+                Take payment
               </Button>
             </div>
           </aside>
@@ -806,25 +772,25 @@ export default function PosPage() {
               </kbd>
             </div>
             <div className="flex items-center justify-between border-b pb-2">
-              <span className="text-muted-foreground">Select Cash payment</span>
+              <span className="text-muted-foreground">Pay with Cash</span>
               <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
                 F8 or Alt+1
               </kbd>
             </div>
             <div className="flex items-center justify-between border-b pb-2">
-              <span className="text-muted-foreground">Select Card payment</span>
+              <span className="text-muted-foreground">Pay with Card</span>
               <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
                 F9 or Alt+2
               </kbd>
             </div>
             <div className="flex items-center justify-between border-b pb-2">
-              <span className="text-muted-foreground">Select UPI payment</span>
+              <span className="text-muted-foreground">Pay with UPI</span>
               <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
                 F10 or Alt+3
               </kbd>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Complete & submit sale</span>
+              <span className="text-muted-foreground">Take payment</span>
               <kbd className="rounded border bg-muted px-2 py-0.5 font-mono font-semibold">
                 Ctrl + Enter
               </kbd>
@@ -832,6 +798,22 @@ export default function PosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Payment: UPI, card or cash, paid in full at the counter */}
+      <PaymentDialog
+        open={paying}
+        onClose={closePayment}
+        title="Take payment"
+        description="Choose how the customer pays. The total is calculated by the club."
+        totalPaise={totalPaise}
+        cash="at-counter"
+        initialMethod={startMethod}
+        extras={cashTender}
+        onConfirm={async (method) => {
+          await pay.mutateAsync(method);
+          setPaying(false);
+        }}
+      />
 
       {/* Order Receipt Dialog */}
       <OrderDetailDialog
