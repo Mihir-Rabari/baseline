@@ -109,7 +109,7 @@ pnpm dev:web          # Launch Next.js web application
 pnpm deps:check       # Inspect and audit direct dependency baselines
 
 # Agent Skills Management & Packaging
-pnpm skills:list      # List all 14 canonical skills with descriptions
+pnpm skills:list      # List all 16 canonical skills with descriptions
 pnpm skills:show <n>  # Display metadata and content for a skill
 pnpm skills:check     # Validate Agent Skills registry, frontmatter, and links
 pnpm skills:lint      # Structural markdown and frontmatter linter
@@ -157,7 +157,7 @@ pnpm health           # Run end-to-end infrastructure health check
 
 ## 6. Agent Skills Standard, Discovery & Composition
 
-This repository provides 15 standardized Agent Skills under `skills/` following the **Agent Skills open standard**. Use `skills/index.yaml` as the machine-readable discovery registry.
+This repository provides 16 standardized Agent Skills under `skills/` following the **Agent Skills open standard**. Use `skills/index.yaml` as the machine-readable discovery registry.
 
 ### Repository Guidance vs Skill Bundles
 - **`AGENTS.md`**: Persistent repository operating manual describing architecture, commands, and rules.
@@ -183,6 +183,7 @@ Before modifying a subsystem:
 | **Landing & Marketing Pages** | [`skills/design/SKILL.md`](skills/design/SKILL.md) | `frontend` |
 | **Observability & Logging** | [`skills/observability/SKILL.md`](skills/observability/SKILL.md) | `api`, `testing` |
 | **Object Storage & Uploads** | [`skills/storage/SKILL.md`](skills/storage/SKILL.md) | `validation`, `security`, `testing` |
+| **AI Agent & Tools** | [`skills/agent/SKILL.md`](skills/agent/SKILL.md) | `authorization`, `security`, `api`, `testing` |
 | **Dependency Modernization** | [`skills/dependencies/SKILL.md`](skills/dependencies/SKILL.md) | `testing`, `security` |
 
 ### Canonical Skills Index
@@ -203,4 +204,5 @@ Before modifying a subsystem:
 | **Email** | [`skills/email/SKILL.md`](skills/email/SKILL.md) | Transactional email provider integration, templates, and delivery rules. |
 | **Realtime** | [`skills/realtime/SKILL.md`](skills/realtime/SKILL.md) | Redis Pub/Sub messaging and realtime notification events. |
 | **Observability** | [`skills/observability/SKILL.md`](skills/observability/SKILL.md) | Structured logging, request correlation, Prometheus metrics, health probes, and sensitive data redaction. |
+| **Agent** | [`skills/agent/SKILL.md`](skills/agent/SKILL.md) | AI chat agent acting as the caller, tool registry, staged write actions, permission-filtered tools, and prompt-injection rules. |
 | **Dependencies** | [`skills/dependencies/SKILL.md`](skills/dependencies/SKILL.md) | Monorepo dependency inventory, safe version upgrades, lockfile integrity, and compatibility verification. |

@@ -38,6 +38,11 @@ export const FeatureConfig = {
    * Transactional email provider integration (e.g. Resend)
    */
   enableEmail: true,
+
+  /**
+   * AI chat agent (acts as the signed-in user). Also requires ANTHROPIC_API_KEY at runtime.
+   */
+  enableAgent: true,
 } as const;
 
 export type FeatureConfigType = typeof FeatureConfig;

@@ -11,3 +11,4 @@ export * from './hr.js';
 export * from './notifications.js';
 export * from './categories.js';
 export * from './tenants.js';
+export * from './agent.js';
