@@ -125,6 +125,11 @@ export const envSchema = z.object({
     .optional()
     .default('noreply@example.com'),
 
+  // AI agent (chat assistant that acts as the signed-in user). Disabled until a key is set.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  AGENT_MODEL: z.string().default('claude-sonnet-5-5'),
+  AGENT_MAX_TOOL_STEPS: z.coerce.number().int().min(1).max(12).default(6),
+
   // Authentication & Sessions (Phase 2)
   SESSION_SECRET: z.string().min(16).default(DEV_PLACEHOLDERS.SESSION_SECRET),
   SESSION_COOKIE_NAME: z.string().default('app_session'),

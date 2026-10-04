@@ -20,3 +20,4 @@ export * from './reports.js';
 export * from './notifications.js';
 export * from './public.js';
 export * from './tenants.js';
+export * from './agent.js';
