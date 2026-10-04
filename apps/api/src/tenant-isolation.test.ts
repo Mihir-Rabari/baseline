@@ -11,6 +11,7 @@ import {
   members,
   memberships,
   notifications,
+  paymentIntents,
   products,
   roles,
   runInTenant,
@@ -19,11 +20,12 @@ import {
   users,
 } from '@packages/db';
 import { buildApp } from './app.js';
-import { JobService, startMembershipExpiryScheduler } from './services/job.service.js';
+import { JobService, expireHoldsForAllClubs, startMembershipExpiryScheduler } from './services/job.service.js';
 import { isDatabaseAvailable } from './test-support/database.js';
 import { ClubFixtures, type Club } from './test-support/clubs.js';
 import { createBooking, createCourt, createCourtType, createMember, createMembership, createPlan } from './test-support/court-fixtures.js';
 import { tenantPrefix, uploadKey } from './lib/storage-keys.js';
+import { BookingService } from './services/booking.service.js';
 
 /**
  * Cross-club isolation (#69 piece B). Two real clubs, each created as the platform operator creates one,
@@ -534,6 +536,46 @@ describe('Cross-club data isolation', () => {
   });
 
   // ------------------------------------------------------------------------------------------------
+  describe('payment hold expiry', () => {
+    async function seedHold(club: Club) {
+      return runInTenant(club.id, async () => {
+        const type = await createCourtType(db);
+        const court = await createCourt(db, type.id);
+        const at = new Date(Date.now() + 86_400_000);
+        const [intent] = await db.insert(paymentIntents).values({
+          method: 'UPI', amountPaise: 1000, totalPaise: 1000, basePricePaise: 1000, courtId: court.id,
+          startsAt: at, endsAt: new Date(at.getTime() + 3_600_000), guestName: 'Guest', guestPhone: '9999999999',
+          expiresAt: new Date(Date.now() - 60_000),
+        }).returning();
+        return intent;
+      });
+    }
+    const statusOf = (club: Club, id: string) =>
+      runInTenant(club.id, async () => (await db.select().from(paymentIntents).where(eq(paymentIntents.id, id)))[0]?.status);
+
+    it('releasing holds inside one club leaves the other club\'s expired hold untouched', async (ctx) => {
+      if (!available) return ctx.skip();
+      const a = await seedHold(A);
+      const b = await seedHold(B);
+      const released = await runInTenant(A.id, async () => new BookingService(db, { timezone: 'Asia/Kolkata' }).expireHolds());
+      expect(released).toBeGreaterThanOrEqual(1);
+      expect(await statusOf(A, a.id)).toBe('EXPIRED');
+      expect(await statusOf(B, b.id)).toBe('PENDING');
+      // A club can never see the other club's hold at all.
+      expect(await runInTenant(A.id, async () => db.select().from(paymentIntents).where(eq(paymentIntents.id, b.id)))).toHaveLength(0);
+    });
+
+    it('the all-clubs sweep releases each club\'s holds under that club\'s own scope', async (ctx) => {
+      if (!available) return ctx.skip();
+      const a = await seedHold(A);
+      const b = await seedHold(B);
+      const released = await expireHoldsForAllClubs(db, () => new BookingService(db, { timezone: 'Asia/Kolkata' }).expireHolds());
+      expect(released).toBeGreaterThanOrEqual(2);
+      expect(await statusOf(A, a.id)).toBe('EXPIRED');
+      expect(await statusOf(B, b.id)).toBe('EXPIRED');
+    });
+  });
+
   describe('background scheduler', () => {
     async function seedExpiring(club: Club, label: string) {
       return runInTenant(club.id, async () => {
