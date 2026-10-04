@@ -20,6 +20,7 @@ export const employees = pgTable(
     department: varchar('department', { length: 24 }).$type<Department>().notNull(),
     monthlySalaryPaise: paise('monthly_salary_paise').notNull().default(0),
     hiredOn: date('hired_on', { mode: 'string' }).notNull(),
+    photoUrl: varchar('photo_url', { length: 512 }),
     status: varchar('status', { length: 12 }).$type<'ACTIVE' | 'INACTIVE'>().notNull().default('ACTIVE'),
     createdAt: createdAt(),
   },

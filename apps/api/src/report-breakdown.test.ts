@@ -255,8 +255,8 @@ describe('Report detail exports and PDF (#91)', () => {
         expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
         expect(pdf.rawPayload.toString('latin1').trimEnd().endsWith('%%EOF')).toBe(true);
       }
-      const a = (await get('/api/v1/reports/export.pdf?type=breakdown&from=1999-01-01&to=1999-01-02', owner)).rawPayload.toString('latin1').replace(/Generated [^)]*/, '');
-      const b = (await get('/api/v1/reports/export.pdf?type=breakdown&from=1999-01-01&to=1999-01-02', owner)).rawPayload.toString('latin1').replace(/Generated [^)]*/, '');
+      const a = (await get('/api/v1/reports/export.pdf?type=breakdown&from=1999-01-01&to=1999-01-02', owner)).rawPayload.toString('latin1').replace(/Generated [^)]*/g, '');
+      const b = (await get('/api/v1/reports/export.pdf?type=breakdown&from=1999-01-01&to=1999-01-02', owner)).rawPayload.toString('latin1').replace(/Generated [^)]*/g, '');
       expect(a.replace(/\/Length \d+/, '')).toBe(b.replace(/\/Length \d+/, ''));
     } finally {
       await fx.cleanup();

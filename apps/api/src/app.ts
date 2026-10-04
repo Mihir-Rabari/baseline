@@ -10,6 +10,7 @@ import { getEnv } from '@packages/config/env';
 // Plugins
 import configPlugin from './plugins/config.js';
 import helmetPlugin from './plugins/helmet.js';
+import tenantPlugin from './plugins/tenant.js';
 import corsPlugin from './plugins/cors.js';
 import rateLimitPlugin from './plugins/rate-limit.js';
 import swaggerPlugin from './plugins/swagger.js';
@@ -97,6 +98,7 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
 
   // Register foundational plugins
   app.register(configPlugin);
+  app.register(tenantPlugin);
   app.register(helmetPlugin);
   app.register(corsPlugin);
   app.register(rateLimitPlugin);
