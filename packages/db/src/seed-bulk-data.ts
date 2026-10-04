@@ -15,7 +15,7 @@ export interface BulkOptions {
   seed: number;
 }
 
-export const BULK_DEFAULTS: BulkOptions = { userCount: 450, today: '2026-01-01', pastDays: 60, futureDays: 14, seed: 20260101 };
+export const BULK_DEFAULTS: BulkOptions = { userCount: 300, today: '2026-01-01', pastDays: 60, futureDays: 14, seed: 20260101 };
 
 export const BULK_EMAIL_DOMAIN = 'baseline.test';
 export const BULK_MEMBER_CODE_START = 1001; // CC-001001..; the base demo seed uses CC-000001..CC-000040

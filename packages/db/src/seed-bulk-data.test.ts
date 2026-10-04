@@ -13,12 +13,12 @@ describe('bulk seed data generator', () => {
     expect(generateUsers({ ...opts, seed: 1 })).not.toEqual(users);
   });
 
-  it('produces 450 users with unique emails, member codes and phones', () => {
-    expect(users).toHaveLength(450);
+  it('produces 300 users with unique emails, member codes and phones', () => {
+    expect(users).toHaveLength(300);
     for (const field of ['email', 'memberCode'] as const) {
-      expect(new Set(users.map((u) => u[field])).size).toBe(450);
+      expect(new Set(users.map((u) => u[field])).size).toBe(300);
     }
-    expect(new Set(users.map((u) => u.phone)).size).toBeGreaterThan(440);
+    expect(new Set(users.map((u) => u.phone)).size).toBeGreaterThan(290);
     expect(users.every((u) => /^CC-\d{6}$/.test(u.memberCode) && u.memberCode >= 'CC-001001')).toBe(true);
   });
 

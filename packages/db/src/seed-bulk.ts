@@ -29,7 +29,7 @@ import {
 } from './seed-bulk-data.js';
 
 /**
- * Bulk demo dataset: ~450 member logins with profiles and membership history, 10 courts, and
+ * Bulk demo dataset: ~300 member logins with profiles and membership history, 10 courts, and
  * a few thousand bookings with matching payments (past 60 days and next 14).
  *
  * Idempotent: users are keyed on email, members on member_code, bookings are skipped when the
