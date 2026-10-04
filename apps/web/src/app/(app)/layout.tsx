@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sidebar } from '@/components/app-shell/sidebar';
 import { Topbar } from '@/components/app-shell/topbar';
+import { AgentLauncher } from '@/components/agent/agent-launcher';
 import { cn } from '@/lib/utils';
 
 /**
@@ -88,6 +89,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="mx-auto min-w-0 w-full max-w-5xl space-y-8">{children}</div>
         </main>
       </div>
+      <AgentLauncher />
     </div>
   );
 }
