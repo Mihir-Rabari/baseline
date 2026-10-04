@@ -22,6 +22,7 @@ import { renderPdf, type PdfLine } from '../lib/simple-pdf.js';
 import { addDays } from '../lib/club-date.js';
 import { clubWallTimeToInstant } from './time.js';
 import type { DbExecutor } from './db-types.js';
+import { clipDays } from './hr.service.js';
 
 const BANK_PURPOSE = 'employee-bank-details';
 
@@ -135,6 +136,8 @@ export class PayrollService {
       .orderBy(asc(employees.fullName));
     if (staff.length === 0) throw new DomainError('NO_EMPLOYEES', 422, 'There are no active employees on payroll for that month.');
 
+    const yearStart = `${month.slice(0, 4)}-01-01`;
+    const dayBeforeMonth = addDays(monthStart, -1);
     const from = clubWallTimeToInstant(monthStart, 0, this.timezone);
     const to = clubWallTimeToInstant(addDays(monthEnd, 1), 0, this.timezone);
     const ids = staff.map((s) => s.id);
@@ -142,7 +145,7 @@ export class PayrollService {
       this.db
         .select({ employeeId: leaveRequests.employeeId, fromDate: leaveRequests.fromDate, toDate: leaveRequests.toDate })
         .from(leaveRequests)
-        .where(and(eq(leaveRequests.status, 'APPROVED'), inArray(leaveRequests.employeeId, ids), lte(leaveRequests.fromDate, monthEnd), gte(leaveRequests.toDate, monthStart))),
+        .where(and(eq(leaveRequests.status, 'APPROVED'), inArray(leaveRequests.employeeId, ids), lte(leaveRequests.fromDate, monthEnd), gte(leaveRequests.toDate, yearStart))),
       this.db
         .select({
           employeeId: staffShifts.employeeId,
@@ -154,11 +157,13 @@ export class PayrollService {
         .groupBy(staffShifts.employeeId),
     ]);
     const leaveDays = new Map<string, number>();
+    // Approved leave earlier in the same year, which already used up part of the yearly allowance.
+    const earlierDays = new Map<string, number>();
     for (const l of leave) {
-      const start = l.fromDate < monthStart ? monthStart : l.fromDate;
-      const end = l.toDate > monthEnd ? monthEnd : l.toDate;
-      const days = Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
-      leaveDays.set(l.employeeId, (leaveDays.get(l.employeeId) ?? 0) + days);
+      const days = clipDays(l.fromDate, l.toDate, monthStart, monthEnd);
+      if (days > 0) leaveDays.set(l.employeeId, (leaveDays.get(l.employeeId) ?? 0) + days);
+      const earlier = clipDays(l.fromDate, l.toDate, yearStart, dayBeforeMonth);
+      if (earlier > 0) earlierDays.set(l.employeeId, (earlierDays.get(l.employeeId) ?? 0) + earlier);
     }
     const shiftStats = new Map(shifts.map((s) => [s.employeeId, s]));
 
@@ -172,6 +177,10 @@ export class PayrollService {
             const payableDays = dim - (joinedDay - 1);
             const basePaise = prorate(e.monthlySalaryPaise, payableDays, dim);
             const stats = shiftStats.get(e.id);
+            const monthLeave = Math.min(dim, leaveDays.get(e.id) ?? 0);
+            // Leave beyond the yearly allowance is suggested as unpaid. It is only a suggestion: the owner applies or overrides it.
+            const allowanceLeft = Math.max(0, e.leaveAllowanceDays - (earlierDays.get(e.id) ?? 0));
+            const suggestedUnpaidLeaveDays = Math.min(payableDays, Math.max(0, monthLeave - allowanceLeft));
             return {
               runId: run.id,
               employeeId: e.id,
@@ -183,7 +192,8 @@ export class PayrollService {
               payableDays,
               basePaise,
               netPaise: basePaise,
-              approvedLeaveDays: Math.min(dim, leaveDays.get(e.id) ?? 0),
+              approvedLeaveDays: monthLeave,
+              suggestedUnpaidLeaveDays,
               shiftsScheduled: stats?.scheduled ?? 0,
               shiftsWorked: stats?.worked ?? 0,
             };
@@ -357,6 +367,7 @@ export class PayrollService {
       payableDays: s.payableDays,
       basePaise: s.basePaise,
       unpaidLeaveDays: s.unpaidLeaveDays,
+      suggestedUnpaidLeaveDays: s.suggestedUnpaidLeaveDays,
       leaveDeductionPaise: s.leaveDeductionPaise,
       bonusPaise: s.bonusPaise,
       otherDeductionPaise: s.otherDeductionPaise,

@@ -600,6 +600,24 @@ Payments recorded by a user with an open shift get that `shiftId` automatically.
 - Clocking needs `shifts:clock:self` and your own shift (another employee's shift, or an account with no employee record, is `403`). Clock-in opens 30 minutes before `startsAt` and closes at `endsAt`. Errors: `409 TOO_EARLY`, `SHIFT_ENDED`, `ALREADY_CLOCKED_IN`, `ALREADY_ON_SHIFT`, `NOT_CLOCKED_IN`, `ALREADY_CLOCKED_OUT`.
 - `GET /me/shift/current` returns the shift being worked, else the one that can be clocked into now, else `null`.
 
+### 8.1 Shift swaps (#66)
+
+A swap hands one of your upcoming shifts to a colleague, optionally in exchange for one of theirs. States: `PENDING` (waiting for the colleague) → `ACCEPTED` (waiting for the owner) → `APPROVED`; the other ends are `DECLINED` (colleague), `CANCELLED` (proposer withdrew) and `REJECTED` (owner). Only `APPROVED` moves the shifts, in one transaction. Notifications use type `SHIFT_SWAP` with link `/shifts`: the colleague on a new offer, the owners once it is accepted, and both people on the owner's decision.
+
+| Method | Path | Roles | Request | Response | Errors |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/me/colleagues` | FD, BAR | none | `{ id, fullName, position }[]` (active staff except you) | 401, 403 |
+| GET | `/me/shifts/upcoming` | FD, BAR | none | shifts you can still offer (not started, not clocked in, not in an open swap) | 401, 403 |
+| GET | `/me/shift-swaps` | FD, BAR | none | `ShiftSwap[]`, swaps you proposed or were asked to take, newest first; `role` is `PROPOSER` or `TARGET` | 401, 403 |
+| POST | `/me/shift-swaps` | FD, BAR | `{ shiftId, targetEmployeeId, requestedShiftId?, note? }` | `201 ShiftSwap` | 400, 401, 403, 404, 409, `422 INVALID_SWAP` |
+| POST | `/me/shift-swaps/:id/respond` | FD, BAR (the colleague only) | `{ response: "ACCEPT"\|"DECLINE" }` | `ShiftSwap` | 400, 401, 403, 404, `409 SWAP_NOT_PENDING`, 409 |
+| POST | `/me/shift-swaps/:id/cancel` | FD, BAR (the proposer only) | none | `ShiftSwap` | 401, 403, 404, `409 SWAP_NOT_OPEN` |
+| GET | `/shift-swaps` | OWN | query `status` | `ShiftSwap[]` (`role` is `null`) | 400, 401, 403 |
+| POST | `/shift-swaps/:id/decision` | OWN | `{ decision: "APPROVED"\|"REJECTED", note? }` | `ShiftSwap` | 400, 401, 403, 404, `409 SWAP_NOT_ACCEPTED`, `409 SWAP_NOT_OPEN`, `409 SWAP_STALE`, `409 SHIFT_OVERLAP` |
+
+- `APPROVED` needs `ACCEPTED`; `REJECTED` (override) works on `PENDING` or `ACCEPTED`. Approval is `409` if it would double-book anyone, if either shift started or changed since the offer (`SWAP_STALE`, `SHIFT_STARTED`), or if someone is on approved leave (`ON_LEAVE`). A shift can be in only one open swap (`409 SWAP_PENDING`).
+- `ShiftSwap`: `{ id, status, role, shift, requestedShift | null, proposer: { id, fullName }, target: { id, fullName }, note, decisionNote, respondedAt, decidedAt, createdAt }`.
+
 ---
 
 ## 9. CRM (Scene 5)
@@ -677,6 +695,8 @@ Side effects: new leads (from the public endpoints or manual) always create `NEW
 - `department` is one of `FRONT_DESK | BAR | MAINTENANCE | COACHING | MANAGEMENT` and `status` is `ACTIVE | INACTIVE` (anything else is `400`). Linking `userId`: `404` if the user does not exist, `409 USER_ALREADY_LINKED` if another employee has it.
 - `leaveDaysThisYear` is approved leave days clipped to the club's calendar year.
 - Leave days are inclusive calendar days. A new request may not overlap the employee's own pending or approved leave (`409 LEAVE_OVERLAP`). Approving may not overlap other approved leave (`409 LEAVE_OVERLAP`); a decided request is `409 ALREADY_DECIDED`. Owners are notified `LEAVE_REQUEST` on a new request and the employee `LEAVE_DECIDED` on a decision. `/me/leave` for an account with no employee record: `GET` is empty, `POST` is `404 NOT_AN_EMPLOYEE`.
+- Leave allowance (#66): each employee has `leaveAllowanceDays` (default 24, settable on `POST`/`PUT /hr/employees`, 0 to 366) per calendar year, all leave types together. Employees carry `leaveAllowanceDays` and `leaveRemainingDays` (allowance minus approved and pending days, never below 0). `GET /me/leave` adds `balance: { year, allowanceDays, takenDays, pendingDays, remainingDays } | null`. A request, or an approval, that would go past the allowance is `422 LEAVE_BALANCE_EXCEEDED` with the days left in the message.
+- Payslips (#66) carry `suggestedUnpaidLeaveDays`: this month's approved leave beyond the yearly allowance. It is only a suggestion; the owner applies it by setting `unpaidLeaveDays`.
 - Payroll: active employees hired on or before the last day of `month`; `onLeave` lists approved leave overlapping the month.
 
 | Method | Path | Roles | Request | Response | Errors |

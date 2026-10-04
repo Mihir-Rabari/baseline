@@ -1,12 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PayrollPage from './page';
 
 const RUN = '11111111-1111-4111-8111-111111111111';
 const EMP = '22222222-2222-4222-8222-222222222222';
-const state = vi.hoisted(() => ({ allowed: true, post: vi.fn(), put: vi.fn(), del: vi.fn(), status: 'DRAFT' }));
-const slip = { id: '33333333-3333-4333-8333-333333333333', runId: RUN, month: '2030-03', employeeId: EMP, employeeName: 'Asha Rao', position: 'Bar', department: 'BAR', monthlySalaryPaise: 3000000, daysInMonth: 31, payableDays: 31, basePaise: 3000000, unpaidLeaveDays: 0, leaveDeductionPaise: 0, bonusPaise: 0, otherDeductionPaise: 0, netPaise: 3000000, approvedLeaveDays: 2, shiftsScheduled: 20, shiftsWorked: 18, note: null, bankConfigured: false };
+const state = vi.hoisted(() => ({ allowed: true, post: vi.fn(), put: vi.fn(), del: vi.fn(), status: 'DRAFT', suggested: 0 }));
+const slip = { id: '33333333-3333-4333-8333-333333333333', runId: RUN, month: '2030-03', employeeId: EMP, employeeName: 'Asha Rao', position: 'Bar', department: 'BAR', monthlySalaryPaise: 3000000, daysInMonth: 31, payableDays: 31, basePaise: 3000000, unpaidLeaveDays: 0, leaveDeductionPaise: 0, bonusPaise: 0, otherDeductionPaise: 0, netPaise: 3000000, approvedLeaveDays: 2, shiftsScheduled: 20, shiftsWorked: 18, note: null, bankConfigured: false, suggestedUnpaidLeaveDays: 0 };
 
 vi.mock('next/link', () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'owner' }, hasPermission: () => state.allowed }) }));
@@ -15,7 +15,7 @@ vi.mock('@/hooks/use-ops', () => ({
     data: key[1] === 'runs'
       ? [{ id: RUN, month: '2030-03', status: state.status, headcount: 1, totalNetPaise: 3000000, createdAt: '2030-03-31T00:00:00.000Z', finalizedAt: null, paidAt: null }]
       : key[1] === 'bank' ? { configured: false }
-      : { id: RUN, month: '2030-03', status: state.status, headcount: 1, totalNetPaise: 3000000, createdAt: '2030-03-31T00:00:00.000Z', finalizedAt: null, paidAt: null, payslips: [slip] },
+      : { id: RUN, month: '2030-03', status: state.status, headcount: 1, totalNetPaise: 3000000, createdAt: '2030-03-31T00:00:00.000Z', finalizedAt: null, paidAt: null, payslips: [{ ...slip, suggestedUnpaidLeaveDays: state.suggested }] },
     isPending: false, error: null, refetch: vi.fn(),
   }),
   useOpsMutation: (method: string) => ({ isPending: false, mutateAsync: method === 'post' ? state.post : method === 'delete' ? state.del : state.put }),
@@ -24,7 +24,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 describe('payroll page', () => {
   beforeEach(() => {
-    state.allowed = true; state.status = 'DRAFT';
+    state.allowed = true; state.status = 'DRAFT'; state.suggested = 0;
     state.post.mockReset().mockResolvedValue({ id: RUN, month: '2030-03' });
     state.put.mockReset().mockResolvedValue({});
     state.del.mockReset().mockResolvedValue(null);
@@ -88,4 +88,25 @@ describe('payroll page', () => {
     expect(screen.queryByRole('button', { name: 'Adjust Asha Rao' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Payslip PDF for Asha Rao' })).toHaveAttribute('href', expect.stringContaining(`/hr/payroll/slips/${slip.id}/pdf`));
   });
+  it('suggests unpaid days when leave goes past the allowance, and applies them on request', async () => {
+    state.suggested = 3;
+    render(<PayrollPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open payroll for 2030-03' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Adjust Asha Rao' }));
+    expect(within(screen.getByRole('dialog')).getByText(/Suggested:/)).toHaveTextContent('3 unpaid days');
+    expect(screen.getByLabelText('Unpaid leave days')).toHaveValue('0');
+    fireEvent.click(screen.getByRole('button', { name: 'Use suggestion' }));
+    expect(screen.getByLabelText('Unpaid leave days')).toHaveValue('3');
+    expect(screen.getByRole('button', { name: 'Use suggestion' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save payslip' }));
+    await waitFor(() => expect(state.put).toHaveBeenCalledWith(expect.objectContaining({ id: slip.id, unpaidLeaveDays: 3 })));
+  });
+
+  it('shows no suggestion when leave is within the allowance', async () => {
+    render(<PayrollPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open payroll for 2030-03' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Adjust Asha Rao' }));
+    expect(screen.queryByRole('button', { name: 'Use suggestion' })).not.toBeInTheDocument();
+  });
+
 });

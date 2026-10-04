@@ -30,4 +30,10 @@ describe('Notification state', () => {
   it('permits local app routes with a query string', () => {
     expect(notificationHref('/orders?status=PLACED')).toBe('/orders?status=PLACED');
   });
+  it('accepts a shift swap notification and sends it to the shifts page', () => {
+    const row = { id: 'b0000000-0000-4000-8000-000000000999', type: 'SHIFT_SWAP', title: 'Shift swap needs approval', body: 'Ben agreed to take a shift.', link: '/shifts', data: { swapId: 'x' }, readAt: null, createdAt: '2026-10-03T09:26:29.039Z' };
+    const parsed = NotificationPageSchema.parse({ data: [row], meta: { page: 1, limit: 20, totalItems: 1, totalPages: 1, hasNextPage: false, hasPrevPage: false } });
+    expect(parsed.data[0].type).toBe('SHIFT_SWAP');
+    expect(notificationHref(parsed.data[0].link)).toBe('/shifts');
+  });
 });

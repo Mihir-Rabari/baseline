@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Employee, LeaveStatus, CreateEmployeeRequest, CreateLeaveRequest, LeaveDecisionRequest } from '@packages/validation';
+import type { Employee, LeaveBalance, LeaveStatus, CreateEmployeeRequest, CreateLeaveRequest, LeaveDecisionRequest } from '@packages/validation';
 import { CreateEmployeeRequestSchema, CreateLeaveRequestSchema } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { hrApi } from '@/lib/hr-api';
@@ -22,10 +22,21 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DropdownSelect } from '@/components/ui/dropdown-select';
+import { ConfirmRemoveDialog } from '@/components/club/confirm-remove-dialog';
 import { LeaveBoard, LeaveCards } from '@/components/club/leave-views';
 import { ViewSwitcher, useViewPreference, type ViewKind } from '@/components/club/views';
 
 const LEAVE_VIEWS: ViewKind[] = ['list', 'cards', 'board'];
+
+/** Where a person stands against their yearly leave allowance. */
+export function LeaveBalanceCard({ balance }: { balance: LeaveBalance }) {
+  return (
+    <section aria-label="Leave balance" className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
+      <div><p className="text-sm text-muted-foreground">Leave left in {balance.year}</p><p className="text-2xl font-semibold tabular">{balance.remainingDays} <span className="text-base font-normal text-muted-foreground">of {balance.allowanceDays} days</span></p></div>
+      <p className="text-sm text-muted-foreground">{balance.takenDays} taken · {balance.pendingDays} waiting for a decision</p>
+    </section>
+  );
+}
 
 export function HrWorkspace() {
   const { user, hasPermission } = useAuth();
@@ -41,6 +52,7 @@ export function HrWorkspace() {
   const [month, setMonth] = useState(clubToday().slice(0, 7));
   const [employeeDialog, setEmployeeDialog] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [deactivating, setDeactivating] = useState<Employee | null>(null);
   const [leaveDialog, setLeaveDialog] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const employees = useQuery({ queryKey: ['hr', user?.id, 'employees'], queryFn: hrApi.employees, enabled: canHr, staleTime: 15000 });
@@ -48,13 +60,14 @@ export function HrWorkspace() {
   const payroll = useQuery({ queryKey: ['hr', user?.id, 'payroll', month], queryFn: () => hrApi.payroll(month), enabled: canHr, staleTime: 15000 });
   const refresh = () => client.invalidateQueries({ queryKey: ['hr'] });
   const saveEmployee = useMutation({ mutationFn: (data: CreateEmployeeRequest & { status?: "ACTIVE" | "INACTIVE" }) => editing ? hrApi.updateEmployee(editing.id, data) : hrApi.createEmployee(data), onSuccess: refresh });
+  const setStatus = useMutation({ mutationFn: ({ id, status }: { id: string; status: 'ACTIVE' | 'INACTIVE' }) => hrApi.updateEmployee(id, { status }), onSuccess: refresh });
   const request = useMutation({ mutationFn: (data: CreateLeaveRequest) => hrApi.requestLeave(data), onSuccess: refresh });
   const decide = useMutation({ mutationFn: ({ id, decision }: { id: string; decision: LeaveDecisionRequest['decision'] }) => hrApi.decide(id, { decision }), onSettled: refresh });
   const employeeSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); if (!canManage || saveEmployee.isPending) return;
     const form = new FormData(event.currentTarget); setFormError(null);
     const data = CreateEmployeeRequestSchema.safeParse({ fullName: form.get('fullName'), position: form.get('position'), department: form.get('department'),
-      monthlySalaryPaise: Math.round(Number(form.get('salary')) * 100), hiredOn: form.get('hiredOn') });
+      monthlySalaryPaise: Math.round(Number(form.get('salary')) * 100), hiredOn: form.get('hiredOn'), leaveAllowanceDays: Number(form.get('leaveAllowanceDays')) });
     if (!data.success) { setFormError(data.error.issues[0].message); return; }
     try { await saveEmployee.mutateAsync({ ...data.data, ...(editing ? { status: String(form.get('status')) as 'ACTIVE' | 'INACTIVE' } : {}) }); setEmployeeDialog(false); } catch (error) { setFormError(error instanceof Error ? error.message : 'Could not save employee.'); }
   };
@@ -65,13 +78,15 @@ export function HrWorkspace() {
     if (!data.success) { setFormError(data.error.issues[0].message); return; }
     try { await request.mutateAsync(data.data); setLeaveDialog(false); } catch (error) { setFormError(error instanceof Error ? error.message : 'Could not request leave.'); }
   };
+  const balance = leave.data && 'balance' in leave.data ? (leave.data.balance as LeaveBalance | null) : null;
   if (!canHr && !canLeave) return <EmptyState title="Staff access required" description="Ask the owner for access to staff and leave records." />;
   return <>
     <Tabs defaultValue={canHr ? 'employees' : 'leave'}><TabsList>{canHr && <TabsTrigger value="employees">Employees</TabsTrigger>}<TabsTrigger value="leave">{canHr ? 'Leave' : 'My leave'}</TabsTrigger>{canHr && <TabsTrigger value="payroll">Payroll</TabsTrigger>}</TabsList>
       {canHr && <TabsContent value="employees" className="space-y-4">
         {canManage && <Button onClick={() => { setEditing(null); setFormError(null); setEmployeeDialog(true); }}>Add employee</Button>}
+        {setStatus.isError && <p role="alert" className="text-sm text-destructive">{setStatus.error.message}</p>}
         {employees.isPending ? <Skeleton className="h-64" /> : employees.isError ? <PageError error={employees.error} onRetry={() => employees.refetch()} /> : !employees.data?.length ? <EmptyState title="No employees" description="Add employees to plan shifts and payroll." /> :
-          <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Position</TableHead><TableHead>Department</TableHead><TableHead>Monthly salary</TableHead><TableHead>Status</TableHead>{canManage && <TableHead>Actions</TableHead>}</TableRow></TableHeader><TableBody>{employees.data.map((row) => <TableRow key={row.id}><TableCell><Link className="font-medium underline-offset-4 hover:underline" href={`/hr/employees/${row.id}`}>{row.fullName}</Link></TableCell><TableCell>{row.position}</TableCell><TableCell>{row.department.replaceAll('_', ' ')}</TableCell><TableCell><Money paise={row.monthlySalaryPaise} /></TableCell><TableCell><Badge variant={row.status === 'ACTIVE' ? 'success' : 'outline'}>{row.status === 'ACTIVE' ? 'Active' : 'Inactive'}</Badge></TableCell>{canManage && <TableCell><Button variant="outline" size="sm" onClick={() => { setEditing(row); setFormError(null); setEmployeeDialog(true); }}>Edit</Button></TableCell>}</TableRow>)}</TableBody></Table>}
+          <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Position</TableHead><TableHead>Department</TableHead><TableHead>Monthly salary</TableHead><TableHead>Leave left</TableHead><TableHead>Status</TableHead>{canManage && <TableHead>Actions</TableHead>}</TableRow></TableHeader><TableBody>{employees.data.map((row) => <TableRow key={row.id}><TableCell><Link className="font-medium underline-offset-4 hover:underline" href={`/hr/employees/${row.id}`}>{row.fullName}</Link></TableCell><TableCell>{row.position}</TableCell><TableCell>{row.department.replaceAll('_', ' ')}</TableCell><TableCell><Money paise={row.monthlySalaryPaise} /></TableCell><TableCell className="tabular whitespace-nowrap">{row.leaveRemainingDays} of {row.leaveAllowanceDays} days</TableCell><TableCell><Badge variant={row.status === 'ACTIVE' ? 'success' : 'outline'}>{row.status === 'ACTIVE' ? 'Active' : 'Inactive'}</Badge></TableCell>{canManage && <TableCell className="space-x-2 whitespace-nowrap"><Button variant="outline" size="sm" aria-label={`Edit ${row.fullName}`} onClick={() => { setEditing(row); setFormError(null); setEmployeeDialog(true); }}>Edit</Button>{row.status === 'ACTIVE' ? <Button variant="ghost" size="sm" aria-label={`Deactivate ${row.fullName}`} onClick={() => setDeactivating(row)}>Deactivate</Button> : <Button variant="ghost" size="sm" aria-label={`Reactivate ${row.fullName}`} disabled={setStatus.isPending} onClick={() => setStatus.mutate({ id: row.id, status: 'ACTIVE' })}>Reactivate</Button>}</TableCell>}</TableRow>)}</TableBody></Table>}
       </TabsContent>}
       <TabsContent value="leave" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -81,6 +96,7 @@ export function HrWorkspace() {
           </div>
           <ViewSwitcher views={LEAVE_VIEWS} value={leaveView} onChange={setLeaveView} />
         </div>
+        {balance && <LeaveBalanceCard balance={balance} />}
         {decide.error && <p role="alert" className="text-sm text-destructive">{decide.error.message}</p>}
         {leave.isPending ? <Skeleton className="h-64" /> : leave.isError ? <PageError error={leave.error} onRetry={() => leave.refetch()} /> : !leave.data?.data.length ? <EmptyState title="No leave requests" description="Requests matching this filter will appear here." /> :
           leaveView === 'board' ? (
@@ -107,9 +123,11 @@ export function HrWorkspace() {
       <div className="space-y-2"><Label htmlFor="employee-department">Department</Label><DropdownSelect id="employee-department" name="department" defaultValue={editing?.department ?? 'FRONT_DESK'} disabled={saveEmployee.isPending} options={['FRONT_DESK', 'BAR', 'COACHING', 'MANAGEMENT', 'MAINTENANCE'].map((value) => ({ value, label: value.replaceAll('_', ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) }))} /></div>
       <div className="space-y-2"><Label htmlFor="employee-salary">Monthly salary (₹)</Label><Input id="employee-salary" name="salary" type="number" min="0" step="0.01" defaultValue={editing ? editing.monthlySalaryPaise / 100 : ''} required disabled={saveEmployee.isPending} /></div>
       <div className="space-y-2"><Label htmlFor="employee-hired">Hired on</Label><DatePicker id="employee-hired" name="hiredOn" defaultValue={editing?.hiredOn ?? clubToday()} disabled={saveEmployee.isPending} shortcuts={false} /></div>
+      <div className="space-y-2"><Label htmlFor="employee-allowance">Yearly leave allowance (days)</Label><Input id="employee-allowance" name="leaveAllowanceDays" type="number" min="0" max="366" step="1" defaultValue={editing?.leaveAllowanceDays ?? 24} required disabled={saveEmployee.isPending} /></div>
       {editing && <div className="space-y-2"><Label htmlFor="employee-status">Status</Label><DropdownSelect id="employee-status" name="status" defaultValue={editing.status} disabled={saveEmployee.isPending} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]} /></div>}
       {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}<Button type="submit" className="w-full" disabled={!canManage || saveEmployee.isPending}>{saveEmployee.isPending ? 'Saving…' : 'Save employee'}</Button>
     </form></DialogContent></Dialog>
+    <ConfirmRemoveDialog open={Boolean(deactivating)} title={`Deactivate ${deactivating?.fullName ?? 'this employee'}?`} description="They stop appearing in new payroll runs and cannot be given new shifts. Their history stays, and you can reactivate them at any time." confirmLabel="Deactivate" pendingLabel="Deactivating…" onConfirm={async () => { if (deactivating) await setStatus.mutateAsync({ id: deactivating.id, status: 'INACTIVE' }); }} onClose={() => setDeactivating(null)} />
     <Dialog open={leaveDialog} onOpenChange={(open) => { if (!request.isPending) setLeaveDialog(open); }}><DialogContent><DialogHeader><DialogTitle>Request leave</DialogTitle><DialogDescription>The owner will review your request.</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={leaveSubmit}>
       <div className="space-y-2"><Label htmlFor="leave-type">Leave type</Label><DropdownSelect id="leave-type" name="leaveType" defaultValue="CASUAL" disabled={request.isPending} options={['CASUAL', 'SICK', 'PAID'].map((value) => ({ value, label: value.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) }))} /></div>
       <div className="space-y-2"><Label htmlFor="leave-from">From</Label><DatePicker id="leave-from" name="fromDate" defaultValue={clubToday()} disabled={request.isPending} /></div><div className="space-y-2"><Label htmlFor="leave-to">To</Label><DatePicker id="leave-to" name="toDate" defaultValue={clubToday()} disabled={request.isPending} /></div>
