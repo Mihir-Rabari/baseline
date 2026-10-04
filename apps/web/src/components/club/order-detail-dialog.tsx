@@ -44,14 +44,14 @@ export function OrderDetailDialog({
             </div>
           </div>
           <DialogDescription>
-            Placed on {formatDateTime(order.createdAt)}
+            Placed on {order.createdAt ? formatDateTime(order.createdAt) : ''}
           </DialogDescription>
         </DialogHeader>
 
         {/* Printable Receipt Header (Issue #78) */}
         <div className="hidden print:block border-b pb-3 mb-2 space-y-1" data-testid="printable-receipt-header">
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Receipt · {order.orderNumber}</h1>
-          <p className="text-xs text-neutral-600">Placed on {formatDateTime(order.createdAt)}</p>
+          <p className="text-xs text-neutral-600">Placed on {order.createdAt ? formatDateTime(order.createdAt) : ''}</p>
         </div>
 
         <div className="space-y-4 py-2 text-sm" data-testid="order-receipt-content">
@@ -81,7 +81,7 @@ export function OrderDetailDialog({
               Items Purchased
             </div>
             <div className="divide-y rounded-lg border print:border-neutral-300 print:bg-white print:text-black">
-              {order.items.map((item, idx) => (
+              {(order.items ?? []).map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 text-sm print:text-black">
                   <div>
                     <div className="font-medium print:text-black">{item.name}</div>
@@ -102,15 +102,15 @@ export function OrderDetailDialog({
           <div className="rounded-lg border bg-card p-3 space-y-2 print:border-neutral-300 print:bg-white print:text-black">
             <div className="flex justify-between text-muted-foreground print:text-neutral-700">
               <span>Subtotal</span>
-              <span className="font-mono tabular-nums print:text-black"><Money paise={order.subtotalPaise} /></span>
+              <span className="font-mono tabular-nums print:text-black"><Money paise={order.subtotalPaise ?? 0} /></span>
             </div>
-            {order.discountPaise > 0 && (
+            {(order.discountPaise ?? 0) > 0 && (
               <div className="flex justify-between text-primary print:text-black">
                 <span>Member discount</span>
                 <span className="font-mono tabular-nums">-<Money paise={order.discountPaise} /></span>
               </div>
             )}
-            {order.deliveryFeePaise > 0 && (
+            {(order.deliveryFeePaise ?? 0) > 0 && (
               <div className="flex justify-between text-muted-foreground print:text-neutral-700">
                 <span>Delivery fee</span>
                 <span className="font-mono tabular-nums print:text-black"><Money paise={order.deliveryFeePaise} /></span>
@@ -118,12 +118,12 @@ export function OrderDetailDialog({
             )}
             <div className="border-t pt-2 flex justify-between font-semibold text-base print:border-neutral-300 print:text-black">
               <span>Total Paid</span>
-              <span className="font-mono tabular-nums text-primary print:text-black"><Money paise={order.totalPaise} /></span>
+              <span className="font-mono tabular-nums text-primary print:text-black"><Money paise={order.totalPaise ?? 0} /></span>
             </div>
             <div className="flex justify-between items-center pt-1 text-xs">
               <span className="text-muted-foreground print:text-neutral-700">Payment Status</span>
               <Badge variant={order.paymentStatus === 'PAID' ? 'outline' : 'destructive'} className="print:border-black print:text-black">
-                {order.paymentStatus}
+                {order.paymentStatus ?? 'PAID'}
               </Badge>
             </div>
           </div>

@@ -205,6 +205,81 @@ describe('Counter sale POS (Issue #71)', () => {
     );
   });
 
+  it('calculates remaining balance when partial cash tender is entered for split payment', () => {
+    state.quote = {
+      items: [
+        {
+          productId: products[0].id,
+          name: products[0].name,
+          qty: 1,
+          unitPricePaise: 650000,
+          discountPct: 0,
+          lineTotalPaise: 650000,
+          inStock: true,
+        },
+      ],
+      subtotalPaise: 650000,
+      discountPaise: 0,
+      deliveryFeePaise: 0,
+      totalPaise: 650000, // ₹6,500
+      discountPct: 0,
+    };
+
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
+
+    const tenderedInput = screen.getByPlaceholderText('6500.00');
+    fireEvent.change(tenderedInput, { target: { value: '2000' } });
+
+    // Remaining balance should be ₹4,500
+    expect(screen.getByText('Remaining balance')).toBeInTheDocument();
+    expect(screen.getByText(/₹\s*4,500/)).toBeInTheDocument();
+  });
+
+  it('displays order receipt dialog after sale and supports printing', async () => {
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+    vi.mocked(shopApi.pos).mockResolvedValue({
+      id: 'order-123',
+      orderNumber: 'ORD-000099',
+      channel: 'POS',
+      fulfilment: 'COUNTER',
+      status: 'COMPLETED',
+      member: null,
+      customerName: 'Aarav Patel',
+      deliveryAddress: null,
+      items: [
+        {
+          productId: products[0].id,
+          name: products[0].name,
+          qty: 1,
+          unitPricePaise: 650000,
+          discountPct: 0,
+          lineTotalPaise: 650000,
+        },
+      ],
+      subtotalPaise: 650000,
+      discountPaise: 0,
+      deliveryFeePaise: 0,
+      totalPaise: 650000,
+      paymentStatus: 'PAID',
+      createdAt: '2026-10-04T05:00:00.000Z',
+    } as Awaited<ReturnType<typeof shopApi.pos>>);
+
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Control tennis racket/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pay cash' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'ORD-000099' })).toBeInTheDocument()
+    );
+    expect(screen.getByText('Aarav Patel')).toBeInTheDocument();
+
+    const printButton = screen.getByRole('button', { name: 'Print receipt' });
+    fireEvent.click(printButton);
+    expect(printSpy).toHaveBeenCalled();
+    printSpy.mockRestore();
+  });
+
   it('opens keyboard shortcuts modal', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: 'View keyboard shortcuts' }));
