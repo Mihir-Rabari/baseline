@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { promiseFeePaise, type Booking } from '@packages/validation';
+import type { Booking } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { useCancelBooking, useDayBookings, useMyBookings, useWeekBookings, type BookingScope } from '@/hooks/use-bookings';
 import { calendarDate, dateAfter } from '@/lib/booking-calendar';
 import { canCancel, isLateCancel } from '@/lib/booking-history';
-import { formatDateTime, formatMoney } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { BookingCards, BookingTable } from '@/components/club/booking-table';
@@ -68,29 +68,11 @@ function Loading() {
 }
 
 const VIEWS: ViewKind[] = ['list', 'cards', 'calendar'];
-const toEvents = (rows: Booking[], onPick?: (booking: Booking) => void, who = false): CalendarEvent[] => rows.map((b) => {
-  const parts: string[] = [];
-  if (who) {
-    parts.push(b.member?.fullName ?? b.guest?.name ?? 'Walk-in');
-  } else if (b.status === 'CANCELLED') {
-    parts.push('Cancelled');
-  }
-  if (b.paymentStatus === 'PARTIAL') {
-    const paid = promiseFeePaise(b.pricePaise);
-    const due = b.pricePaise - paid;
-    parts.push(`Paid ${formatMoney(paid)}, due ${formatMoney(due)}`);
-  }
-  const subtitle = parts.length > 0 ? parts.join(' · ') : undefined;
-  return {
-    id: b.id,
-    startsAt: b.startsAt,
-    endsAt: b.endsAt,
-    title: b.court.name,
-    subtitle,
-    tone: b.status === 'CANCELLED' || b.status === 'NO_SHOW' ? 'muted' : b.status === 'COMPLETED' ? 'success' : b.paymentStatus === 'PARTIAL' ? 'warning' : 'default',
-    onClick: onPick && canCancel(b) ? () => onPick(b) : undefined,
-  };
-});
+const toEvents = (rows: Booking[], onPick?: (booking: Booking) => void, who = false): CalendarEvent[] => rows.map((b) => ({
+  id: b.id, startsAt: b.startsAt, endsAt: b.endsAt, title: b.court.name, subtitle: who ? (b.member?.fullName ?? b.guest?.name ?? 'Walk-in') : b.status === 'CANCELLED' ? 'Cancelled' : undefined,
+  tone: b.status === 'CANCELLED' || b.status === 'NO_SHOW' ? 'muted' : b.status === 'COMPLETED' ? 'success' : 'default',
+  onClick: onPick && canCancel(b) ? () => onPick(b) : undefined,
+}));
 
 function MyBookings({ onCancel }: { onCancel: (booking: Booking) => void }) {
   const [view, setView] = useViewPreference('bookings', VIEWS, 'list');
