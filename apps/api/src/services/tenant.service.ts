@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
-import { tenantBranding, tenantDomains, tenants, type DatabaseInstance } from '@packages/db';
+import { DEFAULT_CATEGORIES, categories, scopeTransaction, seedTenantIam, tenantBranding, tenantDomains, tenants, type DatabaseInstance } from '@packages/db';
 import type {
   DnsRecord,
   TenantBranding,
@@ -27,7 +27,11 @@ export interface TenantServiceOptions {
   now?: () => Date;
 }
 
-/** Tenants, their domains and branding. Everything a club owner or the platform operator manages. */
+/**
+ * Tenants, their domains and branding. Everything a club owner or the platform operator manages.
+ * The platform-operator methods (list, create, suspend) span clubs, so callers must run them unscoped
+ * (`runUnscoped`); the club-facing methods are always keyed by the request's own tenant.
+ */
 export class TenantService {
   private readonly now: () => Date;
 
@@ -197,6 +201,11 @@ export class TenantService {
             tenantId: row.id, domain, kind: 'PLATFORM', status: 'VERIFIED', verifiedAt: this.now(), verificationToken: randomBytes(24).toString('hex'),
           });
         }
+        // Seed the club's baseline under its own scope, in the same transaction: a club never exists
+        // half-seeded, and nothing seeded here can land in (or read from) another club.
+        await scopeTransaction(tx, row.id);
+        await seedTenantIam(tx as unknown as DatabaseInstance);
+        await tx.insert(categories).values(DEFAULT_CATEGORIES.map((c) => ({ ...c }))).onConflictDoNothing();
         return this.summary(row, domain);
       });
     } catch (error) {

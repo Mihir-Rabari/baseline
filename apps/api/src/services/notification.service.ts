@@ -81,7 +81,7 @@ export class NotificationService {
           dedupeKey: dedupeKey ? `${dedupeKey}:${userId}` : null,
         }))
       )
-      .onConflictDoNothing({ target: notifications.dedupeKey })
+      .onConflictDoNothing({ target: [notifications.tenantId, notifications.dedupeKey] })
       .returning();
   }
 

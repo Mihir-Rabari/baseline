@@ -1,6 +1,7 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema/index.js';
+import { scopeClient } from './tenant-scope.js';
 import { getEnv } from '@packages/config/env';
 
 export type DatabaseInstance = PostgresJsDatabase<typeof schema>;
@@ -26,7 +27,8 @@ export function createDatabaseClient(config?: DatabaseConfig): { db: DatabaseIns
     onnotice: () => {}, // Suppress notices
   });
 
-  const db = drizzle(sql, { schema });
+  // Statements run inside a club scope (see tenant-scope.ts) are confined to that club by row-level security.
+  const db = drizzle(scopeClient(sql), { schema });
   return { db, sql };
 }
 

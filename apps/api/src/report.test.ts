@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, inArray, and, gte, lt, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import {
-  bookings,
+import { DEFAULT_TENANT_ID, bookings,
   courtOccupancies,
   courts,
   employees,
@@ -20,8 +19,7 @@ import {
   userRoles,
   users,
   type PaymentMethod,
-  type PaymentSource,
-} from '@packages/db';
+  type PaymentSource } from '@packages/db';
 import { DashboardReportSchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import { isDatabaseAvailable } from './test-support/database.js';
@@ -164,7 +162,7 @@ describe('Owner dashboard (M-14)', () => {
     expect(res.statusCode).toBe(201);
     const id = res.json().user.id as string;
     userIds.push(id);
-    const [role] = await db.select().from(roles).where(eq(roles.name, roleName)).limit(1);
+    const [role] = await db.select().from(roles).where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), eq(roles.name, roleName))).limit(1);
     await db.delete(userRoles).where(eq(userRoles.userId, id));
     await db.insert(userRoles).values({ userId: id, roleId: role.id });
     return { id, cookie: `app_session=${res.cookies.find((c) => c.name === 'app_session')!.value}` };
@@ -204,7 +202,7 @@ describe('Owner dashboard (M-14)', () => {
     const roleRows = await db
       .select({ name: roles.name })
       .from(roles)
-      .where(inArray(roles.name, ['OWNER', 'FRONT_DESK', 'BAR_STAFF']));
+      .where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), inArray(roles.name, ['OWNER', 'FRONT_DESK', 'BAR_STAFF'])));
     if (roleRows.length < 3) {
       hasDatabase = false;
       return;

@@ -1,14 +1,23 @@
 import { createHash } from 'node:crypto';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { jsonSchemaTransform, type FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { requirePermission } from '@packages/iam';
 import { HttpErrorResponseSchema, ProfileAvatarResponseSchema, ProfileAvatarUploadSchema } from '@packages/validation';
 import { normalizeAvatarPng } from '../../lib/avatar-png.js';
+import { avatarKey, legacyKey } from '../../lib/storage-keys.js';
 
-const keyFor = (userId: string) => `profiles/${userId}/avatar.png`;
+const legacyAvatarKey = (userId: string) => `profiles/${userId}/avatar.png`;
 const versionFor = (image: Buffer) => createHash('sha256').update(image).digest('hex');
 const errors = { 400: HttpErrorResponseSchema, 401: HttpErrorResponseSchema, 403: HttpErrorResponseSchema, 503: HttpErrorResponseSchema };
+
+/** The club's own photo; the default club also still reads photos stored before per-club prefixes. */
+async function readAvatar(fastify: FastifyInstance, tenantId: string, userId: string): Promise<Buffer | null> {
+  const own = await fastify.storage.get(avatarKey(tenantId, userId));
+  if (own) return own;
+  const legacy = legacyKey(tenantId, legacyAvatarKey(userId));
+  return legacy ? fastify.storage.get(legacy) : null;
+}
 
 function unavailable(request: FastifyRequest, reply: FastifyReply) {
   request.log.error({ userId: request.user?.id }, 'Profile photo storage unavailable');
@@ -24,7 +33,7 @@ export const profileAvatarRoutes: FastifyPluginAsyncZod = async (fastify) => {
   }, async (request, reply) => {
     reply.header('Cache-Control', 'private, no-store');
     try {
-      const image = await fastify.storage.get(keyFor(request.user!.id));
+      const image = await readAvatar(fastify, request.tenantId, request.user!.id);
       return reply.send({ version: image ? versionFor(image) : null });
     } catch { return unavailable(request, reply); }
   });
@@ -38,7 +47,7 @@ export const profileAvatarRoutes: FastifyPluginAsyncZod = async (fastify) => {
     if (!image) return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'Use a valid static PNG photo up to 256 KiB and 512 pixels per side.', code: 'INVALID_AVATAR', requestId: request.id, timestamp: new Date().toISOString() });
     try {
       await fastify.storage.ensureBucketExists();
-      await fastify.storage.upload(keyFor(request.user!.id), image, { contentType: 'image/png' });
+      await fastify.storage.upload(avatarKey(request.tenantId, request.user!.id), image, { contentType: 'image/png' });
       return reply.send({ version: versionFor(image) });
     } catch { return unavailable(request, reply); }
   });
@@ -47,7 +56,9 @@ export const profileAvatarRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: { tags: ['Profile'], security: [{ CookieAuth: [] }], description: 'Remove own profile photo', response: { 200: z.object({ success: z.literal(true) }), ...errors } },
   }, async (request, reply) => {
     try {
-      if (!await fastify.storage.delete(keyFor(request.user!.id))) return unavailable(request, reply);
+      if (!await fastify.storage.delete(avatarKey(request.tenantId, request.user!.id))) return unavailable(request, reply);
+      const legacy = legacyKey(request.tenantId, legacyAvatarKey(request.user!.id));
+      if (legacy) await fastify.storage.delete(legacy);
       return reply.send({ success: true });
     } catch { return unavailable(request, reply); }
   });
@@ -62,7 +73,7 @@ export const profileAvatarRoutes: FastifyPluginAsyncZod = async (fastify) => {
   }, async (request, reply) => {
     reply.header('Cache-Control', 'private, no-store').header('X-Content-Type-Options', 'nosniff');
     try {
-      const image = await fastify.storage.get(keyFor(request.params.userId));
+      const image = await readAvatar(fastify, request.tenantId, request.params.userId);
       if (!image) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Profile photo not found', code: 'AVATAR_NOT_FOUND', requestId: request.id, timestamp: new Date().toISOString() });
       return reply.type('image/png').send(image);
     } catch { return unavailable(request, reply); }

@@ -1,7 +1,7 @@
 import { buildApp } from './app.js';
 import { getEnv } from '@packages/config/env';
 import { BookingService } from './services/booking.service.js';
-import { JobService, startHoldExpiryScheduler, startMembershipExpiryScheduler } from './services/job.service.js';
+import { JobService, expireHoldsForAllClubs, startHoldExpiryScheduler, startMembershipExpiryScheduler } from './services/job.service.js';
 
 async function start() {
   const env = getEnv();
@@ -33,7 +33,7 @@ async function start() {
     // Background jobs: the timer is cleared by the shutdown handler above.
     const stopMembership = startMembershipExpiryScheduler(new JobService(app.db), app.log);
     const holds = new BookingService(app.db, { timezone: env.CLUB_TIMEZONE });
-    const stopHolds = startHoldExpiryScheduler(() => holds.expireHolds(), app.log);
+    const stopHolds = startHoldExpiryScheduler(() => expireHoldsForAllClubs(app.db, () => holds.expireHolds(), app.log), app.log);
     stopJobs = () => {
       stopMembership();
       stopHolds();

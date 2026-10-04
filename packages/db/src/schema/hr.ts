@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { pgTable, varchar, text, uuid, date, index, integer, smallint, uniqueIndex } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { pk, tstz, createdAt, paise } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 export type Department = 'FRONT_DESK' | 'BAR' | 'MAINTENANCE' | 'COACHING' | 'MANAGEMENT';
 export type LeaveType = 'CASUAL' | 'SICK' | 'PAID';
@@ -10,6 +11,7 @@ export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export const employees = pgTable(
   'employees',
   {
+    tenantId: tenantId(),
     id: pk(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'set null' })
@@ -33,6 +35,7 @@ export const employees = pgTable(
 export const staffShifts = pgTable(
   'staff_shifts',
   {
+    tenantId: tenantId(),
     id: pk(),
     employeeId: uuid('employee_id')
       .references(() => employees.id, { onDelete: 'cascade' })
@@ -56,6 +59,7 @@ export const staffShifts = pgTable(
 export const leaveRequests = pgTable(
   'leave_requests',
   {
+    tenantId: tenantId(),
     id: pk(),
     employeeId: uuid('employee_id')
       .references(() => employees.id, { onDelete: 'cascade' })
@@ -84,6 +88,7 @@ export type PayrollRunStatus = 'DRAFT' | 'FINALIZED' | 'PAID';
  * four digits are kept in clear for display. Never returned or logged in full.
  */
 export const employeeBankDetails = pgTable('employee_bank_details', {
+  tenantId: tenantId(),
   employeeId: uuid('employee_id')
     .primaryKey()
     .references(() => employees.id, { onDelete: 'cascade' }),
@@ -101,21 +106,24 @@ export const employeeBankDetails = pgTable('employee_bank_details', {
 export const payrollRuns = pgTable(
   'payroll_runs',
   {
+    tenantId: tenantId(),
     id: pk(),
-    month: varchar('month', { length: 7 }).notNull().unique(),
+    month: varchar('month', { length: 7 }).notNull(),
     status: varchar('status', { length: 10 }).$type<PayrollRunStatus>().notNull().default('DRAFT'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
     finalizedAt: tstz('finalized_at'),
     paidAt: tstz('paid_at'),
   },
-  (t) => [index('idx_payroll_runs_status').on(t.status)]
+  (t) => [
+    uniqueIndex('uq_payroll_runs_tenant_month').on(t.tenantId, t.month),index('idx_payroll_runs_status').on(t.status)]
 );
 
 /** An employee's pay for a run. Names and salary are snapshots so a payslip never changes after the fact. */
 export const payslips = pgTable(
   'payslips',
   {
+    tenantId: tenantId(),
     id: pk(),
     runId: uuid('run_id')
       .notNull()
@@ -152,6 +160,7 @@ export type EmployeeDocumentType = 'ID_PROOF' | 'ADDRESS_PROOF' | 'CONTRACT' | '
 export const employeeDocuments = pgTable(
   'employee_documents',
   {
+    tenantId: tenantId(),
     id: pk(),
     employeeId: uuid('employee_id')
       .notNull()
@@ -177,6 +186,7 @@ export type ShiftSwapStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' 
 export const shiftSwaps = pgTable(
   'shift_swaps',
   {
+    tenantId: tenantId(),
     id: pk(),
     shiftId: uuid('shift_id')
       .notNull()

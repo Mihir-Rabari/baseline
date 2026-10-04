@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import {
-  getDb,
+import { DEFAULT_TENANT_ID, getDb,
   members,
   memberships,
   notifications,
@@ -14,8 +13,7 @@ import {
   roles,
   stockMovements,
   userRoles,
-  users,
-} from '@packages/db';
+  users } from '@packages/db';
 import {
   OrderSchema,
   ProductSchema,
@@ -142,7 +140,7 @@ describe('Shop and inventory (M-11)', () => {
     expect(res.statusCode).toBe(201);
     const id = res.json().user.id as string;
     userIds.push(id);
-    const [role] = await db.select().from(roles).where(eq(roles.name, roleName)).limit(1);
+    const [role] = await db.select().from(roles).where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), eq(roles.name, roleName))).limit(1);
     await db.delete(userRoles).where(eq(userRoles.userId, id));
     await db.insert(userRoles).values({ userId: id, roleId: role.id });
     const actor: Actor = {
@@ -199,7 +197,7 @@ describe('Shop and inventory (M-11)', () => {
     const roleRows = await db
       .select({ name: roles.name })
       .from(roles)
-      .where(inArray(roles.name, ['OWNER', 'FRONT_DESK', 'MEMBER']));
+      .where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), inArray(roles.name, ['OWNER', 'FRONT_DESK', 'MEMBER'])));
     if (roleRows.length < 3) {
       // Roles come from `pnpm db:seed`; without them these tests cannot run meaningfully.
       hasDatabase = false;

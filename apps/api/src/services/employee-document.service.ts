@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { and, count, desc, eq } from 'drizzle-orm';
-import { employeeDocuments, employees } from '@packages/db';
+import { currentTenantScope, employeeDocuments, employees } from '@packages/db';
 import {
   EMPLOYEE_DOCUMENT_CONTENT_TYPES,
   MAX_DOCUMENTS_PER_EMPLOYEE,
@@ -11,6 +11,7 @@ import {
 import type { IStorageService } from '@packages/shared';
 import { DomainError } from '../lib/domain-error.js';
 import { detectDocument, safeFileName } from '../lib/documents.js';
+import { tenantPrefix } from '../lib/storage-keys.js';
 import type { DbExecutor } from './db-types.js';
 
 type Row = typeof employeeDocuments.$inferSelect;
@@ -81,7 +82,9 @@ export class EmployeeDocumentService {
       throw new DomainError('DOCUMENT_LIMIT_REACHED', 422, `An employee can have at most ${MAX_DOCUMENTS_PER_EMPLOYEE} documents. Delete one first.`);
     }
 
-    const storageKey = `${KEY_PREFIX}/${employeeId}/${randomUUID()}.${detected.ext}`;
+    // Namespaced by club like every other stored object (the club is the request's scope).
+    const scope = currentTenantScope();
+    const storageKey = `${scope ? tenantPrefix(scope) : ''}${KEY_PREFIX}/${employeeId}/${randomUUID()}.${detected.ext}`;
     await this.storage.upload(storageKey, body, { contentType: detected.contentType, metadata: { uploader: actorId } });
     try {
       const [row] = await this.db

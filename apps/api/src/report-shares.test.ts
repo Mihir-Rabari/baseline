@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { getDb, reportShares, roles, userRoles, users } from '@packages/db';
+import { DEFAULT_TENANT_ID, getDb, reportShares, roles, userRoles, users } from '@packages/db';
 import { hashSessionToken } from '@packages/auth';
 import { CreateReportShareResponseSchema, ReportShareListSchema, SharedReportResponseSchema } from '@packages/validation';
 import { buildApp } from './app.js';
@@ -36,7 +36,7 @@ describe('Report share links (S-06)', () => {
     const id = res.json().user.id as string;
     userIds.push(id);
     if (roleName) {
-      const [role] = await db.select().from(roles).where(eq(roles.name, roleName)).limit(1);
+      const [role] = await db.select().from(roles).where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), eq(roles.name, roleName))).limit(1);
       await db.delete(userRoles).where(eq(userRoles.userId, id));
       await db.insert(userRoles).values({ userId: id, roleId: role.id });
     }
@@ -56,7 +56,7 @@ describe('Report share links (S-06)', () => {
     await app.ready();
     hasDatabase = await isDatabaseAvailable();
     if (!hasDatabase) return;
-    const found = await db.select({ name: roles.name }).from(roles).where(inArray(roles.name, ['OWNER', 'FRONT_DESK', 'BAR_STAFF']));
+    const found = await db.select({ name: roles.name }).from(roles).where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), inArray(roles.name, ['OWNER', 'FRONT_DESK', 'BAR_STAFF'])));
     if (found.length < 3) {
       hasDatabase = false;
       return;

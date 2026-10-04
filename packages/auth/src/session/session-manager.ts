@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 import type { DatabaseInstance } from '@packages/db';
-import { sessions, users } from '@packages/db';
+import { sessions, users, currentTenantScope } from '@packages/db';
 import type { IRedisService } from '@packages/shared';
 import type { AuthUser, AuthSession, SessionValidationResult, UserStatus, IdentityType } from '../types.js';
 import {
@@ -16,6 +16,15 @@ export interface SessionManagerConfig {
 
 export function hashSessionToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Redis key for a cached session. It includes the club the request is confined to, so a session
+ * created for club A can never be served from the cache while a request is for club B. (The database
+ * lookup is already confined by row-level security; the cache must not be a way around it.)
+ */
+export function sessionCacheKey(tokenHash: string, tenantId: string | null = currentTenantScope()): string {
+  return `session:${tenantId ?? 'platform'}:${tokenHash}`;
 }
 
 export function generateSessionToken(): string {
@@ -109,7 +118,7 @@ export class SessionManager {
 
     // 4. Cache session in Redis if available
     if (this.redis) {
-      const cacheKey = `session:${tokenHash}`;
+      const cacheKey = sessionCacheKey(tokenHash);
       await this.redis.setJson(
         cacheKey,
         { session: authSession, user: authUser },
@@ -133,7 +142,7 @@ export class SessionManager {
     }
 
     const tokenHash = hashSessionToken(token);
-    const cacheKey = `session:${tokenHash}`;
+    const cacheKey = sessionCacheKey(tokenHash);
 
     // 1. Try Redis cache first
     if (this.redis) {
@@ -262,7 +271,7 @@ export class SessionManager {
     if (!token) return false;
 
     const tokenHash = hashSessionToken(token);
-    const cacheKey = `session:${tokenHash}`;
+    const cacheKey = sessionCacheKey(tokenHash);
 
     // 1. Remove from Redis
     if (this.redis) {
@@ -291,7 +300,7 @@ export class SessionManager {
 
     if (this.redis && activeSessions.length > 0) {
       await Promise.allSettled(
-        activeSessions.map((s) => this.redis!.delete(`session:${s.tokenHash}`))
+        activeSessions.map((s) => this.redis!.delete(sessionCacheKey(s.tokenHash)))
       );
     }
 

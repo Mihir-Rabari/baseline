@@ -1,5 +1,6 @@
 import { pgTable, varchar, uuid, smallint, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { tenantId } from './_tenant.js';
 import { courts, courtOccupancies, bookings } from './courts.js';
 import { pk, tstz, createdAt, updatedAt, paise } from './_columns.js';
 import type { PaymentMethod } from './finance.js';
@@ -15,6 +16,7 @@ export type PaymentIntentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED'
 export const paymentIntents = pgTable(
   'payment_intents',
   {
+    tenantId: tenantId(),
     id: pk(),
     status: varchar('status', { length: 12 }).$type<PaymentIntentStatus>().notNull().default('PENDING'),
     method: varchar('method', { length: 8 }).$type<PaymentMethod>().notNull(),

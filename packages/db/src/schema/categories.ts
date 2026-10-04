@@ -1,5 +1,6 @@
 import { pgTable, varchar, smallint, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 import { pk, createdAt } from './_columns.js';
+import { tenantId } from './_tenant.js';
 
 /** Which list a category belongs to. */
 export type CategoryScope = 'PRODUCT' | 'MENU';
@@ -11,6 +12,7 @@ export type CategoryScope = 'PRODUCT' | 'MENU';
 export const categories = pgTable(
   'categories',
   {
+    tenantId: tenantId(),
     id: pk(),
     scope: varchar('scope', { length: 16 }).$type<CategoryScope>().notNull(),
     code: varchar('code', { length: 16 }).notNull(),
@@ -19,7 +21,7 @@ export const categories = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex('uq_categories_scope_code').on(t.scope, t.code)]
+  (t) => [uniqueIndex('uq_categories_tenant_scope_code').on(t.tenantId, t.scope, t.code)]
 );
 
 /** Rows every club starts with; the seed and migration 0008 both insert these idempotently. */

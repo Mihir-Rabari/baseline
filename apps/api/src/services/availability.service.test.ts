@@ -44,7 +44,7 @@ async function setHours(db: DatabaseInstance, open: string, close: string) {
   await db
     .insert(systemSettings)
     .values({ key: 'club.hours', value: { open, close } })
-    .onConflictDoUpdate({ target: systemSettings.key, set: { value: { open, close } } });
+    .onConflictDoUpdate({ target: [systemSettings.tenantId, systemSettings.key], set: { value: { open, close } } });
 }
 
 describe('AvailabilityService (database, rolled back per test)', () => {

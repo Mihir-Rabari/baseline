@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { hashPassword } from '@packages/shared/crypto';
 import type { DatabaseInstance } from './client.js';
+import { runUnscoped } from './tenant-scope.js';
 import {
   plans,
   members,
@@ -181,24 +182,24 @@ export async function seedCourtOs(db: DatabaseInstance, options: SeedCourtOsOpti
 
   // 1. Plans
   for (const p of PLANS) {
-    await db.insert(plans).values(p).onConflictDoNothing({ target: plans.code });
+    await db.insert(plans).values(p).onConflictDoNothing({ target: [plans.tenantId, plans.code] });
   }
 
   // 1b. Product and menu categories
   for (const c of DEFAULT_CATEGORIES) {
-    await db.insert(categories).values(c).onConflictDoNothing({ target: [categories.scope, categories.code] });
+    await db.insert(categories).values(c).onConflictDoNothing({ target: [categories.tenantId, categories.scope, categories.code] });
   }
 
   // 2. Court types and courts
   for (const t of COURT_TYPES) {
-    await db.insert(courtTypes).values(t).onConflictDoNothing({ target: courtTypes.code });
+    await db.insert(courtTypes).values(t).onConflictDoNothing({ target: [courtTypes.tenantId, courtTypes.code] });
   }
   const typeRows = await db.select({ id: courtTypes.id, code: courtTypes.code }).from(courtTypes);
   const typeId = new Map(typeRows.map((r) => [r.code, r.id]));
   for (const [i, [code, name]] of COURTS.entries()) {
     const courtTypeId = typeId.get(code);
     if (!courtTypeId) throw new Error(`[DB] Unknown court type ${code}`);
-    await db.insert(courts).values({ courtTypeId, name, sortOrder: i + 1 }).onConflictDoNothing({ target: courts.name });
+    await db.insert(courts).values({ courtTypeId, name, sortOrder: i + 1 }).onConflictDoNothing({ target: [courts.tenantId, courts.name] });
   }
 
   // 3. Friday 18:00-22:00 social window (ISO weekday 5)
@@ -213,12 +214,12 @@ export async function seedCourtOs(db: DatabaseInstance, options: SeedCourtOsOpti
 
   // 4. Settings (never overwrite values the Owner has edited)
   for (const s of SETTINGS) {
-    await db.insert(systemSettings).values({ key: s.key, value: s.value, description: s.description }).onConflictDoNothing({ target: systemSettings.key });
+    await db.insert(systemSettings).values({ key: s.key, value: s.value, description: s.description }).onConflictDoNothing({ target: [systemSettings.tenantId, systemSettings.key] });
   }
 
   // 5. Products
   for (const [sku, name, category, pricePaise, stockQty, reorderLevel] of PRODUCTS) {
-    await db.insert(products).values({ sku, name, category, pricePaise, stockQty, reorderLevel }).onConflictDoNothing({ target: products.sku });
+    await db.insert(products).values({ sku, name, category, pricePaise, stockQty, reorderLevel }).onConflictDoNothing({ target: [products.tenantId, products.sku] });
   }
 
   // 6. Menu items (no unique constraint on name, so check-then-insert)
@@ -230,7 +231,7 @@ export async function seedCourtOs(db: DatabaseInstance, options: SeedCourtOsOpti
 
   // 7. Bar tables T1..T10
   for (let i = 1; i <= 10; i++) {
-    await db.insert(barTables).values({ name: `T${i}`, seats: i <= 6 ? 4 : i <= 9 ? 6 : 8 }).onConflictDoNothing({ target: barTables.name });
+    await db.insert(barTables).values({ name: `T${i}`, seats: i <= 6 ? 4 : i <= 9 ? 6 : 8 }).onConflictDoNothing({ target: [barTables.tenantId, barTables.name] });
   }
 
   // 8. Demo users (one per role). Skipped, not failed, without SEED_DEMO_PASSWORD.
@@ -317,7 +318,7 @@ export async function seedCourtOs(db: DatabaseInstance, options: SeedCourtOsOpti
     }
   }
   // Keep member_code_seq ahead of the seeded codes so new registrations never collide.
-  await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), ${MEMBER_COUNT}::bigint))`);
+  await runUnscoped(async () => await db.execute(sql`SELECT setval('member_code_seq', GREATEST((SELECT last_value FROM member_code_seq), ${MEMBER_COUNT}::bigint))`));
 
   log('✅ CourtOS demo data seeded (plans, courts, products, menu, tables, employees, members).');
 }

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fastify, { type FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import { eq, like } from 'drizzle-orm';
-import { DEFAULT_TENANT_ID, getDb, tenantBranding, tenantDomains, tenants, users } from '@packages/db';
+import { DEFAULT_CATEGORIES, DEFAULT_TENANT_ID, categories, getDb, roles, runInTenant, tenantBranding, tenantDomains, tenants, users } from '@packages/db';
 import { TenantBrandingSchema, TenantDomainDetailSchema, TenantSiteSchema, TenantSummarySchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import tenantPlugin, { requestHost } from './plugins/tenant.js';
@@ -11,6 +11,7 @@ import { TenantDirectory, normalizeHost } from './services/tenant-directory.js';
 import type { DnsVerifier } from './lib/dns-verifier.js';
 import { isDatabaseAvailable } from './test-support/database.js';
 import { MembersFixtures, type Actor } from './test-support/members-fixtures.js';
+import { ClubFixtures, type Club } from './test-support/clubs.js';
 
 const RUN = randomUUID().slice(0, 8);
 const slug = (s: string) => `t${RUN}-${s}`;
@@ -120,6 +121,8 @@ describe('Tenant control plane (database)', () => {
   let member: Actor;
   let root: Actor;
   let otherTenantId: string;
+  let clubs: ClubFixtures;
+  let otherClub: Club;
 
   const call = (method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, actor?: Actor, payload?: object, host?: string) =>
     app.inject({ method, url: `/api/v1${url}`, headers: { ...(actor ? { cookie: actor.cookie } : {}), ...(host ? { 'x-tenant-host': host } : {}) }, ...(payload ? { payload } : {}) });
@@ -141,16 +144,17 @@ describe('Tenant control plane (database)', () => {
     const [{ email }] = await db.select({ email: users.email }).from(users).where(eq(users.id, root.id));
     const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { email, password: 'Password123!' } });
     root = { id: root.id, cookie: `app_session=${login.cookies.find((c) => c.name === 'app_session')!.value}` };
-    const [other] = await db.insert(tenants).values({ slug: slug('other'), name: 'Other club' }).returning();
-    otherTenantId = other.id;
-    await db.insert(tenantBranding).values({ tenantId: other.id });
-    await db.insert(tenantDomains).values({ tenantId: other.id, domain: domain('other'), status: 'VERIFIED', verificationToken: 'x', verifiedAt: new Date() });
+    // A second club created the way the platform operator creates one: seeded IAM, its own owner, a verified host.
+    clubs = new ClubFixtures(app);
+    otherClub = await clubs.createClub('other');
+    otherTenantId = otherClub.id;
   });
 
   afterAll(async () => {
     if (available) {
       await db.delete(tenants).where(like(tenants.slug, `t${RUN}-%`));
       await db.delete(tenantDomains).where(like(tenantDomains.domain, `%-${RUN}.example.org`));
+      await clubs.cleanup();
       await fx.cleanup();
     }
     await app.close();
@@ -181,8 +185,8 @@ describe('Tenant control plane (database)', () => {
 
   it('resolves a verified custom domain to its tenant, ignoring case and ports, and never an unverified one', async (ctx) => {
     if (!available) return ctx.skip();
-    const other = TenantSiteSchema.parse((await call('GET', '/tenant', undefined, undefined, domain('other').toUpperCase() + ':8443')).json());
-    expect(other.slug).toBe(slug('other'));
+    const other = TenantSiteSchema.parse((await call('GET', '/tenant', undefined, undefined, otherClub.host.toUpperCase() + ':8443')).json());
+    expect(other.slug).toBe(otherClub.slug);
     const pending = await call('POST', '/tenant/domains', owner, { domain: domain('pending') });
     expect(pending.statusCode).toBe(201);
     // Not verified yet: the host falls back to the default tenant (development) rather than resolving.
@@ -191,7 +195,12 @@ describe('Tenant control plane (database)', () => {
 
   it('updates branding with validated colours and refuses injection', async (ctx) => {
     if (!available) return ctx.skip();
-    const ok = await call('PUT', '/tenant/branding', owner, { primaryColor: '#1A73E8', accentColor: '#ff8800', logoUrl: 'https://cdn.example.org/logo.png' }, domain('other'));
+    const body = { primaryColor: '#1A73E8', accentColor: '#ff8800', logoUrl: 'https://cdn.example.org/logo.png' };
+    // The default club's owner has no session on another club's address, however it is named.
+    expect((await call('PUT', '/tenant/branding', owner, body, otherClub.host)).statusCode).toBe(401);
+    const [untouched] = await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, otherTenantId));
+    expect(untouched.primaryColor).toBeNull();
+    const ok = await clubs.request(otherClub, 'PUT', '/tenant/branding', otherClub.owner, body);
     expect(ok.statusCode, ok.body).toBe(200);
     expect(TenantBrandingSchema.parse(ok.json())).toMatchObject({ primaryColor: '#1a73e8', accentColor: '#ff8800', logoUrl: 'https://cdn.example.org/logo.png', secondaryColor: null });
     // Branding landed on the other tenant, not the default one.
@@ -202,7 +211,7 @@ describe('Tenant control plane (database)', () => {
     for (const bad of [{ primaryColor: 'red' }, { primaryColor: '#12345' }, { primaryColor: 'red; background:url(//evil)' }, { accentColor: 'url(javascript:alert(1))' }, { logoUrl: 'javascript:alert(1)' }, { logoUrl: 'data:image/png;base64,AAAA' }, {}]) {
       expect((await call('PUT', '/tenant/branding', owner, bad)).statusCode, JSON.stringify(bad)).toBe(400);
     }
-    expect((await call('PUT', '/tenant/branding', owner, { accentColor: null }, domain('other'))).json().accentColor).toBeNull();
+    expect((await clubs.request(otherClub, 'PUT', '/tenant/branding', otherClub.owner, { accentColor: null })).json().accentColor).toBeNull();
   });
 
   it('adds a domain, returns the DNS records, verifies through DNS and then resolves it', async (ctx) => {
@@ -255,18 +264,23 @@ describe('Tenant control plane (database)', () => {
     expect(again.statusCode).toBe(409);
     expect(again.json().code).toBe('DOMAIN_TAKEN');
     // A domain already verified for another tenant cannot be claimed.
-    expect((await call('POST', '/tenant/domains', owner, { domain: domain('other') })).statusCode).toBe(409);
+    expect((await call('POST', '/tenant/domains', owner, { domain: otherClub.host })).statusCode).toBe(409);
   });
 
   it('a club cannot see, verify or delete another club\'s domains', async (ctx) => {
     if (!available) return ctx.skip();
     const mine = (await call('POST', '/tenant/domains', owner, { domain: domain('isolated') })).json();
-    const otherHost = domain('other');
-    expect((await call('GET', `/tenant/domains/${mine.id}`, owner, undefined, otherHost)).statusCode).toBe(404);
-    expect((await call('POST', `/tenant/domains/${mine.id}/verify`, owner, undefined, otherHost)).statusCode).toBe(404);
-    expect((await call('DELETE', `/tenant/domains/${mine.id}`, owner, undefined, otherHost)).statusCode).toBe(404);
-    const list = (await call('GET', '/tenant/domains', owner, undefined, otherHost)).json() as Array<{ id: string }>;
+    const theirs = otherClub.owner;
+    // The other club's owner, on the other club's address, cannot see, verify or delete our domain.
+    expect((await clubs.request(otherClub, 'GET', `/tenant/domains/${mine.id}`, theirs)).statusCode).toBe(404);
+    expect((await clubs.request(otherClub, 'POST', `/tenant/domains/${mine.id}/verify`, theirs)).statusCode).toBe(404);
+    expect((await clubs.request(otherClub, 'DELETE', `/tenant/domains/${mine.id}`, theirs)).statusCode).toBe(404);
+    const list = (await clubs.request(otherClub, 'GET', '/tenant/domains', theirs)).json() as Array<{ id: string }>;
     expect(list.map((x) => x.id)).not.toContain(mine.id);
+    // Our owner's session does not work on their address at all.
+    expect((await call('GET', `/tenant/domains/${mine.id}`, owner, undefined, otherClub.host)).statusCode).toBe(401);
+    // ...and our own domain is still intact.
+    expect((await call('GET', `/tenant/domains/${mine.id}`, owner)).statusCode).toBe(200);
     expect((await call('GET', `/tenant/domains/${mine.id}`, owner)).statusCode).toBe(200);
   });
 
@@ -308,6 +322,14 @@ describe('Tenant control plane (database)', () => {
     expect(summary).toMatchObject({ slug: slug('new'), status: 'ACTIVE' });
     const [branding] = await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, summary.id));
     expect(branding).toBeDefined();
+    // A new club starts with its own default categories and its own IAM baseline.
+    const seededCategories = await runInTenant(summary.id, async () => db.select().from(categories));
+    expect(seededCategories.map((c) => `${c.scope}:${c.code}`).sort()).toEqual(DEFAULT_CATEGORIES.map((c) => `${c.scope}:${c.code}`).sort());
+    const seededRoles = await runInTenant(summary.id, async () => db.select({ name: roles.name }).from(roles));
+    expect(seededRoles.map((r) => r.name)).toEqual(expect.arrayContaining(['OWNER', 'FRONT_DESK', 'BAR_STAFF', 'MEMBER']));
+    // ...which are rows of that club only: the default club's categories are not touched.
+    const defaultCategories = await runInTenant(DEFAULT_TENANT_ID, async () => db.select().from(categories));
+    expect(defaultCategories.every((c) => c.tenantId === DEFAULT_TENANT_ID)).toBe(true);
     expect((await call('POST', '/platform/tenants', root, { slug: slug('new'), name: 'Dup' })).statusCode).toBe(409);
     const listed = (await call('GET', '/platform/tenants', root)).json() as Array<{ id: string }>;
     expect(listed.map((t) => t.id)).toContain(summary.id);

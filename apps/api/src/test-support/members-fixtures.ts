@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import {
-  getDb,
+import { DEFAULT_TENANT_ID, getDb,
   invoices,
   memberCheckins,
   members,
@@ -11,8 +10,7 @@ import {
   plans,
   roles,
   userRoles,
-  users,
-} from '@packages/db';
+  users } from '@packages/db';
 
 export type ActorRole = 'MEMBER' | 'FRONT_DESK' | 'OWNER' | 'BAR_STAFF';
 
@@ -53,7 +51,7 @@ export class MembersFixtures {
     this.userIds.push(id);
     const cookie = res.cookies.find((c) => c.name === 'app_session');
     await this.db.delete(userRoles).where(eq(userRoles.userId, id));
-    const [roleRow] = await this.db.select().from(roles).where(eq(roles.name, role)).limit(1);
+    const [roleRow] = await this.db.select().from(roles).where(and(eq(roles.tenantId, DEFAULT_TENANT_ID), eq(roles.name, role))).limit(1);
     if (!roleRow) throw new Error(`role ${role} is not seeded; run pnpm db:seed`);
     await this.db.insert(userRoles).values({ userId: id, roleId: roleRow.id });
     return { id, cookie: `app_session=${cookie!.value}` };

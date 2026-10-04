@@ -1,16 +1,22 @@
-import { pgTable, varchar, text, timestamp, jsonb, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, jsonb, uuid, primaryKey } from 'drizzle-orm/pg-core';
+import { tenantId } from './_tenant.js';
 
 /**
  * Foundational system configuration and metadata key-value storage.
  * Used for storing installation state, schema versions, and global flags.
  */
-export const systemSettings = pgTable('system_settings', {
-  key: varchar('key', { length: 128 }).primaryKey(),
-  value: jsonb('value').notNull(),
-  description: text('description'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const systemSettings = pgTable(
+  'system_settings',
+  {
+    tenantId: tenantId(),
+    key: varchar('key', { length: 128 }).notNull(),
+    value: jsonb('value').notNull(),
+    description: text('description'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.key] })]
+);
 
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type NewSystemSetting = typeof systemSettings.$inferInsert;
@@ -20,6 +26,7 @@ export type NewSystemSetting = typeof systemSettings.$inferInsert;
  * Used to record critical infrastructure events, migration executions, and system health benchmarks.
  */
 export const systemAuditLogs = pgTable('system_audit_logs', {
+  tenantId: tenantId(),
   id: uuid('id').defaultRandom().primaryKey(),
   action: varchar('action', { length: 128 }).notNull(),
   actor: varchar('actor', { length: 128 }).notNull().default('system'),
