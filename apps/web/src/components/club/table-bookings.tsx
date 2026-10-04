@@ -33,7 +33,7 @@ const STATUS_STYLE: Record<TableBookingStatus, string> = {
 type DialogState = { booking: TableBooking } | { tableId: string; startMs: number; endMs: number } | null;
 interface Preview { id: string; tableId: string; startMs: number; endMs: number; conflict: boolean }
 
-function BookingDialog({ state, tables, date, onClose }: { state: Exclude<DialogState, null>; tables: BarTable[]; date: string; onClose: () => void }) {
+function BookingDialog({ state, tables, date, existing, onOpenTab, onClose }: { state: Exclude<DialogState, null>; tables: BarTable[]; date: string; existing: TableBooking[]; onOpenTab?: (table: BarTable, guestName: string, memberId?: string) => void; onClose: () => void }) {
   const booking = 'booking' in state ? state.booking : null;
   const startMs = booking ? Date.parse(booking.startsAt) : (state as { startMs: number }).startMs;
   const endMs = booking ? Date.parse(booking.endsAt) : (state as { endMs: number }).endMs;
@@ -56,6 +56,10 @@ function BookingDialog({ state, tables, date, onClose }: { state: Exclude<Dialog
     if (!Number.isInteger(partySize) || partySize < 1 || partySize > 50) return setError('Party size must be a whole number from 1 to 50.');
     if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return setError('Choose a start and end time.');
     if (minutes(end) <= minutes(start)) return setError('The booking must end after it starts.');
+    const startsMs = clubInstant(date, minutes(start));
+    const endsMs = clubInstant(date, minutes(end));
+    const clash = findConflict(existing, { id: booking?.id ?? '', tableId, startMs: startsMs, endMs: endsMs });
+    if (clash) return setError(`That table is already booked for ${clash.guestName} (${clubTimeLabel(Date.parse(clash.startsAt))} to ${clubTimeLabel(Date.parse(clash.endsAt))}).`);
     const body = {
       tableId, guestName: guest.trim(), partySize, notes: notes.trim() || (booking ? null : undefined),
       startsAt: new Date(clubInstant(date, minutes(start))).toISOString(), endsAt: new Date(clubInstant(date, minutes(end))).toISOString(),
@@ -73,6 +77,17 @@ function BookingDialog({ state, tables, date, onClose }: { state: Exclude<Dialog
     try { await update.mutateAsync({ id: booking.id, status }); toast.success(message); onClose(); }
     catch (caught) { setError(errorText(caught, 'Could not change the booking.')); }
   }
+  async function seatAndOpenTab() {
+    if (!booking || !onOpenTab) return;
+    const table = tables.find((t) => t.id === booking.tableId);
+    if (!table) return;
+    setError(null);
+    try {
+      if (booking.status === 'BOOKED') await update.mutateAsync({ id: booking.id, status: 'SEATED' });
+      onClose();
+      onOpenTab(table, booking.guestName, booking.memberId ?? undefined);
+    } catch (caught) { setError(errorText(caught, 'Could not seat the guest.')); }
+  }
   const pending = create.isPending || update.isPending;
   return (
     <FormDialog open onClose={onClose} title={booking ? `Booking for ${booking.guestName}` : 'Book a table'} description={booking && closed ? `This booking is ${humanize(booking.status).toLowerCase()} and can no longer change.` : 'Times are club time. A table cannot be booked twice at the same time.'} onSubmit={closed ? onClose : submit} submitLabel={closed ? 'Close' : booking ? 'Save changes' : 'Book table'} pending={pending} error={error}>
@@ -89,6 +104,7 @@ function BookingDialog({ state, tables, date, onClose }: { state: Exclude<Dialog
       {booking && !closed && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Booking actions">
           {booking.status === 'BOOKED' && <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { void setStatus('SEATED', 'Guest seated'); }}>Seat guest</Button>}
+          {onOpenTab && !tables.find((t) => t.id === booking.tableId)?.openTab && <Button type="button" size="sm" disabled={pending} onClick={() => { void seatAndOpenTab(); }}>Seat and open tab</Button>}
           {booking.status === 'SEATED' && <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { void setStatus('COMPLETED', 'Booking completed'); }}>Mark completed</Button>}
           {booking.status === 'BOOKED' && <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { void setStatus('NO_SHOW', 'Marked as no-show'); }}>No-show</Button>}
           <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { void setStatus('CANCELLED', 'Booking cancelled'); }}>Cancel booking</Button>
@@ -103,7 +119,7 @@ function BookingDialog({ state, tables, date, onClose }: { state: Exclude<Dialog
  * drag a booking to move it (also between tables), drag its right edge to resize, click an empty
  * slot to book. Overlaps turn red while dragging and are refused by the server as the final word.
  */
-export function TableBookings({ tables, canManage }: { tables: BarTable[]; canManage: boolean }) {
+export function TableBookings({ tables, canManage, onOpenTab }: { tables: BarTable[]; canManage: boolean; onOpenTab?: (table: BarTable, guestName: string, memberId?: string) => void }) {
   const [date, setDate] = useState(() => calendarDate());
   const [view, setView] = useViewPreference('bar-bookings', VIEWS, 'timeline');
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -262,7 +278,7 @@ export function TableBookings({ tables, canManage }: { tables: BarTable[]; canMa
         )}
       </QueryState>
       {preview?.conflict && <p role="status" className="text-sm text-destructive">That overlaps another booking on {tableName(preview.tableId)}. Release over a free slot instead.</p>}
-      {dialog && <BookingDialog key={'booking' in dialog ? dialog.booking.id : `new-${dialog.startMs}`} state={dialog} tables={tables} date={date} onClose={() => setDialog(null)} />}
+      {dialog && <BookingDialog key={'booking' in dialog ? dialog.booking.id : `new-${dialog.startMs}`} state={dialog} tables={tables} date={date} existing={data} onOpenTab={canManage ? onOpenTab : undefined} onClose={() => setDialog(null)} />}
     </section>
   );
 }
