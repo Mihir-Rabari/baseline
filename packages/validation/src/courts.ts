@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UuidSchema, IsoDateTimeSchema, IsoDateTimeOutSchema } from './common.js';
+import { ImageRefSchema } from './uploads.js';
 import { DateOnlySchema, NonNegativePaiseSchema, PaiseSchema, PositivePaiseSchema, TimeOfDaySchema } from './domain-common.js';
 
 /** GET /courts */
@@ -13,6 +14,7 @@ export const CourtSchema = z.object({
   isActive: z.boolean(),
   courtTypeId: UuidSchema.optional(),
   sortOrder: z.number().int().optional(),
+  imageUrl: z.string().nullable().optional(),
 });
 export type Court = z.infer<typeof CourtSchema>;
 export const CourtListSchema = z.array(CourtSchema);
@@ -60,6 +62,7 @@ export const CreateCourtRequestSchema = z.object({
   courtTypeId: UuidSchema,
   sortOrder: z.number().int().min(0).max(1000).optional(),
   isActive: z.boolean().optional(),
+  imageUrl: ImageRefSchema.nullable().optional(),
 });
 export type CreateCourtRequest = z.infer<typeof CreateCourtRequestSchema>;
 
