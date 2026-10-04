@@ -17,7 +17,7 @@ export const COLUMNS = [
   { id: 'READY', title: 'Ready for pickup' },
   { id: 'OUT_FOR_DELIVERY', title: 'Out for delivery' },
   { id: 'DONE', title: 'Done' },
-  { id: 'POS', title: 'POS / Counter' },
+  { id: 'POS', title: 'Counter sales' },
   { id: 'CANCELLED', title: 'Cancelled' },
 ];
 

@@ -45,7 +45,7 @@ describe('Owner dashboard', () => {
   it('renders a shaped staff loading state outside the numeric paragraph', () => { state.permissions = ['shifts:read', 'shifts:read:all']; state.shifts.mockReturnValue(new Promise(() => {})); show(); expect(screen.getByRole('status', { name: 'Loading staff count' })).toBeVisible(); expect(screen.queryByText('Unavailable')).not.toBeInTheDocument(); });
   it('uses full pending-order metadata and only counts clocked-in staff', async () => {
     state.permissions = ['orders:read', 'shifts:read', 'shifts:read:all']; show();
-    expect(await screen.findByRole('link', { name: '6 orders awaiting fulfilment' })).toHaveAttribute('href', '/orders');
+    expect(await screen.findByRole('link', { name: '6 orders waiting to be handed over' })).toHaveAttribute('href', '/orders');
     expect(await within(screen.getByText('Staff on shift').parentElement!).findByText('1')).toBeVisible();
     for (const status of ['PLACED', 'READY', 'OUT_FOR_DELIVERY']) expect(state.orders).toHaveBeenCalledWith({ status, limit: 1 });
   });

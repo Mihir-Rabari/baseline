@@ -286,7 +286,11 @@ ALTER TABLE "system_settings" DROP CONSTRAINT IF EXISTS "system_settings_pkey";
 --> statement-breakpoint
 ALTER TABLE "system_settings" ADD CONSTRAINT "system_settings_tenant_id_key_pk" PRIMARY KEY ("tenant_id","key");
 --> statement-breakpoint
-DO $$ BEGIN
+ALTER TABLE "employee_documents" ADD COLUMN IF NOT EXISTS "tenant_id" uuid DEFAULT app_tenant_default() NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "employee_documents" ADD CONSTRAINT "employee_documents_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+DO $ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'baseline_tenant') THEN
 		CREATE ROLE baseline_tenant NOLOGIN NOSUPERUSER NOBYPASSRLS;
 	END IF;
@@ -645,6 +649,12 @@ ALTER TABLE "tenant_branding" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "tenant_branding";
 --> statement-breakpoint
 CREATE POLICY tenant_isolation ON "tenant_branding" AS PERMISSIVE FOR ALL TO baseline_tenant USING (tenant_id = app_tenant_current()) WITH CHECK (tenant_id = app_tenant_current());
+--> statement-breakpoint
+ALTER TABLE "employee_documents" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+DROP POLICY IF EXISTS tenant_isolation ON "employee_documents";
+--> statement-breakpoint
+CREATE POLICY tenant_isolation ON "employee_documents" AS PERMISSIVE FOR ALL TO baseline_tenant USING (tenant_id = app_tenant_current()) WITH CHECK (tenant_id = app_tenant_current());
 --> statement-breakpoint
 ALTER TABLE "tenants" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint

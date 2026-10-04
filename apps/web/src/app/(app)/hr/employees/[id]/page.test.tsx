@@ -7,7 +7,7 @@ const EMP = '22222222-2222-4222-8222-222222222222';
 const PHOTO = '/api/v1/media/employee/123e4567-e89b-42d3-a456-426614174000.png';
 const profile = { id: EMP, fullName: 'Asha Rao', position: 'Bartender', department: 'BAR', monthlySalaryPaise: 3000000, hiredOn: '2026-01-01', status: 'ACTIVE', leaveDaysThisYear: 3, photoUrl: null as string | null, email: 'asha@example.com', phone: null, pendingLeaveRequests: 1 };
 const slip = { id: '33333333-3333-4333-8333-333333333333', month: '2030-03', netPaise: 2900000 };
-const state = vi.hoisted(() => ({ permissions: new Set<string>(), put: vi.fn(), enabled: [] as string[], bank: { configured: true, accountHolder: 'Asha Rao', accountNumberMasked: '********5544', ifsc: 'HDFC0001234', bankName: 'HDFC Bank', upiId: null } as unknown, slips: [] as unknown[], profile: null as unknown }));
+const state = vi.hoisted(() => ({ permissions: new Set<string>(), put: vi.fn(), enabled: [] as string[], bank: { configured: true, accountHolder: 'Asha Rao', accountNumberMasked: '********5544', ifsc: 'HDFC0001234', bankName: 'HDFC Bank', upiId: null } as unknown, slips: [] as unknown[], docs: [] as unknown[], profile: null as unknown }));
 
 vi.mock('next/link', () => ({ default: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => <a href={href} className={className}>{children}</a> }));
 vi.mock('next/navigation', () => ({ useParams: () => ({ id: EMP }) }));
@@ -16,7 +16,7 @@ vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'actor' }, ha
 vi.mock('@/hooks/use-ops', () => ({
   useOpsQuery: (key: string[], path: string, options: { enabled?: boolean } = {}) => {
     if (options.enabled !== false) state.enabled.push(path);
-    const data = options.enabled === false ? undefined : path.endsWith('/bank') ? state.bank : path.endsWith('/payslips') ? state.slips : state.profile;
+    const data = options.enabled === false ? undefined : path.endsWith('/bank') ? state.bank : path.endsWith('/payslips') ? state.slips : path.endsWith('/documents') ? state.docs : state.profile;
     return { data, isPending: false, error: null, refetch: vi.fn() };
   },
   useOpsMutation: () => ({ isPending: false, mutateAsync: state.put }),
@@ -36,6 +36,7 @@ describe('employee profile page', () => {
     state.enabled = [];
     state.profile = { ...profile };
     state.slips = [slip];
+    state.docs = [];
     state.bank = { configured: true, accountHolder: 'Asha Rao', accountNumberMasked: '********5544', ifsc: 'HDFC0001234', bankName: 'HDFC Bank', upiId: null };
     state.put.mockReset().mockResolvedValue({});
   });
@@ -69,7 +70,14 @@ describe('employee profile page', () => {
     expect(screen.queryByTestId('uploader')).not.toBeInTheDocument();
     expect(screen.queryByText('Bank details')).not.toBeInTheDocument();
     expect(screen.queryByText('Payslips')).not.toBeInTheDocument();
-    expect(state.enabled.some((path) => path.endsWith('/bank') || path.endsWith('/payslips'))).toBe(false);
+    expect(screen.queryByRole('heading', { name: 'Documents' })).not.toBeInTheDocument();
+    expect(state.enabled.some((path) => path.endsWith('/bank') || path.endsWith('/payslips') || path.endsWith('/documents'))).toBe(false);
+  });
+
+  it('shows the documents section to the owner', () => {
+    render(<EmployeeProfilePage />);
+    expect(screen.getByRole('heading', { name: 'Documents' })).toBeInTheDocument();
+    expect(state.enabled).toContain(`/hr/employees/${EMP}/documents`);
   });
 
   it('is closed, and loads nothing, without hr:read', () => {

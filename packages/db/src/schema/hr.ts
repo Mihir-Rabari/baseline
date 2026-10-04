@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, uuid, date, index, smallint, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, uuid, date, index, integer, smallint, uniqueIndex } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { pk, tstz, createdAt, paise } from './_columns.js';
 import { tenantId } from './_tenant.js';
@@ -147,4 +147,26 @@ export const payslips = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('uq_payslips_run_employee').on(t.runId, t.employeeId), index('idx_payslips_employee').on(t.employeeId)]
+);
+
+export type EmployeeDocumentType = 'ID_PROOF' | 'ADDRESS_PROOF' | 'CONTRACT' | 'CERTIFICATE' | 'OTHER';
+
+/** A file kept on an employee's record (ID proof, contract...). The bytes live in object storage under `storageKey`. */
+export const employeeDocuments = pgTable(
+  'employee_documents',
+  {
+    tenantId: tenantId(),
+    id: pk(),
+    employeeId: uuid('employee_id')
+      .notNull()
+      .references(() => employees.id, { onDelete: 'cascade' }),
+    docType: varchar('doc_type', { length: 16 }).$type<EmployeeDocumentType>().notNull(),
+    fileName: varchar('file_name', { length: 120 }).notNull(),
+    contentType: varchar('content_type', { length: 32 }).notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    storageKey: varchar('storage_key', { length: 200 }).notNull().unique(),
+    uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('idx_employee_documents_employee').on(t.employeeId, t.createdAt)]
 );
