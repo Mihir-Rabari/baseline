@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { hashSessionToken } from '@packages/auth';
-import { invoices, leadActivities, leads, members, memberships, notifications, payments, quotes, users } from '@packages/db';
+import { hashSessionToken, sessionCacheKey } from '@packages/auth';
+import { DEFAULT_TENANT_ID, invoices, leadActivities, leads, members, memberships, notifications, payments, quotes, users } from '@packages/db';
 import { CrmSummarySchema, ConvertLeadResponseSchema, LeadDetailSchema, LeadPageSchema, LeadSchema, LeadActivitySchema, QuoteSchema } from '@packages/validation';
 import { buildApp } from './app.js';
 import { addDays, clubDateOf } from './lib/club-date.js';
@@ -131,7 +131,7 @@ describe('CRM (M-13, API contract section 9)', () => {
     if (!hasDatabase) return ctx.skip();
     const suspended = await fx.actor(app, 'FRONT_DESK');
     await db.update(users).set({ status: 'SUSPENDED' }).where(eq(users.id, suspended.id));
-    await app.redis.delete(`session:${hashSessionToken(suspended.cookie.split('=')[1]!)}`);
+    await app.redis.delete(sessionCacheKey(hashSessionToken(suspended.cookie.split('=')[1]!), DEFAULT_TENANT_ID));
     for (const [method, url, payload] of guardedRoutes) {
       const response = await app.inject({ method, url, headers: as(suspended), ...(payload ? { payload } : {}) });
       expect([401, 403]).toContain(response.statusCode);

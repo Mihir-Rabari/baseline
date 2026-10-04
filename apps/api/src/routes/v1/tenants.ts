@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { runUnscoped } from '@packages/db';
 import { requirePermission } from '@packages/iam';
 import {
   CreateTenantDomainRequestSchema,
@@ -134,7 +135,7 @@ export const tenantRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get(
     '/platform/tenants',
     { preHandler: [rootOnly], schema: { description: 'All clubs (platform operator).', tags: ['Platform'], response: { 200: TenantSummaryListSchema, 401: err, 403: err } } },
-    async (_request, reply) => reply.send(await service.listTenants())
+    async (_request, reply) => reply.send(await runUnscoped(async () => service.listTenants()))
   );
 
   fastify.post(
@@ -144,7 +145,7 @@ export const tenantRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { description: 'Create a club with its platform address and empty branding.', tags: ['Platform'], body: CreateTenantRequestSchema, response: { 201: TenantSummarySchema, 400: err, 401: err, 403: err, 409: err } },
     },
     async (request, reply) => {
-      const tenant = await service.createTenant(request.body);
+      const tenant = await runUnscoped(async () => service.createTenant(request.body));
       await audit(request, 'PLATFORM_TENANT_CREATED', tenant.id, { slug: tenant.slug });
       return reply.status(201).send(tenant);
     }
@@ -157,7 +158,7 @@ export const tenantRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { description: 'Suspend or reactivate a club.', tags: ['Platform'], params: IdParams, body: UpdateTenantStatusRequestSchema, response: { 200: TenantSummarySchema, 400: err, 401: err, 403: err, 404: err } },
     },
     async (request, reply) => {
-      const tenant = await service.setStatus(request.params.id, request.body.status);
+      const tenant = await runUnscoped(async () => service.setStatus(request.params.id, request.body.status));
       await audit(request, 'PLATFORM_TENANT_STATUS', tenant.id, { status: tenant.status });
       return reply.send(tenant);
     }

@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { sql, type SQL } from 'drizzle-orm';
 import type postgres from 'postgres';
 
 /**
@@ -61,6 +62,15 @@ export function currentTenantScope(): string | null {
 async function applyScope(tx: postgres.TransactionSql, tenantId: string): Promise<void> {
   // Transaction-local on purpose: it vanishes at COMMIT/ROLLBACK, so the pooled connection stays clean.
   await tx.unsafe(`select set_config('role', $1, true), set_config('app.tenant_id', $2, true)`, [TENANT_ROLE, tenantId]);
+}
+
+/**
+ * Confines the rest of an open drizzle transaction to one club: the platform operator creates a club
+ * as the owner, then seeds its baseline under that club's scope in the same transaction, so a failed
+ * seed rolls the whole club back. The settings last until the transaction ends.
+ */
+export async function scopeTransaction(tx: { execute: (query: SQL) => PromiseLike<unknown> }, tenantId: string): Promise<void> {
+  await tx.execute(sql`select set_config('role', ${TENANT_ROLE}, true), set_config('app.tenant_id', ${assertTenantId(tenantId)}, true)`);
 }
 
 interface LazyQuery extends PromiseLike<unknown> {

@@ -485,7 +485,7 @@ export const courtRoutes: FastifyPluginAsyncZod = async (fastify) => {
       await fastify.db
         .insert(systemSettings)
         .values({ key: 'club.profile', value: merged, description: 'Public club details shown on the website (name, tagline, phone, address)' })
-        .onConflictDoUpdate({ target: systemSettings.key, set: { value: merged, updatedAt: new Date() } });
+        .onConflictDoUpdate({ target: [systemSettings.tenantId, systemSettings.key], set: { value: merged, updatedAt: new Date() } });
       request.log.info({ actorId: request.user!.id, fields: Object.keys(request.body) }, 'Club profile updated');
       await fastify.iamService.logAuditEvent({ action: 'CLUB_PROFILE_UPDATED', actor: request.user!.id, details: { fields: Object.keys(request.body) } });
       return reply.status(200).send(merged);

@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { DEFAULT_TENANT_ID, tenantDomains, tenants, type TenantStatus } from '@packages/db';
+import { DEFAULT_TENANT_ID, runUnscoped, tenantDomains, tenants, type TenantStatus } from '@packages/db';
 import type { DbExecutor } from './db-types.js';
 
 export interface ResolvedTenant {
@@ -44,7 +44,8 @@ export class TenantDirectory {
     if (!host) return null;
     const hit = this.cache.get(host);
     if (hit && hit.expires > this.now()) return hit.value;
-    const value = await this.lookup(host);
+    // Resolving a host spans every club, so it always runs unscoped, whatever scope the caller is in.
+    const value = await runUnscoped(async () => this.lookup(host));
     this.cache.set(host, { value, expires: this.now() + this.ttlMs });
     if (this.cache.size > 5000) this.cache.clear();
     return value;

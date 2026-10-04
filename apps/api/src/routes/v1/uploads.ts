@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { PolicyEngine, type IamService } from '@packages/iam';
 import { HttpErrorResponseSchema, ImageUploadResponseSchema, UploadKindEnum, type UploadKind } from '@packages/validation';
 import { DomainError } from '../../lib/domain-error.js';
+import { legacyKey, uploadKey } from '../../lib/storage-keys.js';
 import { EXT_CONTENT_TYPE, IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, detectImage } from '../../lib/images.js';
 
 const err = HttpErrorResponseSchema;
@@ -86,13 +87,15 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (fastify) => {
         throw new DomainError('INVALID_IMAGE', 422, 'The file contents do not match the declared image type.');
       }
       const file = `${randomUUID()}.${detected.ext}`;
-      const key = `${request.params.kind}/${file}`;
+      // The club comes from the request's host, never from the caller's input.
+      const publicPath = `${request.params.kind}/${file}`;
+      const key = uploadKey(request.tenantId, request.params.kind, file);
       await fastify.storage.upload(key, body, {
         contentType: detected.contentType,
-        metadata: { uploader: request.user!.id },
+        metadata: { uploader: request.user!.id, tenant: request.tenantId },
       });
       request.log.info({ kind: request.params.kind, key, bytes: body.length, actorId: request.user!.id }, 'Image uploaded');
-      return reply.status(201).send({ url: `/api/v1/media/${key}`, key, contentType: detected.contentType, size: body.length });
+      return reply.status(201).send({ url: `/api/v1/media/${publicPath}`, key, contentType: detected.contentType, size: body.length });
     }
   );
 
@@ -109,7 +112,8 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
     async (request, reply) => {
       const { kind, file } = request.params;
-      const bytes = await fastify.storage.get(`${kind}/${file}`);
+      const legacy = legacyKey(request.tenantId, `${kind}/${file}`);
+      const bytes = (await fastify.storage.get(uploadKey(request.tenantId, kind, file))) ?? (legacy ? await fastify.storage.get(legacy) : null);
       if (!bytes) throw new DomainError('NOT_FOUND', 404, 'Image not found.');
       const ext = file.slice(file.lastIndexOf('.') + 1) as keyof typeof EXT_CONTENT_TYPE;
       return reply

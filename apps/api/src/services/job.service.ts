@@ -1,10 +1,13 @@
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, asc, eq, gte, lt } from 'drizzle-orm';
 import {
   members,
   membershipEvents,
   membershipReminders,
   memberships,
   plans,
+  runInTenant,
+  runUnscoped,
+  tenants,
   type DatabaseInstance,
   type ReminderKind,
 } from '@packages/db';
@@ -24,6 +27,15 @@ const THRESHOLDS: Array<{ kind: Exclude<ReminderKind, 'EXPIRED'>; days: number }
 
 export const MEMBERSHIP_EXPIRY_INTERVAL_MS = 15 * 60 * 1000;
 
+/** What one sweep over every active club did. */
+export interface AllClubsExpiryResult {
+  clubs: number;
+  failed: number;
+  expired: number;
+  remindersCreated: number;
+  perClub: Array<{ tenantId: string; slug: string; result?: MembershipExpiryJobResponse; error?: string }>;
+}
+
 interface Logger {
   info: (obj: object, msg?: string) => void;
   error: (obj: object, msg?: string) => void;
@@ -38,6 +50,31 @@ export class JobService {
     timeZone?: string
   ) {
     this.timeZone = timeZone ?? getEnv().CLUB_TIMEZONE;
+  }
+
+  /**
+   * Runs the membership expiry job once for every ACTIVE club, each inside that club's own database
+   * scope: a club's memberships, reminders and notifications are read and written only as that club, so
+   * one club's run can never touch another's rows. Suspended clubs are skipped. A failure in one club is
+   * recorded and does not stop the others.
+   */
+  async runMembershipExpiryForAllClubs(asOf?: string): Promise<AllClubsExpiryResult> {
+    const clubs = await runUnscoped(async () =>
+      this.db.select({ id: tenants.id, slug: tenants.slug }).from(tenants).where(eq(tenants.status, 'ACTIVE')).orderBy(asc(tenants.slug))
+    );
+    const out: AllClubsExpiryResult = { clubs: clubs.length, failed: 0, expired: 0, remindersCreated: 0, perClub: [] };
+    for (const club of clubs) {
+      try {
+        const result = await runInTenant(club.id, async () => this.runMembershipExpiry(asOf));
+        out.expired += result.expired;
+        out.remindersCreated += result.remindersCreated;
+        out.perClub.push({ tenantId: club.id, slug: club.slug, result });
+      } catch (error) {
+        out.failed += 1;
+        out.perClub.push({ tenantId: club.id, slug: club.slug, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return out;
   }
 
   /**
@@ -196,8 +233,9 @@ export class JobService {
 }
 
 /**
- * Starts the recurring membership-expiry run. Returns a function that stops it; call that
- * on shutdown so the timer never keeps the process alive. Overlapping runs are skipped.
+ * Starts the recurring membership-expiry run, once per active club on every tick. Returns a function
+ * that stops it; call that on shutdown so the timer never keeps the process alive. Overlapping runs
+ * are skipped.
  */
 export function startMembershipExpiryScheduler(
   job: JobService,
@@ -209,8 +247,11 @@ export function startMembershipExpiryScheduler(
     if (running) return;
     running = true;
     job
-      .runMembershipExpiry()
-      .then((result) => log.info({ ...result }, 'Membership expiry job completed'))
+      .runMembershipExpiryForAllClubs()
+      .then((result) => {
+        log.info({ clubs: result.clubs, failed: result.failed, expired: result.expired, remindersCreated: result.remindersCreated }, 'Membership expiry job completed');
+        for (const club of result.perClub) if (club.error) log.error({ tenantId: club.tenantId, slug: club.slug, error: club.error }, 'Membership expiry job failed for a club');
+      })
       .catch((err: unknown) => log.error({ err }, 'Membership expiry job failed'))
       .finally(() => {
         running = false;

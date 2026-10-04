@@ -181,6 +181,110 @@ async function ensureAgentActions(db: DatabaseInstance, policyId: string): Promi
   });
 }
 
+/**
+ * The IAM baseline every club starts with: AdministratorPolicy, ExternalUserPolicy, the ADMIN role and
+ * the domain policies and roles (MEMBER, FRONT_DESK, BAR_STAFF, OWNER). Idempotent, and it writes into
+ * whichever club the database handle is scoped to (the default club for seeds, a new club when the
+ * platform operator creates one).
+ */
+export async function seedTenantIam(db: DatabaseInstance): Promise<void> {
+  // 3. Baseline Policies Seed
+  // 3a. AdministratorPolicy
+  const adminPolicyName = AppConfig.iam.administratorPolicy;
+  let [adminPolicy] = await db
+    .select()
+    .from(policies)
+    .where(eq(policies.name, adminPolicyName))
+    .limit(1);
+
+  if (!adminPolicy) {
+    [adminPolicy] = await db
+      .insert(policies)
+      .values({
+        name: adminPolicyName,
+        description: 'Full administrative access to manage users, roles, groups, and policies',
+        isSystem: true,
+      })
+      .returning();
+
+    await db.insert(policyStatements).values({
+      policyId: adminPolicy.id,
+      effect: 'allow',
+      actions: ['admin:access', 'users:*', 'roles:*', 'groups:*', 'policies:*', 'permissions:*', 'agent:use', 'agent:act'],
+      resources: ['*'],
+    });
+    console.log('[DB] ✅ Created baseline AdministratorPolicy.');
+  } else {
+    await ensureAgentActions(db, adminPolicy.id);
+  }
+
+  // 3b. ExternalUserPolicy
+  const externalPolicyName = AppConfig.iam.defaultExternalUserPolicy;
+  let [externalPolicy] = await db
+    .select()
+    .from(policies)
+    .where(eq(policies.name, externalPolicyName))
+    .limit(1);
+
+  if (!externalPolicy) {
+    [externalPolicy] = await db
+      .insert(policies)
+      .values({
+        name: externalPolicyName,
+        description: 'Default baseline policy granting external users self-resource permissions',
+        isSystem: true,
+      })
+      .returning();
+
+    await db.insert(policyStatements).values({
+      policyId: externalPolicy.id,
+      effect: 'allow',
+      actions: [
+        'profile:read:self',
+        'profile:update:self',
+        'notifications:read:self',
+        'notifications:update:self',
+        'agent:use',
+        'agent:act',
+      ],
+      resources: ['*'],
+    });
+    console.log('[DB] ✅ Created baseline ExternalUserPolicy.');
+  } else {
+    await ensureAgentActions(db, externalPolicy.id);
+  }
+
+  // 4. Baseline Roles Seed (ADMIN)
+  const adminRoleName = AppConfig.iam.adminRoleName;
+  let [adminRole] = await db
+    .select()
+    .from(roles)
+    .where(eq(roles.name, adminRoleName))
+    .limit(1);
+
+  if (!adminRole) {
+    [adminRole] = await db
+      .insert(roles)
+      .values({
+        name: adminRoleName,
+        description: 'System Administrator role with AdministratorPolicy attached',
+        isSystem: true,
+      })
+      .returning();
+
+    if (adminPolicy) {
+      await db.insert(rolePolicies).values({
+        roleId: adminRole.id,
+        policyId: adminPolicy.id,
+      }).onConflictDoNothing();
+    }
+    console.log('[DB] ✅ Created baseline ADMIN role with AdministratorPolicy attached.');
+  }
+
+  // 4b. Domain policies and roles from IamConfig (MEMBER, FRONT_DESK, BAR_STAFF, OWNER)
+  await seedDomainIam(db);
+}
+
 /** Seeds the default club. Scoped to it, so the run stays idempotent however many other clubs exist. */
 export function runSeeds(): Promise<void> {
   return runInTenant(DEFAULT_TENANT_ID, runSeedsInScope);
@@ -244,101 +348,8 @@ async function runSeedsInScope(): Promise<void> {
     }
     console.log(`[DB] ✅ Registered ${BASELINE_PERMISSIONS.length} baseline permissions.`);
 
-    // 3. Baseline Policies Seed
-    // 3a. AdministratorPolicy
-    const adminPolicyName = AppConfig.iam.administratorPolicy;
-    let [adminPolicy] = await db
-      .select()
-      .from(policies)
-      .where(eq(policies.name, adminPolicyName))
-      .limit(1);
-
-    if (!adminPolicy) {
-      [adminPolicy] = await db
-        .insert(policies)
-        .values({
-          name: adminPolicyName,
-          description: 'Full administrative access to manage users, roles, groups, and policies',
-          isSystem: true,
-        })
-        .returning();
-
-      await db.insert(policyStatements).values({
-        policyId: adminPolicy.id,
-        effect: 'allow',
-        actions: ['admin:access', 'users:*', 'roles:*', 'groups:*', 'policies:*', 'permissions:*', 'agent:use', 'agent:act'],
-        resources: ['*'],
-      });
-      console.log('[DB] ✅ Created baseline AdministratorPolicy.');
-    } else {
-      await ensureAgentActions(db, adminPolicy.id);
-    }
-
-    // 3b. ExternalUserPolicy
-    const externalPolicyName = AppConfig.iam.defaultExternalUserPolicy;
-    let [externalPolicy] = await db
-      .select()
-      .from(policies)
-      .where(eq(policies.name, externalPolicyName))
-      .limit(1);
-
-    if (!externalPolicy) {
-      [externalPolicy] = await db
-        .insert(policies)
-        .values({
-          name: externalPolicyName,
-          description: 'Default baseline policy granting external users self-resource permissions',
-          isSystem: true,
-        })
-        .returning();
-
-      await db.insert(policyStatements).values({
-        policyId: externalPolicy.id,
-        effect: 'allow',
-        actions: [
-          'profile:read:self',
-          'profile:update:self',
-          'notifications:read:self',
-          'notifications:update:self',
-          'agent:use',
-          'agent:act',
-        ],
-        resources: ['*'],
-      });
-      console.log('[DB] ✅ Created baseline ExternalUserPolicy.');
-    } else {
-      await ensureAgentActions(db, externalPolicy.id);
-    }
-
-    // 4. Baseline Roles Seed (ADMIN)
-    const adminRoleName = AppConfig.iam.adminRoleName;
-    let [adminRole] = await db
-      .select()
-      .from(roles)
-      .where(eq(roles.name, adminRoleName))
-      .limit(1);
-
-    if (!adminRole) {
-      [adminRole] = await db
-        .insert(roles)
-        .values({
-          name: adminRoleName,
-          description: 'System Administrator role with AdministratorPolicy attached',
-          isSystem: true,
-        })
-        .returning();
-
-      if (adminPolicy) {
-        await db.insert(rolePolicies).values({
-          roleId: adminRole.id,
-          policyId: adminPolicy.id,
-        }).onConflictDoNothing();
-      }
-      console.log('[DB] ✅ Created baseline ADMIN role with AdministratorPolicy attached.');
-    }
-
-    // 4b. Domain policies and roles from IamConfig (MEMBER, FRONT_DESK, BAR_STAFF, OWNER)
-    await seedDomainIam(db);
+    // 3-4b. Baseline policies and roles (AdministratorPolicy, ExternalUserPolicy, ADMIN, domain roles)
+    await seedTenantIam(db);
 
     // 4c. CourtOS demo data (plans, courts, products, menu, members, demo users)
     await seedCourtOs(db, { demoPassword: env.SEED_DEMO_PASSWORD });
