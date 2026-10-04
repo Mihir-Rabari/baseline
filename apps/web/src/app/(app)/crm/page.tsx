@@ -247,7 +247,7 @@ export default function CrmPage() {
                 setCreateLeadOpen(true);
               }}
             >
-              <Plus className="h-4 w-4" aria-hidden />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Add Lead
             </Button>
           </div>
@@ -285,7 +285,7 @@ export default function CrmPage() {
               {/* Search & Source filter */}
               <div className="flex flex-1 flex-wrap items-center gap-3">
                 <div className="relative min-w-[240px] flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <Input
                     id={searchInputId}
                     value={searchQuery}
@@ -303,7 +303,7 @@ export default function CrmPage() {
                       onClick={() => setSearchQuery('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      <RotateCcw className="h-4 w-4" aria-hidden />
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -357,7 +357,7 @@ export default function CrmPage() {
                     }`}
                     aria-label="Kanban board view"
                   >
-                    <LayoutGrid className="h-4 w-4" aria-hidden />
+                    <LayoutGrid className="h-4 w-4" aria-hidden="true" />
                     <span>Board</span>
                   </button>
                   <button
@@ -370,7 +370,7 @@ export default function CrmPage() {
                     }`}
                     aria-label="Table list view"
                   >
-                    <List className="h-4 w-4" aria-hidden />
+                    <List className="h-4 w-4" aria-hidden="true" />
                     <span>List</span>
                   </button>
                 </div>
@@ -470,13 +470,13 @@ export default function CrmPage() {
                                 <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
                                   {lead.phone && (
                                     <div className="flex items-center gap-1.5 truncate">
-                                      <Phone className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                                      <Phone className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
                                       <span className="truncate">{lead.phone}</span>
                                     </div>
                                   )}
                                   {lead.email && (
                                     <div className="flex items-center gap-1.5 truncate">
-                                      <Mail className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                                      <Mail className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
                                       <span className="truncate">{lead.email}</span>
                                     </div>
                                   )}
@@ -501,11 +501,11 @@ export default function CrmPage() {
                                       urgency === 'overdue'
                                         ? 'text-destructive font-medium'
                                         : urgency === 'today'
-                                        ? 'text-amber-600 dark:text-amber-400 font-medium'
+                                        ? 'text-warning font-medium'
                                         : 'text-muted-foreground'
                                     }`}
                                   >
-                                    <Clock className="h-4 w-4" aria-hidden />
+                                    <Clock className="h-4 w-4" aria-hidden="true" />
                                     {formatDateTime(lead.nextFollowUpAt)}
                                   </span>
                                 ) : (
@@ -616,7 +616,7 @@ export default function CrmPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-4 w-4 text-primary" aria-hidden />
+              <Plus className="h-4 w-4 text-primary" aria-hidden="true" />
               Add New Lead
             </DialogTitle>
             <DialogDescription>
@@ -819,8 +819,8 @@ export default function CrmPage() {
 
                 {mutation.error && <PageError error={mutation.error} />}
                 {memberLink && (
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-                    <p className="font-medium text-emerald-800 dark:text-emerald-300">
+                  <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
+                    <p className="font-medium text-success">
                       Converted successfully!
                     </p>
                     <Link className="underline font-semibold" href={memberLink}>
@@ -985,7 +985,7 @@ export default function CrmPage() {
                           setConvertOpen(true);
                         }}
                       >
-                        <UserCheck className="h-4 w-4" aria-hidden />
+                        <UserCheck className="h-4 w-4" aria-hidden="true" />
                         Convert to member
                       </Button>
                     </div>

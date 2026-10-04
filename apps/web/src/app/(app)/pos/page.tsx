@@ -16,7 +16,7 @@ import {
   QrCode,
   ShoppingBag,
 } from 'lucide-react';
-import type { MemberLookupItem, PaymentMethod, PublicProduct, Product } from '@packages/validation';
+import type { MemberLookupItem, PaymentMethod, PublicProduct, Product, Order } from '@packages/validation';
 import { useAuth } from '@/hooks/use-auth';
 import { useShopProducts, useShopQuote } from '@/hooks/use-shop';
 import { useShopCart } from '@/hooks/use-shop-cart';
@@ -31,6 +31,7 @@ import {
 } from '@/lib/pos-filter';
 import { MemberSearch } from '@/components/club/member-search';
 import { Money } from '@/components/club/money';
+import { OrderDetailDialog } from '@/components/club/order-detail-dialog';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { EmptyState } from '@/components/app-shell/empty-state';
 import { PageError } from '@/components/club/page-error';
@@ -83,6 +84,8 @@ export default function PosPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [tenderedInput, setTenderedInput] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchInputId = useId();
@@ -125,6 +128,8 @@ export default function PosPage() {
       }),
     onSuccess: (order) => {
       toast.success(`Order ${order.orderNumber} paid successfully`);
+      setCompletedOrder(order);
+      setShowReceipt(true);
       cart.clear();
       setMember(null);
       setCustomerName('');
@@ -233,7 +238,7 @@ export default function PosPage() {
             onClick={() => setShowShortcuts(true)}
             aria-label="View keyboard shortcuts"
           >
-            <Keyboard className="h-4 w-4" aria-hidden />
+            <Keyboard className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Shortcuts</span>
           </Button>
         </div>
@@ -251,7 +256,7 @@ export default function PosPage() {
             {/* Search & Barcode Bar */}
             <form onSubmit={handleBarcodeSubmit} className="relative flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   ref={searchInputRef}
                   id={searchInputId}
@@ -273,7 +278,7 @@ export default function PosPage() {
                 className="gap-1.5 shrink-0"
                 title="Scan barcode or exact SKU match"
               >
-                <ScanBarcode className="h-4 w-4" aria-hidden />
+                <ScanBarcode className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Scan</span>
               </Button>
               {q && (
@@ -284,7 +289,7 @@ export default function PosPage() {
                   onClick={() => setQ('')}
                   aria-label="Clear search"
                 >
-                  <RotateCcw className="h-4 w-4" aria-hidden />
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}
             </form>
@@ -353,7 +358,7 @@ export default function PosPage() {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="rounded-xl border border-dashed p-8 text-center">
-                <ShoppingBag className="mx-auto h-4 w-4 text-muted-foreground/50 mb-2" aria-hidden />
+                <ShoppingBag className="mx-auto h-4 w-4 text-muted-foreground/50 mb-2" aria-hidden="true" />
                 <p className="font-medium text-sm">No products found</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Try adjusting your search query or selecting another category.
@@ -502,7 +507,7 @@ export default function PosPage() {
                   className="h-7 text-xs text-muted-foreground hover:text-destructive"
                   aria-label="Clear cart"
                 >
-                  <Trash2 className="h-4 w-4 mr-1" aria-hidden />
+                  <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
                   Clear
                 </Button>
               )}
@@ -511,7 +516,7 @@ export default function PosPage() {
             {/* Cart Items List */}
             {cart.lines.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-                <ShoppingBag className="mx-auto h-4 w-4 opacity-40 mb-1" aria-hidden />
+                <ShoppingBag className="mx-auto h-4 w-4 opacity-40 mb-1" aria-hidden="true" />
                 <p className="text-sm font-medium">Add products to start an order.</p>
                 <p className="text-xs mt-0.5">Click product cards or scan barcodes to add.</p>
               </div>
@@ -562,7 +567,7 @@ export default function PosPage() {
                             aria-label={`Decrease ${line.product.name}`}
                             onClick={() => cart.quantity(line.product.id, line.qty - 1)}
                           >
-                            <Minus className="h-4 w-4" aria-hidden />
+                            <Minus className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <span
                             className="w-7 text-center text-xs tabular font-medium"
@@ -578,7 +583,7 @@ export default function PosPage() {
                             aria-label={`Increase ${line.product.name}`}
                             onClick={() => cart.quantity(line.product.id, line.qty + 1)}
                           >
-                            <Plus className="h-4 w-4" aria-hidden />
+                            <Plus className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </div>
 
@@ -621,7 +626,7 @@ export default function PosPage() {
                   </span>
                 </div>
                 {quote.data.discountPaise > 0 && (
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                  <div className="flex justify-between text-success font-medium">
                     <span>
                       Member discount ({quote.data.discountPct}%)
                     </span>
@@ -663,7 +668,7 @@ export default function PosPage() {
                           : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                       <span>{label}</span>
                       <span className="text-[9px] opacity-75 font-mono">{key}</span>
                     </button>
@@ -722,11 +727,19 @@ export default function PosPage() {
                   ))}
                 </div>
 
-                {/* Change calculation */}
-                {tenderedPaise > 0 && (
+                {/* Change or Split balance calculation */}
+                {tenderedPaise > 0 && tenderedPaise < totalPaise && (
+                  <div className="flex items-center justify-between rounded bg-background p-2 border">
+                    <span className="font-medium text-muted-foreground">Remaining balance</span>
+                    <span className="font-bold text-primary">
+                      <Money paise={totalPaise - tenderedPaise} />
+                    </span>
+                  </div>
+                )}
+                {tenderedPaise >= totalPaise && (
                   <div className="flex items-center justify-between rounded bg-background p-2 border">
                     <span className="font-medium text-muted-foreground">Change to return</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-bold text-success">
                       <Money paise={cashChangePaise} />
                     </span>
                   </div>
@@ -766,7 +779,7 @@ export default function PosPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Keyboard className="h-4 w-4 text-primary" aria-hidden />
+              <Keyboard className="h-4 w-4 text-primary" aria-hidden="true" />
               Keyboard Shortcuts
             </DialogTitle>
             <DialogDescription>
@@ -819,6 +832,18 @@ export default function PosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Order Receipt Dialog */}
+      <OrderDetailDialog
+        order={completedOrder}
+        open={showReceipt}
+        onOpenChange={(open) => {
+          setShowReceipt(open);
+          if (!open) {
+            setCompletedOrder(null);
+          }
+        }}
+      />
     </div>
   );
 }
