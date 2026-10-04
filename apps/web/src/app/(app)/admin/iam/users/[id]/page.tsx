@@ -64,7 +64,7 @@ export default function UserInspectorPage() {
     return (
       <div className="p-12 text-center space-y-4">
         <h2 className="text-lg font-bold">User Not Found</h2>
-        <p className="text-sm text-muted-foreground">The requested user identity does not exist.</p>
+        <p className="text-sm text-muted-foreground">We couldn't find that user.</p>
         <Link href="/admin/iam/users">
           <Button variant="outline">Back to Users</Button>
         </Link>

@@ -87,10 +87,10 @@ export default function OrdersPage() {
   return (
     <div className="space-y-8 min-w-0 max-w-full">
       <PageHeader
-        title={staff ? 'Orders & Shop Fulfilment' : 'My orders'}
+        title={staff ? 'Orders' : 'My orders'}
         description={
           board
-            ? 'Drag orders to advance fulfilment stage, or use button actions.'
+            ? 'Drag an order to the next column, or use its button.'
             : 'Track shop orders, deliveries, pickups and counter sales.'
         }
         actions={<ViewSwitcher views={ORDER_VIEWS} value={view} onChange={setView} />}
@@ -140,7 +140,7 @@ export default function OrdersPage() {
                         [
                           { value: 'ALL', label: 'All' },
                           { value: 'ONLINE', label: 'Online' },
-                          { value: 'POS', label: 'POS / Counter' },
+                          { value: 'POS', label: 'Counter sales' },
                         ] as const
                       ).map((opt) => {
                         const active = channel === opt.value;
