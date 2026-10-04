@@ -45,12 +45,12 @@ export function OwnerDashboard({ report }: { report: DashboardReport }) {
     { label: 'memberships expiring', count: report.alerts.expiringMembershipsCount, href: '/members', show: can('members:read') },
     { label: 'new leads', count: report.alerts.newLeadsCount, href: '/crm', show: can('crm:read') },
     { label: 'leave requests pending', count: report.alerts.pendingLeaveCount, href: '/hr', show: can('hr:read') },
-    { label: 'orders awaiting fulfilment', count: pending.data ?? 0, href: '/orders', show: canOrder },
+    { label: 'orders waiting to be handed over', count: pending.data ?? 0, href: '/orders', show: canOrder },
   ].filter(alert => alert.show && alert.count > 0);
   return <div className="space-y-8">
     <section className="space-y-4" aria-labelledby="today-heading">
       <div className="flex flex-wrap items-center justify-between gap-4"><h2 id="today-heading" className="text-lg font-semibold">Today at the club</h2><Link className={buttonVariants({ variant: 'outline' })} href="/reports">View reports</Link></div>
-      <p className="text-sm text-muted-foreground">Club day: {report.to}. Updated <time dateTime={report.generatedAt}>{formatDateTime(report.generatedAt)}</time>.</p>
+      <p className="text-sm text-muted-foreground">Showing {report.to}. Updated <time dateTime={report.generatedAt}>{formatDateTime(report.generatedAt)}</time>.</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Revenue today" value={formatMoney(report.kpis.revenuePaise)} hint={`${report.kpis.changePct > 0 ? '+' : ''}${report.kpis.changePct}% vs previous club day`} />
         <StatTile label="Bookings today" value={report.kpis.bookingsCount} />
