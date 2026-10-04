@@ -283,3 +283,33 @@ export const PayrollRunListSchema = z.array(PayrollRunSchema);
 
 export const PayrollRunDetailSchema = PayrollRunSchema.extend({ payslips: PayslipListSchema });
 export type PayrollRunDetail = z.infer<typeof PayrollRunDetailSchema>;
+
+// ---- Employee documents ----
+
+export const EmployeeDocumentTypeEnum = z.enum(['ID_PROOF', 'ADDRESS_PROOF', 'CONTRACT', 'CERTIFICATE', 'OTHER']);
+export type EmployeeDocumentType = z.infer<typeof EmployeeDocumentTypeEnum>;
+
+/** Documents are PDFs or JPEG/PNG/WebP scans, at most 10 MB. */
+export const EMPLOYEE_DOCUMENT_CONTENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'] as const;
+export const MAX_EMPLOYEE_DOCUMENT_BYTES = 10 * 1024 * 1024;
+export const MAX_DOCUMENTS_PER_EMPLOYEE = 25;
+
+export const EmployeeDocumentSchema = z.object({
+  id: UuidSchema,
+  employeeId: UuidSchema,
+  docType: EmployeeDocumentTypeEnum,
+  fileName: z.string(),
+  contentType: z.enum(EMPLOYEE_DOCUMENT_CONTENT_TYPES),
+  sizeBytes: z.number().int().positive(),
+  uploadedAt: IsoDateTimeOutSchema,
+});
+export type EmployeeDocument = z.infer<typeof EmployeeDocumentSchema>;
+export const EmployeeDocumentListSchema = z.array(EmployeeDocumentSchema);
+
+/** POST /hr/employees/:id/documents?docType=&fileName= (the file is the raw request body). */
+export const UploadEmployeeDocumentQuerySchema = z.object({
+  docType: EmployeeDocumentTypeEnum,
+  // A display name only. It is never used as a path; the stored key is generated.
+  fileName: z.string().trim().min(1).max(120),
+});
+export type UploadEmployeeDocumentQuery = z.infer<typeof UploadEmployeeDocumentQuerySchema>;
