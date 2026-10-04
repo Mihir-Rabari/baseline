@@ -33,7 +33,6 @@ import { tenantPrefix, uploadKey } from './lib/storage-keys.js';
  */
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32, 7)]);
-const NO_SUCH = '99999999-9999-4999-8999-999999999999';
 
 /** An in-memory object store, so storage isolation is tested without MinIO. */
 class MemoryStorage {
@@ -583,7 +582,7 @@ describe('Cross-club data isolation', () => {
 
     it('skips suspended clubs and keeps going when one club fails', async (ctx) => {
       if (!available) return ctx.skip();
-      const a = await seedExpiring(A, 'A3');
+      await seedExpiring(A, 'A3');
       const b = await seedExpiring(B, 'B3');
       const jobs = new JobService(db);
       await runUnscoped(async () => db.update(tenants).set({ status: 'SUSPENDED' }).where(eq(tenants.id, B.id)));
@@ -596,12 +595,6 @@ describe('Cross-club data isolation', () => {
         await runUnscoped(async () => db.update(tenants).set({ status: 'ACTIVE' }).where(eq(tenants.id, B.id)));
       }
 
-      const spy = vi.spyOn(JobService.prototype, 'runMembershipExpiry').mockImplementation(async function (this: JobService, asOf?: string) {
-        const original = spy.getMockImplementation();
-        void original;
-        throw new Error('simulated failure');
-      });
-      spy.mockRestore();
       const real = JobService.prototype.runMembershipExpiry;
       const failFor = A.id;
       const patched = vi.spyOn(JobService.prototype, 'runMembershipExpiry').mockImplementation(async function (this: JobService, asOf?: string) {
@@ -616,8 +609,6 @@ describe('Cross-club data isolation', () => {
         expect(result.perClub.find((c) => c.tenantId === B.id)?.error).toBeUndefined();
         const [mB] = await runInTenant(B.id, async () => db.select().from(memberships).where(eq(memberships.id, b.membership.id)));
         expect(mB.status).toBe('EXPIRED');
-        const [mA] = await runInTenant(A.id, async () => db.select().from(memberships).where(eq(memberships.id, a.membership.id)));
-        expect(mA.status).toBe('ACTIVE'.replace('ACTIVE', mA.status));
       } finally {
         patched.mockRestore();
       }

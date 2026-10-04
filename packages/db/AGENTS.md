@@ -19,3 +19,5 @@
 
 3. **Testing Expectations**:
    - Database client connection tests, migration integrity verification, and seed idempotency tests.
+
+4. **Tenancy**: new club-owned tables need `tenantId()`, the RLS policy (copy the pattern in migration 0017) and per-club unique indexes; see `skills/database/SKILL.md` section 5.
