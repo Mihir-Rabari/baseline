@@ -125,7 +125,7 @@ describe('breakdownCsvRows (unit)', () => {
       })
     );
     expect(csv).toContain('Bookings,Total,2,1500.5');
-    expect(csv).toContain('Payroll runs,2030-03 (PAID, 1 unpaid leave days),3,2500');
+    expect(csv).toContain('Payroll runs,"2030-03 (PAID, 1 unpaid leave days)",3,2500');
     expect(csv).toContain('Payroll,Approved leave days in range,4,');
     expect(csv).toContain('Top products,"\'=HYPERLINK(""x"")",1,1');
   });
