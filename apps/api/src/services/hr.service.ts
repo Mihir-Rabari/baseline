@@ -6,6 +6,7 @@ import type {
   Employee,
   EmployeeProfile,
   EmployeeListQuery,
+  LeaveBalance,
   LeaveDecisionRequest,
   LeaveListQuery,
   LeaveRequest,
@@ -29,6 +30,18 @@ const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 /** Whole calendar days in an inclusive date range. */
 export const leaveDays = (fromDate: string, toDate: string) => daysBetween(fromDate, toDate) + 1;
 
+/** Days of an inclusive date range that fall inside [lo, hi]. */
+export const clipDays = (fromDate: string, toDate: string, lo: string, hi: string) => {
+  const start = fromDate > lo ? fromDate : lo;
+  const end = toDate < hi ? toDate : hi;
+  return end < start ? 0 : leaveDays(start, end);
+};
+
+/** A leave request may not run longer than a year; it also keeps the per-year balance check to a few queries. */
+const MAX_LEAVE_DAYS = 366;
+
+export type LeaveUsage = { approved: number; pending: number };
+
 /** Employees, leave and payroll (API_CONTRACT.md section 10.3). */
 export class HrService {
   constructor(
@@ -43,33 +56,78 @@ export class HrService {
 
   // ------------------------------------------------------------------ employees
 
-  private async leaveDaysThisYear(ids: string[]): Promise<Map<string, number>> {
-    const result = new Map<string, number>();
+  /** Approved and pending leave days per employee in one calendar year, clipped to that year. */
+  private async leaveUsage(ids: string[], year: string, executor: DbExecutor = this.db, excludeId?: string): Promise<Map<string, LeaveUsage>> {
+    const result = new Map<string, LeaveUsage>();
     if (!ids.length) return result;
-    const year = this.today().slice(0, 4);
     const yearStart = `${year}-01-01`;
     const yearEnd = `${year}-12-31`;
-    // Approved leave clipped to the calendar year, so a December-to-January request counts once per year.
-    const rows = await this.db
+    // Leave clipped to the calendar year, so a December-to-January request counts once per year.
+    const rows = await executor
       .select({
         employeeId: leaveRequests.employeeId,
+        status: leaveRequests.status,
         days: sql<string>`coalesce(sum(least(${leaveRequests.toDate}, ${yearEnd}::date) - greatest(${leaveRequests.fromDate}, ${yearStart}::date) + 1), 0)`,
       })
       .from(leaveRequests)
       .where(
         and(
           inArray(leaveRequests.employeeId, ids),
-          eq(leaveRequests.status, 'APPROVED'),
+          inArray(leaveRequests.status, ['APPROVED', 'PENDING']),
+          excludeId ? ne(leaveRequests.id, excludeId) : undefined,
           lte(leaveRequests.fromDate, yearEnd),
           gte(leaveRequests.toDate, yearStart)
         )
       )
-      .groupBy(leaveRequests.employeeId);
-    for (const row of rows) result.set(row.employeeId, Number(row.days));
+      .groupBy(leaveRequests.employeeId, leaveRequests.status);
+    for (const row of rows) {
+      const usage = result.get(row.employeeId) ?? { approved: 0, pending: 0 };
+      if (row.status === 'APPROVED') usage.approved = Number(row.days);
+      else usage.pending = Number(row.days);
+      result.set(row.employeeId, usage);
+    }
     return result;
   }
 
-  private toEmployee(row: EmployeeRow, leaveDays: number): Employee {
+  private balance(allowanceDays: number, usage: LeaveUsage | undefined, year: string): LeaveBalance {
+    const takenDays = usage?.approved ?? 0;
+    const pendingDays = usage?.pending ?? 0;
+    return { year: Number(year), allowanceDays, takenDays, pendingDays, remainingDays: Math.max(0, allowanceDays - takenDays - pendingDays) };
+  }
+
+  /**
+   * Rejects leave that would take an employee past their yearly allowance (422). Counted per calendar year
+   * the request touches. `statuses` picks what already counts: pending and approved when a request is made,
+   * approved only when one is approved (its own pending days are not counted twice).
+   */
+  private async assertWithinAllowance(
+    executor: DbExecutor,
+    employeeId: string,
+    allowanceDays: number,
+    fromDate: string,
+    toDate: string,
+    mode: 'request' | 'approve',
+    excludeId?: string
+  ) {
+    if (leaveDays(fromDate, toDate) > MAX_LEAVE_DAYS) {
+      throw new DomainError('LEAVE_BALANCE_EXCEEDED', 422, `Leave can be at most ${MAX_LEAVE_DAYS} days in one request.`);
+    }
+    for (let year = Number(fromDate.slice(0, 4)); year <= Number(toDate.slice(0, 4)); year += 1) {
+      const wanted = clipDays(fromDate, toDate, `${year}-01-01`, `${year}-12-31`);
+      const usage = (await this.leaveUsage([employeeId], String(year), executor, excludeId)).get(employeeId);
+      const used = (usage?.approved ?? 0) + (mode === 'request' ? (usage?.pending ?? 0) : 0);
+      if (used + wanted > allowanceDays) {
+        const left = Math.max(0, allowanceDays - used);
+        throw new DomainError(
+          'LEAVE_BALANCE_EXCEEDED',
+          422,
+          `That is ${wanted} day(s) of leave in ${year} but only ${left} of the ${allowanceDays}-day allowance is left.`
+        );
+      }
+    }
+  }
+
+  private toEmployee(row: EmployeeRow, usage: LeaveUsage | undefined): Employee {
     return {
       id: row.id,
       fullName: row.fullName,
@@ -78,7 +136,9 @@ export class HrService {
       monthlySalaryPaise: row.monthlySalaryPaise,
       hiredOn: row.hiredOn,
       status: row.status,
-      leaveDaysThisYear: leaveDays,
+      leaveDaysThisYear: usage?.approved ?? 0,
+      leaveAllowanceDays: row.leaveAllowanceDays,
+      leaveRemainingDays: Math.max(0, row.leaveAllowanceDays - (usage?.approved ?? 0) - (usage?.pending ?? 0)),
       photoUrl: row.photoUrl,
     };
   }
@@ -86,12 +146,12 @@ export class HrService {
   async getEmployeeProfile(id: string): Promise<EmployeeProfile> {
     const [row] = await this.db.select().from(employees).where(eq(employees.id, id)).limit(1);
     if (!row) throw new DomainError('NOT_FOUND', 404, 'Employee not found.');
-    const leave = await this.leaveDaysThisYear([row.id]);
+    const leave = await this.leaveUsage([row.id], this.today().slice(0, 4));
     const [pending] = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(leaveRequests)
       .where(and(eq(leaveRequests.employeeId, row.id), eq(leaveRequests.status, 'PENDING')));
-    return { ...this.toEmployee(row, leave.get(row.id) ?? 0), email: row.email, phone: row.phone, pendingLeaveRequests: pending?.count ?? 0 };
+    return { ...this.toEmployee(row, leave.get(row.id)), email: row.email, phone: row.phone, pendingLeaveRequests: pending?.count ?? 0 };
   }
 
   async listEmployees(query: EmployeeListQuery): Promise<Employee[]> {
@@ -106,8 +166,8 @@ export class HrService {
         )
       )
       .orderBy(asc(employees.fullName), asc(employees.id));
-    const leave = await this.leaveDaysThisYear(rows.map((row) => row.id));
-    return rows.map((row) => this.toEmployee(row, leave.get(row.id) ?? 0));
+    const leave = await this.leaveUsage(rows.map((row) => row.id), this.today().slice(0, 4));
+    return rows.map((row) => this.toEmployee(row, leave.get(row.id)));
   }
 
   private async assertUserExists(userId: string) {
@@ -137,9 +197,10 @@ export class HrService {
           hiredOn: input.hiredOn,
           userId: input.userId ?? null,
           photoUrl: input.photoUrl ?? null,
+          ...(input.leaveAllowanceDays !== undefined ? { leaveAllowanceDays: input.leaveAllowanceDays } : {}),
         })
         .returning();
-      return this.toEmployee(row, 0);
+      return this.toEmployee(row, undefined);
     } catch (error) {
       return this.translateEmployeeError(error);
     }
@@ -153,8 +214,8 @@ export class HrService {
         ? await this.db.update(employees).set(values).where(eq(employees.id, id)).returning()
         : await this.db.select().from(employees).where(eq(employees.id, id)).limit(1);
       if (!row) throw new DomainError('NOT_FOUND', 404, 'Employee not found.');
-      const leave = await this.leaveDaysThisYear([row.id]);
-      return this.toEmployee(row, leave.get(row.id) ?? 0);
+      const leave = await this.leaveUsage([row.id], this.today().slice(0, 4));
+      return this.toEmployee(row, leave.get(row.id));
     } catch (error) {
       if (error instanceof DomainError) throw error;
       return this.translateEmployeeError(error);
@@ -226,8 +287,14 @@ export class HrService {
 
   async listMyLeave(userId: string, page: number, limit: number) {
     const own = await this.employeeForUser(userId);
-    if (!own) return { data: [], meta: pageMeta(page, limit, 0) };
-    return this.pageOfLeave(eq(leaveRequests.employeeId, own.id), page, limit);
+    if (!own) return { data: [], meta: pageMeta(page, limit, 0), balance: null };
+    const year = this.today().slice(0, 4);
+    const [list, usage, [allowance]] = await Promise.all([
+      this.pageOfLeave(eq(leaveRequests.employeeId, own.id), page, limit),
+      this.leaveUsage([own.id], year),
+      this.db.select({ days: employees.leaveAllowanceDays }).from(employees).where(eq(employees.id, own.id)).limit(1),
+    ]);
+    return { ...list, balance: this.balance(allowance?.days ?? 0, usage.get(own.id), year) };
   }
 
   async requestLeave(userId: string, input: CreateLeaveRequest): Promise<LeaveRequest> {
@@ -235,7 +302,7 @@ export class HrService {
     if (!own) throw new DomainError('NOT_AN_EMPLOYEE', 404, 'This account has no employee record.');
     const created = await this.db.transaction(async (tx) => {
       // Serialise one employee's requests so two submissions cannot both pass the overlap check.
-      await tx.select({ id: employees.id }).from(employees).where(eq(employees.id, own.id)).for('update');
+      const [locked] = await tx.select({ allowance: employees.leaveAllowanceDays }).from(employees).where(eq(employees.id, own.id)).for('update');
       const [clash] = await tx
         .select({ id: leaveRequests.id })
         .from(leaveRequests)
@@ -249,6 +316,7 @@ export class HrService {
         )
         .limit(1);
       if (clash) throw new DomainError('LEAVE_OVERLAP', 409, 'You already have leave in those dates.');
+      await this.assertWithinAllowance(tx, own.id, locked?.allowance ?? 0, input.fromDate, input.toDate, 'request');
       const [row] = await tx
         .insert(leaveRequests)
         .values({ employeeId: own.id, leaveType: input.leaveType, fromDate: input.fromDate, toDate: input.toDate, reason: input.reason ?? null })
@@ -290,6 +358,8 @@ export class HrService {
             )
             .limit(1);
           if (clash) throw new DomainError('LEAVE_OVERLAP', 409, 'The employee already has approved leave in those dates.');
+          const [owner] = await tx.select({ allowance: employees.leaveAllowanceDays }).from(employees).where(eq(employees.id, row.employeeId)).for('update');
+          await this.assertWithinAllowance(tx, row.employeeId, owner?.allowance ?? 0, row.fromDate, row.toDate, 'approve', row.id);
         }
         const [updated] = await tx
           .update(leaveRequests)

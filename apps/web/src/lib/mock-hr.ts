@@ -32,11 +32,13 @@ export function createHrMock() {
     createEmployee(input: CreateEmployeeRequest) {
       const data = CreateEmployeeRequestSchema.parse(input);
       const row = { id: crypto.randomUUID(), fullName: data.fullName, position: data.position,
-        department: data.department, monthlySalaryPaise: data.monthlySalaryPaise, hiredOn: data.hiredOn, status: 'ACTIVE', leaveDaysThisYear: 0 };
+        department: data.department, monthlySalaryPaise: data.monthlySalaryPaise, hiredOn: data.hiredOn, status: 'ACTIVE', leaveDaysThisYear: 0,
+        leaveAllowanceDays: data.leaveAllowanceDays ?? 24, leaveRemainingDays: data.leaveAllowanceDays ?? 24 };
       employees.push(row); return copy(row);
     },
     updateEmployee(id: string, input: UpdateEmployeeRequest) {
-      const row = employee(id); Object.assign(row, UpdateEmployeeRequestSchema.parse(input)); return copy(row);
+      const row = employee(id); Object.assign(row, UpdateEmployeeRequestSchema.parse(input));
+      row.leaveRemainingDays = Math.max(0, row.leaveAllowanceDays - row.leaveDaysThisYear); return copy(row);
     },
     shifts(params: ShiftListQuery = {}, own = false) {
       return copy(shifts.filter((item) => (!own || item.employee.id === ownEmployee.id)
@@ -77,8 +79,12 @@ export function createHrMock() {
     leave(page = 1, own = false, status?: LeaveRequest['status']) {
       const rows = leaves.filter((row) => (!own || row.employee.id === ownEmployee.id) && (!status || row.status === status));
       const limit = 20; const totalPages = Math.ceil(rows.length / limit);
+      const taken = leaves.filter((row) => row.employee.id === ownEmployee.id && row.status === 'APPROVED').reduce((sum, row) => sum + row.days, 0);
+      const pending = leaves.filter((row) => row.employee.id === ownEmployee.id && row.status === 'PENDING').reduce((sum, row) => sum + row.days, 0);
+      const balance = own ? { year: new Date().getFullYear(), allowanceDays: ownEmployee.leaveAllowanceDays, takenDays: taken, pendingDays: pending,
+        remainingDays: Math.max(0, ownEmployee.leaveAllowanceDays - taken - pending) } : null;
       return copy({ data: rows.slice((page - 1) * limit, page * limit), meta: { page, limit, totalItems: rows.length,
-        totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
+        totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 }, balance });
     },
     requestLeave(input: CreateLeaveRequest) {
       const data = CreateLeaveRequestSchema.parse(input);

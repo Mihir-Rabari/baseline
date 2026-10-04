@@ -55,6 +55,8 @@ export function BreakdownSections({ r }: { r: ReportBreakdown }) {
       </Section>
       <Section title="Payroll" summary={`${r.payroll.activeEmployees} staff, ${formatMoney(r.payroll.monthlyPayrollPaise)} a month, ${r.payroll.pendingLeave} leave requests pending`}>
         <Rows head={['Department', 'Staff', 'Monthly']} empty="No active staff." rows={r.payroll.byDepartment.map((d) => [humanize(d.department), d.employees, formatMoney(d.monthlyPaise)])} />
+        <p className="mt-4 text-sm text-muted-foreground">{r.payroll.approvedLeaveDays} approved leave days in this period</p>
+        <Rows head={['Payroll run', 'Payslips', 'Net paid']} empty="No payroll runs in this period." rows={r.payroll.runs.map((x) => [`${x.month} (${humanize(x.status)})`, x.payslips, formatMoney(x.netPaise)])} />
       </Section>
     </div>
   );

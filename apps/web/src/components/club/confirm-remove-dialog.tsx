@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { errorText } from '@/components/club/form-dialog';
 
 /** Asks before a removal, and keeps the server's reason on screen when it refuses (open tab, upcoming bookings). */
-export function ConfirmRemoveDialog({ open, title, description, confirmLabel = 'Remove', onConfirm, onClose }: {
-  open: boolean; title: string; description: React.ReactNode; confirmLabel?: string;
+export function ConfirmRemoveDialog({ open, title, description, confirmLabel = 'Remove', pendingLabel = 'Removing…', onConfirm, onClose }: {
+  open: boolean; title: string; description: React.ReactNode; confirmLabel?: string; pendingLabel?: string;
   onConfirm: () => Promise<void>; onClose: () => void;
 }) {
   const [pending, setPending] = useState(false);
@@ -26,7 +26,7 @@ export function ConfirmRemoveDialog({ open, title, description, confirmLabel = '
         {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
         <DialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={close}>Cancel</Button>
-          <Button type="button" variant="destructive" loading={pending} onClick={() => { void confirm(); }}>{pending ? 'Removing…' : confirmLabel}</Button>
+          <Button type="button" variant="destructive" loading={pending} onClick={() => { void confirm(); }}>{pending ? pendingLabel : confirmLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -13,6 +13,7 @@ import { mediaUrl } from '@/lib/upload-api';
 import { PageHeader } from '@/components/app-shell/page-header';
 import { Money } from '@/components/club/money';
 import { errorText } from '@/components/club/form-dialog';
+import { EmployeeDocuments } from '@/components/club/employee-documents';
 import { ImageUploader } from '@/components/club/image-uploader';
 import { NoAccess, QueryState, Stat, humanize } from '@/components/club/ops-bits';
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +110,7 @@ export default function EmployeeProfilePage() {
                 </QueryState>
               </section>
             )}
+            {canManage && <EmployeeDocuments employeeId={id} />}
           </>
         )}
       </QueryState>

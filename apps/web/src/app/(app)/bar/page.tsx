@@ -54,7 +54,12 @@ export default function BarFloorPage() {
         return table.openTab ? <Link key={table.id} className={className} href={`/bar/tabs/${table.openTab.id}`} aria-label={`Open ${table.name} tab`}>{content}</Link> :
           <button key={table.id} className={className} disabled={!canManage} onClick={() => { open.reset(); setSelected(table); }} aria-label={`Open tab for ${table.name}`}>{content}</button>;
       })}</div>}
-    {canRead && tables.data && <TableBookings tables={tables.data} canManage={canManage} />}
+    {canRead && tables.data && <TableBookings tables={tables.data} canManage={canManage} onOpenTab={(table, name, memberId) => {
+      open.reset();
+      setSelected(table);
+      if (memberId) setMember({ id: memberId, fullName: name, memberCode: '', phone: '', planCode: null, expiryState: 'NONE', barDiscountPct: 0, shopDiscountPct: 0 });
+      else setGuestName(name);
+    }} />}
     <Dialog open={Boolean(selected)} onOpenChange={(value) => { if (!value && !open.isPending) close(); }}>
       <DialogContent><DialogHeader><DialogTitle>Open tab · {selected?.name}</DialogTitle><DialogDescription>Choose a member for their discount, or enter a guest name.</DialogDescription></DialogHeader>
         <form onSubmit={openTab} className="space-y-4">

@@ -38,7 +38,7 @@ export function OrderDetailDialog({
             <DialogTitle className="font-mono text-xl">{order.orderNumber}</DialogTitle>
             <div className="flex items-center gap-2">
               <Badge variant={isPos ? 'default' : 'outline'}>
-                {isPos ? 'Counter POS' : order.fulfilment === 'DELIVERY' ? 'Delivery' : 'Pickup'}
+                {isPos ? 'Counter sale' : order.fulfilment === 'DELIVERY' ? 'Delivery' : 'Pickup'}
               </Badge>
               <StatusBadge kind="order" value={order.status} />
             </div>

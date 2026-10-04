@@ -61,3 +61,53 @@ describe('Staff workspace', () => {
     expect(doubles.api.requestLeave).toHaveBeenCalledTimes(1);
   });
 });
+describe('Staff workspace: allowance, deactivation and leave balance', () => {
+  const ASHA = 'c0000000-0000-4000-8000-000000000001';
+  it('shows how much leave each employee has left', async () => {
+    mount();
+    const row = (await screen.findByRole('link', { name: 'Asha Shah' })).closest('tr')!;
+    expect(screen.getByRole('columnheader', { name: 'Leave left' })).toBeInTheDocument();
+    expect(within(row).getByText('22 of 24 days')).toBeInTheDocument();
+  });
+  it('sends the yearly allowance when an employee is edited', async () => {
+    mount(); fireEvent.click(await screen.findByRole('button', { name: 'Edit Asha Shah' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByLabelText('Yearly leave allowance (days)')).toHaveValue(24);
+    fireEvent.change(within(dialog).getByLabelText('Yearly leave allowance (days)'), { target: { value: '30' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save employee' }));
+    await waitFor(() => expect(doubles.api.updateEmployee).toHaveBeenCalledWith(ASHA, expect.objectContaining({ leaveAllowanceDays: 30 })));
+    expect(await screen.findByText('28 of 30 days')).toBeInTheDocument();
+  });
+  it('deactivates only after confirming, then offers to reactivate', async () => {
+    mount(); fireEvent.click(await screen.findByRole('button', { name: 'Deactivate Asha Shah' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(doubles.api.updateEmployee).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(doubles.api.updateEmployee).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Deactivate Asha Shah' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deactivate' }));
+    await waitFor(() => expect(doubles.api.updateEmployee).toHaveBeenCalledWith(ASHA, { status: 'INACTIVE' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reactivate Asha Shah' }));
+    await waitFor(() => expect(doubles.api.updateEmployee).toHaveBeenLastCalledWith(ASHA, { status: 'ACTIVE' }));
+    expect(await screen.findByRole('button', { name: 'Deactivate Asha Shah' })).toBeInTheDocument();
+  });
+  it('keeps the dialog open and shows the reason when deactivating fails', async () => {
+    doubles.api.updateEmployee.mockRejectedValueOnce(new Error('Employee has a shift in progress.'));
+    mount(); fireEvent.click(await screen.findByRole('button', { name: 'Deactivate Asha Shah' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deactivate' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Employee has a shift in progress.');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+  it('shows staff their own leave balance', async () => {
+    doubles.permissions = new Set(['leave:read:self', 'leave:create:self']); mount();
+    const card = await screen.findByRole('region', { name: 'Leave balance' });
+    expect(card).toHaveTextContent(/of 24 days/);
+    expect(card).toHaveTextContent(/taken/);
+  });
+  it('hides the balance card from the owner view of everyone', async () => {
+    mount(); await screen.findByText('Asha Shah'); fireEvent.mouseDown(screen.getByRole('tab', { name: 'Leave' }), { button: 0 });
+    await waitFor(() => expect(doubles.api.leave).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: 'Leave balance' })).not.toBeInTheDocument();
+  });
+});
