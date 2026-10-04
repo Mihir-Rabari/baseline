@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, uuid, smallint, integer, boolean, index } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { members } from './members.js';
@@ -20,6 +21,7 @@ export type StockReason = 'SALE_COUNTER' | 'SALE_ONLINE' | 'RESTOCK' | 'ADJUSTME
 export const products = pgTable(
   'products',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     sku: varchar('sku', { length: 64 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
@@ -41,6 +43,7 @@ export const products = pgTable(
 export const orders = pgTable(
   'orders',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     orderNumber: varchar('order_number', { length: 20 }).notNull().unique(), // ORD-000123 from order_number_seq
     channel: varchar('channel', { length: 12 }).$type<OrderChannel>().notNull(),
@@ -72,6 +75,7 @@ export const orders = pgTable(
 export const orderItems = pgTable(
   'order_items',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     orderId: uuid('order_id')
       .references(() => orders.id, { onDelete: 'cascade' })
@@ -91,6 +95,7 @@ export const orderItems = pgTable(
 export const stockMovements = pgTable(
   'stock_movements',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     productId: uuid('product_id')
       .references(() => products.id)

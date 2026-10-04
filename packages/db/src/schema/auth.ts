@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, timestamp, uuid, index } from 'drizzle-orm/pg-core';
 
 /**
@@ -18,6 +19,7 @@ export type IdentityTypeColumn = 'ROOT' | 'EXTERNAL_USER';
 export const users = pgTable(
   'users',
   {
+    tenantId: tenantIdColumn(),
     id: uuid('id').defaultRandom().primaryKey(),
     email: varchar('email', { length: 255 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
@@ -51,6 +53,7 @@ export type NewUser = typeof users.$inferInsert;
 export const sessions = pgTable(
   'sessions',
   {
+    tenantId: tenantIdColumn(),
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
@@ -81,6 +84,7 @@ export type NewSession = typeof sessions.$inferInsert;
 export const passwordSetupTokens = pgTable(
   'password_setup_tokens',
   {
+    tenantId: tenantIdColumn(),
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })

@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import {
   pgTable,
   varchar,
@@ -100,6 +101,7 @@ export type NewGroupRecord = typeof groups.$inferInsert;
 export const userRoles = pgTable(
   'user_roles',
   {
+    tenantId: tenantIdColumn(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
@@ -121,6 +123,7 @@ export const userRoles = pgTable(
 export const userGroups = pgTable(
   'user_groups',
   {
+    tenantId: tenantIdColumn(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
@@ -184,6 +187,7 @@ export const groupPolicies = pgTable(
 export const userPolicies = pgTable(
   'user_policies',
   {
+    tenantId: tenantIdColumn(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),

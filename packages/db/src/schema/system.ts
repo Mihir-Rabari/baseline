@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, timestamp, jsonb, uuid } from 'drizzle-orm/pg-core';
 
 /**
@@ -5,6 +6,7 @@ import { pgTable, varchar, text, timestamp, jsonb, uuid } from 'drizzle-orm/pg-c
  * Used for storing installation state, schema versions, and global flags.
  */
 export const systemSettings = pgTable('system_settings', {
+    tenantId: tenantIdColumn(),
   key: varchar('key', { length: 128 }).primaryKey(),
   value: jsonb('value').notNull(),
   description: text('description'),
@@ -20,6 +22,7 @@ export type NewSystemSetting = typeof systemSettings.$inferInsert;
  * Used to record critical infrastructure events, migration executions, and system health benchmarks.
  */
 export const systemAuditLogs = pgTable('system_audit_logs', {
+    tenantId: tenantIdColumn(),
   id: uuid('id').defaultRandom().primaryKey(),
   action: varchar('action', { length: 128 }).notNull(),
   actor: varchar('actor', { length: 128 }).notNull().default('system'),

@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import {
   pgTable,
   varchar,
@@ -23,6 +24,7 @@ export type TabItemStatus = 'PENDING' | 'SENT' | 'VOID';
 export type TableBookingStatus = 'BOOKED' | 'SEATED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
 export const barTables = pgTable('bar_tables', {
+    tenantId: tenantIdColumn(),
   id: pk(),
   name: varchar('name', { length: 32 }).notNull().unique(), // "T1"
   seats: smallint('seats').notNull().default(4),
@@ -32,6 +34,7 @@ export const barTables = pgTable('bar_tables', {
 export const menuItems = pgTable(
   'menu_items',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     name: varchar('name', { length: 128 }).notNull(),
     category: varchar('category', { length: 16 }).$type<MenuCategory>().notNull(),
@@ -49,6 +52,7 @@ export const menuItems = pgTable(
 export const tabs = pgTable(
   'tabs',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     tabNumber: integer('tab_number').notNull().unique(), // from tab_number_seq
     memberId: uuid('member_id').references(() => members.id),
@@ -77,6 +81,7 @@ export const tabs = pgTable(
 export const kitchenTickets = pgTable(
   'kitchen_tickets',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     ticketNumber: integer('ticket_number').generatedAlwaysAsIdentity().notNull().unique(),
     tabId: uuid('tab_id')
@@ -94,6 +99,7 @@ export const kitchenTickets = pgTable(
 export const tabItems = pgTable(
   'tab_items',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     tabId: uuid('tab_id')
       .references(() => tabs.id, { onDelete: 'cascade' })
@@ -123,6 +129,7 @@ export const tabItems = pgTable(
 export const barTableBookings = pgTable(
   'bar_table_bookings',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     tableId: uuid('table_id')
       .notNull()

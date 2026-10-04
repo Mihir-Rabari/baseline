@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, uuid, date, index, smallint, uniqueIndex } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { pk, tstz, createdAt, paise } from './_columns.js';
@@ -9,6 +10,7 @@ export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export const employees = pgTable(
   'employees',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'set null' })
@@ -30,6 +32,7 @@ export const employees = pgTable(
 export const staffShifts = pgTable(
   'staff_shifts',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     employeeId: uuid('employee_id')
       .references(() => employees.id, { onDelete: 'cascade' })
@@ -53,6 +56,7 @@ export const staffShifts = pgTable(
 export const leaveRequests = pgTable(
   'leave_requests',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     employeeId: uuid('employee_id')
       .references(() => employees.id, { onDelete: 'cascade' })
@@ -81,6 +85,7 @@ export type PayrollRunStatus = 'DRAFT' | 'FINALIZED' | 'PAID';
  * four digits are kept in clear for display. Never returned or logged in full.
  */
 export const employeeBankDetails = pgTable('employee_bank_details', {
+    tenantId: tenantIdColumn(),
   employeeId: uuid('employee_id')
     .primaryKey()
     .references(() => employees.id, { onDelete: 'cascade' }),
@@ -98,6 +103,7 @@ export const employeeBankDetails = pgTable('employee_bank_details', {
 export const payrollRuns = pgTable(
   'payroll_runs',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     month: varchar('month', { length: 7 }).notNull().unique(),
     status: varchar('status', { length: 10 }).$type<PayrollRunStatus>().notNull().default('DRAFT'),
@@ -113,6 +119,7 @@ export const payrollRuns = pgTable(
 export const payslips = pgTable(
   'payslips',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     runId: uuid('run_id')
       .notNull()

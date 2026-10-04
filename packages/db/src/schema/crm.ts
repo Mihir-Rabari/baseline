@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, uuid, date, index } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { members, plans } from './members.js';
@@ -18,6 +19,7 @@ export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
 export const leads = pgTable(
   'leads',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     name: varchar('name', { length: 255 }).notNull(),
     phone: varchar('phone', { length: 20 }),
@@ -47,6 +49,7 @@ export const leads = pgTable(
 export const leadActivities = pgTable(
   'lead_activities',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     leadId: uuid('lead_id')
       .references(() => leads.id, { onDelete: 'cascade' })
@@ -62,6 +65,7 @@ export const leadActivities = pgTable(
 export const quotes = pgTable(
   'quotes',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     leadId: uuid('lead_id')
       .references(() => leads.id, { onDelete: 'cascade' })

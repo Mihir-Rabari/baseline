@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import {
   pgTable,
   varchar,
@@ -28,6 +29,7 @@ export type ReminderKind = 'T30' | 'T7' | 'T1' | 'EXPIRED';
 
 /** Tiers and entitlements. Edited by the Owner; never hard-coded. */
 export const plans = pgTable('plans', {
+    tenantId: tenantIdColumn(),
   id: pk(),
   code: varchar('code', { length: 32 }).notNull().unique(), // GOLD | SILVER | JUNIOR
   name: varchar('name', { length: 64 }).notNull(),
@@ -51,6 +53,7 @@ export const plans = pgTable('plans', {
 export const members = pgTable(
   'members',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'set null' })
@@ -77,6 +80,7 @@ export const members = pgTable(
 export const memberships = pgTable(
   'memberships',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     memberId: uuid('member_id')
       .references(() => members.id, { onDelete: 'cascade' })
@@ -108,6 +112,7 @@ export const memberships = pgTable(
 export const membershipEvents = pgTable(
   'membership_events',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     membershipId: uuid('membership_id')
       .references(() => memberships.id, { onDelete: 'cascade' })
@@ -129,6 +134,7 @@ export const membershipEvents = pgTable(
 export const membershipReminders = pgTable(
   'membership_reminders',
   {
+    tenantId: tenantIdColumn(),
     membershipId: uuid('membership_id')
       .references(() => memberships.id, { onDelete: 'cascade' })
       .notNull(),
@@ -141,6 +147,7 @@ export const membershipReminders = pgTable(
 export const memberCheckins = pgTable(
   'member_checkins',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     memberId: uuid('member_id')
       .references(() => members.id, { onDelete: 'cascade' })

@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, uuid, jsonb, index } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { pk, tstz, createdAt } from './_columns.js';
@@ -19,6 +20,7 @@ export type NotificationType =
 export const notifications = pgTable(
   'notifications',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })

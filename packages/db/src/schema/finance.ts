@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, text, uuid, integer, smallint, date, index } from 'drizzle-orm/pg-core';
 import { users } from './auth.js';
 import { members } from './members.js';
@@ -12,6 +13,7 @@ export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'VOID';
 export const payments = pgTable(
   'payments',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     source: varchar('source', { length: 16 }).$type<PaymentSource>().notNull(),
     sourceId: uuid('source_id'), // booking, order, tab, membership or invoice id
@@ -34,6 +36,7 @@ export const payments = pgTable(
 );
 
 export const businessClients = pgTable('business_clients', {
+    tenantId: tenantIdColumn(),
   id: pk(),
   companyName: varchar('company_name', { length: 255 }).notNull(),
   contactName: varchar('contact_name', { length: 255 }),
@@ -47,6 +50,7 @@ export const businessClients = pgTable('business_clients', {
 export const invoices = pgTable(
   'invoices',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     invoiceNumber: varchar('invoice_number', { length: 24 }).notNull().unique(), // INV-2026-0001 via invoice_number_seq
     memberId: uuid('member_id').references(() => members.id),
@@ -74,6 +78,7 @@ export const invoices = pgTable(
 export const invoiceLines = pgTable(
   'invoice_lines',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     invoiceId: uuid('invoice_id')
       .references(() => invoices.id, { onDelete: 'cascade' })
@@ -90,6 +95,7 @@ export const invoiceLines = pgTable(
 
 /** Read-only dashboard share links. Only the SHA-256 hash is stored, like session tokens. */
 export const reportShares = pgTable('report_shares', {
+    tenantId: tenantIdColumn(),
   id: pk(),
   tokenHash: varchar('token_hash', { length: 128 }).notNull().unique(),
   defaultRange: varchar('default_range', { length: 8 })

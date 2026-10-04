@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import { pgTable, varchar, smallint, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 import { pk, createdAt } from './_columns.js';
 
@@ -11,6 +12,7 @@ export type CategoryScope = 'PRODUCT' | 'MENU';
 export const categories = pgTable(
   'categories',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     scope: varchar('scope', { length: 16 }).$type<CategoryScope>().notNull(),
     code: varchar('code', { length: 16 }).notNull(),

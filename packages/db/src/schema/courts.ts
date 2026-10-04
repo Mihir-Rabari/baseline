@@ -1,3 +1,4 @@
+import { tenantIdColumn } from './_tenant.js';
 import {
   pgTable,
   varchar,
@@ -24,6 +25,7 @@ export type OccupancyKind = 'BOOKING' | 'SOCIAL' | 'MAINTENANCE';
 
 /** Sports are data: TENNIS, PADEL, BADMINTON, CRICKET_NETS. */
 export const courtTypes = pgTable('court_types', {
+    tenantId: tenantIdColumn(),
   id: pk(),
   code: varchar('code', { length: 32 }).notNull().unique(),
   name: varchar('name', { length: 64 }).notNull(),
@@ -38,6 +40,7 @@ export const courtTypes = pgTable('court_types', {
 export const courts = pgTable(
   'courts',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     courtTypeId: uuid('court_type_id')
       .references(() => courtTypes.id)
@@ -53,6 +56,7 @@ export const courts = pgTable(
 
 /** Weekday uses ISO numbering: 1 = Monday ... 7 = Sunday (Friday = 5). */
 export const socialWindows = pgTable('social_windows', {
+    tenantId: tenantIdColumn(),
   id: pk(),
   weekday: smallint('weekday').notNull(),
   startsTime: time('starts_time').notNull(), // '18:00'
@@ -64,6 +68,7 @@ export const socialWindows = pgTable('social_windows', {
 export const socialSessions = pgTable(
   'social_sessions',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     courtId: uuid('court_id')
       .references(() => courts.id)
@@ -83,6 +88,7 @@ export const socialSessions = pgTable(
 export const bookings = pgTable(
   'bookings',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     courtId: uuid('court_id')
       .references(() => courts.id)
@@ -133,6 +139,7 @@ export const bookings = pgTable(
 export const courtOccupancies = pgTable(
   'court_occupancies',
   {
+    tenantId: tenantIdColumn(),
     id: pk(),
     courtId: uuid('court_id')
       .references(() => courts.id)

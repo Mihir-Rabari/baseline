@@ -28,7 +28,7 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
       expect(before).toHaveLength(0);
       await migrate(db, options);
       const firstJournal = await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`;
-      expect(firstJournal).toHaveLength(16);
+      expect(firstJournal).toHaveLength(17);
       const firstTables = await isolated`SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`;
       expect(firstTables).toHaveLength(56);
       expect(firstTables.map((row) => row.tablename)).toEqual(expect.arrayContaining([
@@ -43,6 +43,13 @@ describe.skipIf(!databaseUrl)('Fresh database migration installation', () => {
         WHERE table_schema = 'public' AND table_name = 'employees' AND column_name = 'photo_url'`;
       expect(photoColumn).toHaveLength(1);
       expect(photoColumn[0].character_maximum_length).toBe(512);
+
+      // Migration 0016: every club-owned table is confined by a row level security policy for baseline_app.
+      const policies = await isolated`SELECT tablename FROM pg_policies WHERE schemaname = 'public' AND policyname = 'tenant_isolation'`;
+      expect(policies).toHaveLength(48);
+      const unconfined = await isolated`SELECT c.relname FROM pg_class c JOIN pg_policies p ON p.tablename = c.relname AND p.schemaname = 'public'
+        WHERE c.relrowsecurity = false`;
+      expect(unconfined).toHaveLength(0);
 
       await migrate(db, options);
       expect(await isolated`SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id`).toEqual(firstJournal);
